@@ -96,7 +96,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
     // Route-specific keys
     match &state.route {
         Route::PrDetail { .. } => handle_pr_detail_keys(key),
-        Route::IssueList { .. } => handle_issue_list_keys(key),
+        Route::IssueList { .. } => handle_issue_list_keys(key, state),
         Route::IssueDetail { .. } => handle_issue_detail_keys(key, state),
         Route::ActionDetail { .. } | Route::JobLog { .. } => handle_action_detail_keys(key),
         Route::Security { .. } => handle_settings_keys(key),
@@ -179,16 +179,30 @@ fn handle_pr_detail_keys(key: KeyEvent) -> Option<Message> {
     }
 }
 
-fn handle_issue_list_keys(key: KeyEvent) -> Option<Message> {
+fn handle_issue_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    // Search mode
+    let search_mode = state.issue_list.as_ref().is_some_and(|l| l.search_mode);
+
+    if search_mode {
+        return match key.code {
+            KeyCode::Esc => Some(Message::IssueSearchCancel),
+            KeyCode::Enter => Some(Message::IssueSearchSubmit),
+            KeyCode::Char(c) => Some(Message::IssueSearchInput(c.to_string())),
+            KeyCode::Backspace => Some(Message::IssueSearchInput("\x08".to_string())),
+            _ => None,
+        };
+    }
+
     match key.code {
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
         KeyCode::Enter => Some(Message::ListSelect(0)),
-        KeyCode::Char('r') => Some(Message::Tick), // refresh
-        KeyCode::Char('s') => Some(Message::IssueToggleStateFilter), // toggle open/closed
+        KeyCode::Char('r') => Some(Message::Tick),
+        KeyCode::Char('s') => Some(Message::IssueToggleStateFilter),
         KeyCode::Char('n') => Some(Message::IssueNextPage),
         KeyCode::Char('p') => Some(Message::IssuePrevPage),
         KeyCode::Char('c') => Some(Message::ModalOpen(ModalKind::CreateIssue)),
+        KeyCode::Char('/') => Some(Message::IssueSearchStart),
         _ => None,
     }
 }
@@ -233,14 +247,42 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         };
     }
 
+    // Label picker mode
+    let label_picking = state
+        .issue_detail
+        .as_ref()
+        .is_some_and(|d| d.label_picker.is_some());
+
+    if label_picking {
+        return match key.code {
+            KeyCode::Esc => Some(Message::IssueLabelCancel),
+            KeyCode::Enter | KeyCode::Char(' ') => {
+                // Toggle selected label
+                if let Some(ref detail) = state.issue_detail {
+                    detail
+                        .label_picker
+                        .as_ref()
+                        .map(|picker| Message::IssueLabelSelect(picker.cursor))
+                } else {
+                    None
+                }
+            }
+            KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+            KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+            KeyCode::Char('s') => Some(Message::IssueLabelApply), // save
+            _ => None,
+        };
+    }
+
     // Normal navigation mode
     match key.code {
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
         KeyCode::Char('c') => Some(Message::IssueStartComment),
-        KeyCode::Char('T') => Some(Message::IssueStartEditTitle), // Shift+T: edit title
-        KeyCode::Char('e') => Some(Message::IssueStartEditBody),  // e: edit body or comment
+        KeyCode::Char('T') => Some(Message::IssueStartEditTitle),
+        KeyCode::Char('e') => Some(Message::IssueStartEditBody),
         KeyCode::Char('r') => Some(Message::IssueStartReply),
+        KeyCode::Char('l') => Some(Message::IssueLabelToggle), // open label picker
         KeyCode::PageDown => Some(Message::ScrollDown),
         KeyCode::PageUp => Some(Message::ScrollUp),
         _ => None,

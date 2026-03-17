@@ -87,6 +87,16 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 Err(e) => Message::Error(e.into()),
             }
         }
+        Command::SetIssueLabels(repo, number, labels) => {
+            match client.set_issue_labels(&repo, number, &labels).await {
+                Ok(()) => Message::IssueUpdated(number),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::FetchRepoLabels(repo) => match client.list_repo_labels(&repo).await {
+            Ok(labels) => Message::IssueLabelsLoaded(labels),
+            Err(e) => Message::Error(e.into()),
+        },
         Command::AddComment(repo, number, body) => {
             match client.add_issue_comment(&repo, number, &body).await {
                 Ok(()) => Message::CommentAdded,

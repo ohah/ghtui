@@ -1,6 +1,8 @@
 use crate::editor::TextEditor;
 use crate::types::{Issue, IssueDetail, IssueFilters, IssueState, Pagination};
 
+use crate::types::common::Label;
+
 #[derive(Debug)]
 pub struct IssueListState {
     pub items: Vec<Issue>,
@@ -8,6 +10,16 @@ pub struct IssueListState {
     pub selected: usize,
     pub scroll_offset: usize,
     pub filters: IssueFilters,
+    pub search_mode: bool,
+    pub search_query: String,
+}
+
+/// Label picker state for issue detail
+#[derive(Debug)]
+pub struct LabelPickerState {
+    pub available: Vec<Label>,
+    pub selected_names: Vec<String>, // currently toggled labels
+    pub cursor: usize,
 }
 
 impl IssueListState {
@@ -18,6 +30,8 @@ impl IssueListState {
             selected: 0,
             scroll_offset: 0,
             filters: IssueFilters::default(),
+            search_mode: false,
+            search_query: String::new(),
         }
     }
 
@@ -28,6 +42,8 @@ impl IssueListState {
             selected: 0,
             scroll_offset: 0,
             filters,
+            search_mode: false,
+            search_query: String::new(),
         }
     }
 
@@ -75,6 +91,7 @@ pub struct IssueDetailState {
     pub selected_comment: Option<usize>,
     pub edit_target: Option<InlineEditTarget>,
     pub editor: TextEditor,
+    pub label_picker: Option<LabelPickerState>,
 }
 
 impl IssueDetailState {
@@ -85,6 +102,7 @@ impl IssueDetailState {
             selected_comment: None,
             edit_target: None,
             editor: TextEditor::new(),
+            label_picker: None,
         }
     }
 
