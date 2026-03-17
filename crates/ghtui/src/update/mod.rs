@@ -2271,6 +2271,8 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::NotificationMarkedRead(id) => {
             if let Some(ref mut notifs) = state.notifications {
                 notifs.items.retain(|n| n.id != id);
+                let max = notifs.filtered_items().len().saturating_sub(1);
+                notifs.selected = notifs.selected.min(max);
             }
             vec![]
         }
@@ -2336,6 +2338,8 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.push_toast("Unsubscribed".to_string(), ToastLevel::Info);
             if let Some(ref mut notifs) = state.notifications {
                 notifs.items.retain(|n| n.id != id);
+                let max = notifs.filtered_items().len().saturating_sub(1);
+                notifs.selected = notifs.selected.min(max);
             }
             vec![]
         }
@@ -2349,8 +2353,11 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::NotificationDoneResult(id) => {
+            state.push_toast("Notification done".to_string(), ToastLevel::Info);
             if let Some(ref mut notifs) = state.notifications {
                 notifs.items.retain(|n| n.id != id);
+                let max = notifs.filtered_items().len().saturating_sub(1);
+                notifs.selected = notifs.selected.min(max);
             }
             vec![]
         }

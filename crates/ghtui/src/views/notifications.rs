@@ -67,10 +67,13 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     }
 
     // Build list items (with optional repo grouping)
-    let items: Vec<ListItem> = if notif_state.grouped {
+    // display_selected tracks the actual index in the Vec<ListItem> for ListState
+    let (items, display_selected): (Vec<ListItem>, usize) = if notif_state.grouped {
         let groups = notif_state.repo_groups();
         let mut list_items = Vec::new();
         let mut flat_idx = 0usize;
+        let mut display_idx = 0usize;
+        let mut selected_display = 0usize;
 
         for repo_name in &groups {
             // Repo group header
@@ -78,26 +81,33 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 Span::styled("  ", Style::default()),
                 Span::styled(repo_name.clone(), theme.text_bold()),
             ])));
+            display_idx += 1;
 
             for notif in &filtered {
                 if notif.repository.full_name != *repo_name {
                     continue;
                 }
                 let is_selected = flat_idx == notif_state.selected;
+                if is_selected {
+                    selected_display = display_idx;
+                }
                 list_items.push(render_notification_item(notif, is_selected, false, theme));
                 flat_idx += 1;
+                display_idx += 1;
             }
         }
-        list_items
+        (list_items, selected_display)
     } else {
-        filtered
+        let items: Vec<ListItem> = filtered
             .iter()
             .enumerate()
             .map(|(i, notif)| {
                 let is_selected = i == notif_state.selected;
                 render_notification_item(notif, is_selected, true, theme)
             })
-            .collect()
+            .collect();
+        let sel = notif_state.selected;
+        (items, sel)
     };
 
     let unread_count = filtered.iter().filter(|n| n.unread).count();
@@ -117,7 +127,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         .highlight_style(theme.selected());
 
     let mut list_widget_state = ListState::default();
-    list_widget_state.select(Some(notif_state.selected));
+    list_widget_state.select(Some(display_selected));
     frame.render_stateful_widget(list, chunks[1], &mut list_widget_state);
 }
 
