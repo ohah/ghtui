@@ -1,4 +1,5 @@
-use ghtui_core::config::AppConfig;
+use ghtui_core::config::{AppConfig, GhAccount};
+use ghtui_core::message::ModalKind;
 use ghtui_core::router::Route;
 use ghtui_core::state::*;
 use ghtui_core::types::common::RepoId;
@@ -181,4 +182,150 @@ fn test_pr_list_state_selection() {
     // Can't go before start
     list.select_prev();
     assert_eq!(list.selected, 0);
+}
+
+// -- Account tests --
+
+fn make_test_accounts() -> Vec<GhAccount> {
+    vec![
+        GhAccount {
+            host: "github.com".to_string(),
+            user: "personal".to_string(),
+            token: "gho_personal".to_string(),
+        },
+        GhAccount {
+            host: "github.com".to_string(),
+            user: "work".to_string(),
+            token: "gho_work".to_string(),
+        },
+        GhAccount {
+            host: "enterprise.corp.com".to_string(),
+            user: "admin".to_string(),
+            token: "gho_enterprise".to_string(),
+        },
+    ]
+}
+
+#[test]
+fn test_app_state_with_accounts() {
+    let config = AppConfig::default();
+    let accounts = make_test_accounts();
+    let current = Some(accounts[0].clone());
+
+    let state = AppState::new(config, None, current.clone(), accounts.clone());
+
+    assert_eq!(state.accounts.len(), 3);
+    assert_eq!(state.current_account, current);
+    assert_eq!(state.account_selected, 0);
+}
+
+#[test]
+fn test_app_state_no_accounts() {
+    let config = AppConfig::default();
+    let state = AppState::new(config, None, None, vec![]);
+
+    assert!(state.accounts.is_empty());
+    assert!(state.current_account.is_none());
+    assert_eq!(state.account_selected, 0);
+}
+
+#[test]
+fn test_account_selected_navigation() {
+    let config = AppConfig::default();
+    let accounts = make_test_accounts();
+    let mut state = AppState::new(config, None, None, accounts);
+
+    assert_eq!(state.account_selected, 0);
+
+    // Move down
+    state.account_selected = (state.account_selected + 1).min(state.accounts.len() - 1);
+    assert_eq!(state.account_selected, 1);
+
+    // Move down again
+    state.account_selected = (state.account_selected + 1).min(state.accounts.len() - 1);
+    assert_eq!(state.account_selected, 2);
+
+    // Can't go past end
+    state.account_selected = (state.account_selected + 1).min(state.accounts.len() - 1);
+    assert_eq!(state.account_selected, 2);
+
+    // Move up
+    state.account_selected = state.account_selected.saturating_sub(1);
+    assert_eq!(state.account_selected, 1);
+
+    // Move up
+    state.account_selected = state.account_selected.saturating_sub(1);
+    assert_eq!(state.account_selected, 0);
+
+    // Can't go before start
+    state.account_selected = state.account_selected.saturating_sub(1);
+    assert_eq!(state.account_selected, 0);
+}
+
+#[test]
+fn test_account_switch_clears_cached_data() {
+    let config = AppConfig::default();
+    let repo = RepoId::new("owner", "repo");
+    let accounts = make_test_accounts();
+    let mut state = AppState::new(config, Some(repo), Some(accounts[0].clone()), accounts.clone());
+
+    // Simulate loaded data
+    state.pr_list = Some(PrListState::new(vec![], Default::default()));
+    state.issue_list = Some(IssueListState::new(vec![], Default::default()));
+    state.actions_list = Some(ActionsListState::new(vec![], Default::default()));
+    state.notifications = Some(NotificationListState::new(vec![]));
+
+    assert!(state.pr_list.is_some());
+    assert!(state.issue_list.is_some());
+    assert!(state.actions_list.is_some());
+    assert!(state.notifications.is_some());
+
+    // Simulate account switch: clear all cached data
+    let new_account = accounts[1].clone();
+    state.current_account = Some(new_account.clone());
+    state.pr_list = None;
+    state.pr_detail = None;
+    state.issue_list = None;
+    state.issue_detail = None;
+    state.actions_list = None;
+    state.action_detail = None;
+    state.notifications = None;
+    state.search = None;
+
+    assert_eq!(state.current_account.unwrap().user, "work");
+    assert!(state.pr_list.is_none());
+    assert!(state.issue_list.is_none());
+    assert!(state.actions_list.is_none());
+    assert!(state.notifications.is_none());
+}
+
+#[test]
+fn test_account_switcher_modal() {
+    let config = AppConfig::default();
+    let accounts = make_test_accounts();
+    let mut state = AppState::new(config, None, None, accounts);
+
+    // Open account switcher modal
+    state.modal = Some(ModalKind::AccountSwitcher);
+    assert!(matches!(state.modal, Some(ModalKind::AccountSwitcher)));
+
+    // Select second account
+    state.account_selected = 1;
+    let selected = &state.accounts[state.account_selected];
+    assert_eq!(selected.user, "work");
+
+    // Close modal
+    state.modal = None;
+    assert!(state.modal.is_none());
+}
+
+#[test]
+fn test_account_switcher_modal_empty_accounts() {
+    let config = AppConfig::default();
+    let mut state = AppState::new(config, None, None, vec![]);
+
+    state.modal = Some(ModalKind::AccountSwitcher);
+    assert!(state.accounts.is_empty());
+    // account_selected should stay at 0, no panic
+    assert_eq!(state.account_selected, 0);
 }

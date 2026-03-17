@@ -165,7 +165,12 @@ fn read_gh_hosts_yml() -> Option<HashMap<String, Vec<HostAccount>>> {
     let home = dirs::home_dir()?;
     let hosts_path = home.join(".config").join("gh").join("hosts.yml");
     let content = std::fs::read_to_string(&hosts_path).ok()?;
+    parse_hosts_yml(&content)
+}
 
+/// Parse hosts.yml content into a map of host -> accounts.
+/// Extracted for testability.
+fn parse_hosts_yml(content: &str) -> Option<HashMap<String, Vec<HostAccount>>> {
     // hosts.yml structure:
     // github.com:
     //     user: username
@@ -298,6 +303,8 @@ fn read_gh_auth_token() -> Option<GhAccount> {
 mod tests {
     use super::*;
 
+    // -- GhAccount --
+
     #[test]
     fn test_gh_account_display_name() {
         let account = GhAccount {
@@ -316,8 +323,27 @@ mod tests {
     }
 
     #[test]
-    fn test_find_account() {
-        let accounts = vec![
+    fn test_gh_account_equality() {
+        let a = GhAccount {
+            host: "github.com".to_string(),
+            user: "user1".to_string(),
+            token: "token1".to_string(),
+        };
+        let b = a.clone();
+        assert_eq!(a, b);
+
+        let c = GhAccount {
+            host: "github.com".to_string(),
+            user: "user2".to_string(),
+            token: "token1".to_string(),
+        };
+        assert_ne!(a, c);
+    }
+
+    // -- find_account --
+
+    fn make_accounts() -> Vec<GhAccount> {
+        vec![
             GhAccount {
                 host: "github.com".to_string(),
                 user: "user1".to_string(),
@@ -333,22 +359,231 @@ mod tests {
                 user: "admin".to_string(),
                 token: "token3".to_string(),
             },
-        ];
+        ]
+    }
 
-        // Find by user
+    #[test]
+    fn test_find_account_by_user() {
+        let accounts = make_accounts();
         let found = find_account(&accounts, None, Some("user2"));
         assert_eq!(found.unwrap().token, "token2");
+    }
 
-        // Find by host + user
+    #[test]
+    fn test_find_account_by_host_and_user() {
+        let accounts = make_accounts();
         let found = find_account(&accounts, Some("enterprise.com"), Some("admin"));
         assert_eq!(found.unwrap().token, "token3");
+    }
 
-        // Find by host only (returns first match)
+    #[test]
+    fn test_find_account_by_host_only() {
+        let accounts = make_accounts();
         let found = find_account(&accounts, Some("github.com"), None);
         assert_eq!(found.unwrap().token, "token1");
+    }
 
-        // No match
-        let found = find_account(&accounts, Some("other.com"), None);
-        assert!(found.is_none());
+    #[test]
+    fn test_find_account_no_match() {
+        let accounts = make_accounts();
+        assert!(find_account(&accounts, Some("other.com"), None).is_none());
+    }
+
+    #[test]
+    fn test_find_account_no_filters() {
+        let accounts = make_accounts();
+        // With no filters, returns first account
+        let found = find_account(&accounts, None, None);
+        assert!(found.is_some());
+    }
+
+    #[test]
+    fn test_find_account_empty_list() {
+        let accounts: Vec<GhAccount> = vec![];
+        assert!(find_account(&accounts, None, None).is_none());
+        assert!(find_account(&accounts, Some("github.com"), Some("user1")).is_none());
+    }
+
+    #[test]
+    fn test_find_account_wrong_user_on_host() {
+        let accounts = make_accounts();
+        // enterprise.com has "admin", not "user1"
+        assert!(find_account(&accounts, Some("enterprise.com"), Some("user1")).is_none());
+    }
+
+    // -- parse_hosts_yml --
+
+    #[test]
+    fn test_parse_hosts_yml_single_account() {
+        let yaml = r#"
+github.com:
+    user: myuser
+    oauth_token: gho_abc123
+    git_protocol: https
+"#;
+        let result = parse_hosts_yml(yaml).unwrap();
+        assert_eq!(result.len(), 1);
+
+        let github = &result["github.com"];
+        assert_eq!(github.len(), 1);
+        assert_eq!(github[0].user, "myuser");
+        assert_eq!(github[0].token, "gho_abc123");
+    }
+
+    #[test]
+    fn test_parse_hosts_yml_multi_account() {
+        let yaml = r#"
+github.com:
+    users:
+        user1:
+            oauth_token: gho_token1
+        user2:
+            oauth_token: gho_token2
+    user: user1
+    git_protocol: https
+"#;
+        let result = parse_hosts_yml(yaml).unwrap();
+        assert_eq!(result.len(), 1);
+
+        let github = &result["github.com"];
+        assert_eq!(github.len(), 2);
+
+        let tokens: Vec<&str> = github.iter().map(|a| a.token.as_str()).collect();
+        assert!(tokens.contains(&"gho_token1"));
+        assert!(tokens.contains(&"gho_token2"));
+    }
+
+    #[test]
+    fn test_parse_hosts_yml_multiple_hosts() {
+        let yaml = r#"
+github.com:
+    user: personal
+    oauth_token: gho_personal
+    git_protocol: https
+github.enterprise.com:
+    user: work
+    oauth_token: gho_work
+    git_protocol: https
+"#;
+        let result = parse_hosts_yml(yaml).unwrap();
+        assert_eq!(result.len(), 2);
+
+        assert_eq!(result["github.com"][0].user, "personal");
+        assert_eq!(result["github.enterprise.com"][0].user, "work");
+    }
+
+    #[test]
+    fn test_parse_hosts_yml_mixed_single_and_multi() {
+        let yaml = r#"
+github.com:
+    users:
+        dev:
+            oauth_token: gho_dev
+        bot:
+            oauth_token: gho_bot
+    user: dev
+    git_protocol: https
+gitlab.example.com:
+    user: admin
+    oauth_token: glpat_123
+    git_protocol: ssh
+"#;
+        let result = parse_hosts_yml(yaml).unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result["github.com"].len(), 2);
+        assert_eq!(result["gitlab.example.com"].len(), 1);
+        assert_eq!(result["gitlab.example.com"][0].user, "admin");
+    }
+
+    #[test]
+    fn test_parse_hosts_yml_empty_content() {
+        // Empty YAML parses as null/empty map, no accounts returned
+        let result = parse_hosts_yml("");
+        assert!(result.is_none() || result.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_parse_hosts_yml_invalid_yaml() {
+        assert!(parse_hosts_yml("{{not valid yaml").is_none());
+    }
+
+    #[test]
+    fn test_parse_hosts_yml_missing_token() {
+        let yaml = r#"
+github.com:
+    user: myuser
+    git_protocol: https
+"#;
+        let result = parse_hosts_yml(yaml).unwrap();
+        // No token means no account should be returned
+        assert!(result.get("github.com").is_none());
+    }
+
+    #[test]
+    fn test_parse_hosts_yml_missing_user() {
+        let yaml = r#"
+github.com:
+    oauth_token: gho_abc123
+    git_protocol: https
+"#;
+        let result = parse_hosts_yml(yaml).unwrap();
+        // No user means no account should be returned
+        assert!(result.get("github.com").is_none());
+    }
+
+    #[test]
+    fn test_parse_hosts_yml_multi_account_empty_token_skipped() {
+        let yaml = r#"
+github.com:
+    users:
+        user1:
+            oauth_token: gho_valid
+        user2:
+            oauth_token: ""
+    user: user1
+    git_protocol: https
+"#;
+        let result = parse_hosts_yml(yaml).unwrap();
+        let github = &result["github.com"];
+        // Only user1 should be included (user2 has empty token)
+        assert_eq!(github.len(), 1);
+        assert_eq!(github[0].user, "user1");
+    }
+
+    // -- resolve_token_for --
+
+    #[test]
+    fn test_resolve_token_for_config_token_no_filter() {
+        let config = AppConfig {
+            token: Some("config_token".to_string()),
+            ..Default::default()
+        };
+        // No host/user filter → should return config token
+        assert_eq!(
+            config.resolve_token_for(None, None),
+            Some("config_token".to_string())
+        );
+    }
+
+    #[test]
+    fn test_resolve_token_for_config_token_skipped_with_filter() {
+        let config = AppConfig {
+            token: Some("config_token".to_string()),
+            ..Default::default()
+        };
+        // With a host filter, config token is skipped → falls through to gh accounts
+        // This will return None in test env (no real gh config)
+        let result = config.resolve_token_for(Some("github.com"), Some("nonexistent"));
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_resolve_token_backward_compat() {
+        let config = AppConfig {
+            token: Some("my_token".to_string()),
+            ..Default::default()
+        };
+        // resolve_token() should behave same as resolve_token_for(None, None)
+        assert_eq!(config.resolve_token(), config.resolve_token_for(None, None));
     }
 }
