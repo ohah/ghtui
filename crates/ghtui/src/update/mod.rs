@@ -277,37 +277,21 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::TabChanged(delta) => {
             if matches!(state.route, Route::Settings { .. }) {
                 if let Some(ref mut settings) = state.settings {
-                    let max = settings.tab_count().saturating_sub(1);
-                    if delta == usize::MAX {
-                        settings.tab = settings.tab.saturating_sub(1);
-                    } else {
-                        settings.tab = (settings.tab + delta).min(max);
-                    }
+                    let count = settings.tab_count();
+                    settings.tab = wrap_tab(settings.tab, delta, count);
                 }
             } else if matches!(state.route, Route::Insights { .. }) {
                 if let Some(ref mut ins) = state.insights {
-                    let max = ins.tab_count().saturating_sub(1);
-                    if delta == usize::MAX {
-                        ins.tab = ins.tab.saturating_sub(1);
-                    } else {
-                        ins.tab = (ins.tab + delta).min(max);
-                    }
+                    let count = ins.tab_count();
+                    ins.tab = wrap_tab(ins.tab, delta, count);
                 }
             } else if matches!(state.route, Route::Security { .. }) {
                 if let Some(ref mut sec) = state.security {
-                    let max = sec.tab_count().saturating_sub(1);
-                    if delta == usize::MAX {
-                        sec.tab = sec.tab.saturating_sub(1);
-                    } else {
-                        sec.tab = (sec.tab + delta).min(max);
-                    }
+                    let count = sec.tab_count();
+                    sec.tab = wrap_tab(sec.tab, delta, count);
                 }
             } else if let Some(ref mut detail) = state.pr_detail {
-                if delta == usize::MAX {
-                    detail.tab = detail.tab.saturating_sub(1);
-                } else {
-                    detail.tab = (detail.tab + delta).min(2);
-                }
+                detail.tab = wrap_tab(detail.tab, delta, 3);
             }
             vec![]
         }
@@ -497,6 +481,20 @@ fn navigate_to_tab(state: &mut AppState) -> Vec<Command> {
     };
 
     handle_navigate(state, route)
+}
+
+/// Wrap sub-tab index: prev from 0 goes to last, next from last goes to 0.
+fn wrap_tab(current: usize, delta: usize, count: usize) -> usize {
+    if count == 0 {
+        return 0;
+    }
+    if delta == usize::MAX {
+        // Previous
+        if current == 0 { count - 1 } else { current - 1 }
+    } else {
+        // Next
+        (current + delta) % count
+    }
 }
 
 fn handle_list_select(state: &mut AppState, delta: usize) {
