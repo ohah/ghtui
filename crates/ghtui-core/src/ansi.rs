@@ -117,14 +117,28 @@ fn apply_sgr(params: &str, base: Style) -> Style {
             47 => style = style.bg(Color::White),
             49 => style = style.bg(Color::Reset),
 
-            // 256-color mode: ESC[38;5;Nm or ESC[48;5;Nm
-            38 if i + 2 < codes.len() && codes[i + 1] == 5 => {
-                style = style.fg(Color::Indexed(codes[i + 2]));
-                i += 2;
+            // Extended color: 256-color (38;5;N) or truecolor (38;2;R;G;B)
+            38 if i + 1 < codes.len() => {
+                if codes[i + 1] == 5 && i + 2 < codes.len() {
+                    style = style.fg(Color::Indexed(codes[i + 2]));
+                    i += 2;
+                } else if codes[i + 1] == 2 && i + 4 < codes.len() {
+                    style = style.fg(Color::Rgb(codes[i + 2], codes[i + 3], codes[i + 4]));
+                    i += 4;
+                } else {
+                    i += 1; // skip unknown sub-mode
+                }
             }
-            48 if i + 2 < codes.len() && codes[i + 1] == 5 => {
-                style = style.bg(Color::Indexed(codes[i + 2]));
-                i += 2;
+            48 if i + 1 < codes.len() => {
+                if codes[i + 1] == 5 && i + 2 < codes.len() {
+                    style = style.bg(Color::Indexed(codes[i + 2]));
+                    i += 2;
+                } else if codes[i + 1] == 2 && i + 4 < codes.len() {
+                    style = style.bg(Color::Rgb(codes[i + 2], codes[i + 3], codes[i + 4]));
+                    i += 4;
+                } else {
+                    i += 1;
+                }
             }
 
             _ => {} // Ignore unknown codes
@@ -221,5 +235,17 @@ mod tests {
         assert_eq!(line.spans.len(), 1);
         assert_eq!(line.spans[0].style.fg, Some(Color::Cyan));
         assert!(line.spans[0].style.add_modifier.contains(Modifier::BOLD));
+    }
+
+    #[test]
+    fn test_truecolor_fg() {
+        let line = parse_ansi_line("\x1b[38;2;255;128;0mOrange\x1b[0m");
+        assert_eq!(line.spans[0].style.fg, Some(Color::Rgb(255, 128, 0)));
+    }
+
+    #[test]
+    fn test_truecolor_bg() {
+        let line = parse_ansi_line("\x1b[48;2;0;128;255mBlue BG\x1b[0m");
+        assert_eq!(line.spans[0].style.bg, Some(Color::Rgb(0, 128, 255)));
     }
 }
