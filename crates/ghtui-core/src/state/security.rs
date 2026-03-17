@@ -8,6 +8,8 @@ pub struct SecurityState {
     pub tab: usize, // 0=Dependabot, 1=Code Scanning, 2=Secret Scanning
     pub selected: usize,
     pub scroll: usize,
+    pub detail_open: bool,
+    pub detail_scroll: usize,
 }
 
 impl SecurityState {
@@ -19,6 +21,8 @@ impl SecurityState {
             tab: 0,
             selected: 0,
             scroll: 0,
+            detail_open: false,
+            detail_scroll: 0,
         }
     }
 

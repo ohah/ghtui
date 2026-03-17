@@ -195,14 +195,15 @@
 - [x] 검색 결과에서 Enter로 이동 (Issue→IssueDetail, PR→PrDetail, Repo/Code→브라우저)
 - [ ] 최근 검색 히스토리 (보류)
 
-## Phase 6 — Security 탭 나머지
+## Phase 6 — Security 탭 ✅ 완성
 
 - [x] Dependabot alerts API 연동
-- [x] 취약점 목록 (severity별 필터)
-- [ ] 취약점 상세 (영향 받는 패키지, 권고사항)
-- [x] Code scanning alerts
-- [x] Secret scanning alerts
-- [ ] Security advisories
+- [x] 취약점 목록 (severity별 컬러)
+- [x] 취약점 상세 패널 (Enter로 열기, severity/GHSA/CVE/패키지/취약 버전/패치 버전/설명)
+- [x] Code scanning 상세 (severity, tool, rule, 파일 위치)
+- [x] Secret scanning 상세 (타입, state, resolution)
+- [x] 브라우저에서 열기 (`o`)
+- [ ] Security advisories (보류 — API 별도)
 
 ## Phase 7 — Insights 탭 나머지
 
