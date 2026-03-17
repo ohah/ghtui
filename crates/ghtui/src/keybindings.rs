@@ -121,7 +121,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         Route::IssueList { .. } => handle_issue_list_keys(key, state),
         Route::IssueDetail { .. } => handle_issue_detail_keys(key, state),
         Route::ActionsList { .. } => handle_actions_list_keys(key, state),
-        Route::ActionDetail { .. } | Route::JobLog { .. } => handle_action_detail_keys(key),
+        Route::ActionDetail { .. } | Route::JobLog { .. } => handle_action_detail_keys(key, state),
         Route::Security { .. } => handle_settings_keys(key),
         Route::Insights { .. } => handle_settings_keys(key),
         Route::Settings { .. } => handle_settings_keys(key),
@@ -200,12 +200,63 @@ fn handle_actions_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
     }
 }
 
-fn handle_action_detail_keys(key: KeyEvent) -> Option<Message> {
+fn handle_action_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    // Action bar focused
+    let action_bar_focused = state
+        .action_detail
+        .as_ref()
+        .is_some_and(|d| d.action_bar_focused);
+    if action_bar_focused {
+        return match key.code {
+            KeyCode::Char('h') | KeyCode::Left => Some(Message::ActionDetailActionBarLeft),
+            KeyCode::Char('l') | KeyCode::Right => Some(Message::ActionDetailActionBarRight),
+            KeyCode::Enter => Some(Message::ActionDetailActionBarSelect),
+            KeyCode::Esc | KeyCode::Char('k') | KeyCode::Up => {
+                Some(Message::ActionDetailActionBarFocus)
+            }
+            _ => None,
+        };
+    }
+
+    // Log focused
+    let log_focused = state
+        .action_detail
+        .as_ref()
+        .is_some_and(|d| d.focus == ghtui_core::state::ActionDetailFocus::Log);
+    if log_focused {
+        return match key.code {
+            KeyCode::Char('j') | KeyCode::Down | KeyCode::PageDown => Some(Message::ScrollDown),
+            KeyCode::Char('k') | KeyCode::Up | KeyCode::PageUp => Some(Message::ScrollUp),
+            KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                Some(Message::ScrollDown)
+            }
+            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                Some(Message::ScrollUp)
+            }
+            KeyCode::Tab => Some(Message::ActionDetailFocusJobs),
+            KeyCode::Char('o') => Some(Message::ActionDetailOpenInBrowser),
+            _ => None,
+        };
+    }
+
+    // Jobs focused (default)
     match key.code {
-        // Job selection
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
         KeyCode::Enter => Some(Message::ListSelect(0)),
+        KeyCode::Tab => Some(Message::ActionDetailFocusLog),
+        // Step fold/unfold (h/l on job steps)
+        KeyCode::Char('h') | KeyCode::Left => {
+            // Collapse selected step
+            if let Some(ref detail) = state.action_detail {
+                if let Some(job) = detail.detail.jobs.get(detail.selected_job) {
+                    if let Some(step) = job.steps.first() {
+                        return Some(Message::ActionDetailToggleStep(step.number));
+                    }
+                }
+            }
+            None
+        }
         // Log scroll
         KeyCode::PageDown => Some(Message::ScrollDown),
         KeyCode::PageUp => Some(Message::ScrollUp),
@@ -215,6 +266,7 @@ fn handle_action_detail_keys(key: KeyEvent) -> Option<Message> {
         KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             Some(Message::ScrollUp)
         }
+        KeyCode::Char('o') => Some(Message::ActionDetailOpenInBrowser),
         _ => None,
     }
 }
