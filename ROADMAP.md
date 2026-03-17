@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | 1 | Code | - | dashboard.rs | 레포 소개 + README placeholder (파일 브라우저 미구현) |
 | 2 | Issues | ✅ | issue_list, issue_detail | **Phase 1 완료** — 목록(카드UI), 상세(섹션포커스), CRUD, 필터/검색/정렬, 라벨/Assignee/Milestone, 리액션, 타임라인, 핀/잠금/이전 |
-| 3 | Pull requests | ✅ | pr_list, pr_detail | 목록(필터/검색/정렬/페이지네이션), 상세(섹션포커스, 인라인편집, 라벨/Assignee 피커, Conversation/Diff/Checks), 머지, 리뷰, 리액션 |
+| 3 | Pull requests | ✅ | pr_list, pr_detail | 목록(필터/검색/정렬/페이지네이션), 상세(섹션포커스, 인라인편집, 라벨/Assignee 피커, Conversation/Diff/Checks), 머지, 리뷰, 리액션, Checks 실시간 조회, Diff 테마 색상 |
 | 4 | Actions | ✅ | actions_list, action_detail | 워크플로우 목록, 잡 선택, 로그 뷰어(스크롤), 취소/재실행 |
 | 5 | Security | ✅ | security.rs | Dependabot, Code Scanning, Secret Scanning (read-only) |
 | 6 | Insights | ✅ | insights.rs | Contributors, Commit Activity, Traffic (read-only) |

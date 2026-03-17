@@ -458,7 +458,7 @@ fn render_diff_tab(
             show_all_files: true,
             ..Default::default()
         };
-        let diff_view = ghtui_widgets::DiffView::new(files).block(
+        let diff_view = ghtui_widgets::DiffView::new(files, theme).block(
             Block::default()
                 .borders(Borders::ALL)
                 .border_style(theme.border_style())
