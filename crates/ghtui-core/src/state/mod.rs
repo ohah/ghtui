@@ -18,14 +18,12 @@ pub use notification::*;
 pub use pr::*;
 pub use search::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum InputMode {
     #[default]
     Normal,
     Insert,
 }
-
 
 #[derive(Debug, Clone)]
 pub struct Toast {

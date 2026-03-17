@@ -1,7 +1,6 @@
 use crate::types::{ActionsFilters, IssueFilters, PrFilters, SearchKind, common::RepoId};
 
-#[derive(Debug, Clone, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum PrTab {
     #[default]
     Conversation,
@@ -9,9 +8,7 @@ pub enum PrTab {
     Checks,
 }
 
-
-#[derive(Debug, Clone, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum Route {
     #[default]
     Dashboard,
@@ -114,7 +111,6 @@ pub const TAB_LABELS: &[&str] = &[
     "Insights",
     "Settings",
 ];
-
 
 impl Route {
     pub fn title(&self) -> String {

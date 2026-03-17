@@ -10,7 +10,6 @@ pub enum ThemeMode {
     Light,
 }
 
-
 /// Theme based on GitHub's Primer design system colors
 #[derive(Debug, Clone)]
 pub struct Theme {

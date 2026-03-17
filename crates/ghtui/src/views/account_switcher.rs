@@ -30,10 +30,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     } else {
         for (i, account) in accounts.iter().enumerate() {
             let is_selected = i == state.account_selected;
-            let is_current = state
-                .current_account
-                .as_ref()
-                .is_some_and(|c| c == account);
+            let is_current = state.current_account.as_ref().is_some_and(|c| c == account);
 
             let marker = if is_current { "● " } else { "  " };
             let cursor = if is_selected { "▸ " } else { "  " };

@@ -101,12 +101,10 @@ fn handle_modal_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
                 match key.code {
                     KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
                     KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-                    KeyCode::Enter => {
-                        state
-                            .accounts
-                            .get(state.account_selected)
-                            .map(|account| Message::AccountSwitch(account.clone()))
-                    }
+                    KeyCode::Enter => state
+                        .accounts
+                        .get(state.account_selected)
+                        .map(|account| Message::AccountSwitch(account.clone())),
                     _ => None,
                 }
             } else {

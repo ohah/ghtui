@@ -33,7 +33,7 @@ fn test_render_italic_text() {
 #[test]
 fn test_render_code_block() {
     let lines = render_markdown("```rust\nfn main() {}\n```");
-    assert!(lines.len() >= 1);
+    assert!(!lines.is_empty());
 }
 
 #[test]
