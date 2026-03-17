@@ -32,14 +32,15 @@
 
 ## Phase 1 — Issues 탭 완성
 
-현재 되는 것: 목록(open/closed), 상세 보기, 닫기/열기
+현재 되는 것: 목록(open/closed 토글), 상세 보기(메타정보+스크롤), 닫기/열기, 이슈 생성, 코멘트 추가, 페이지네이션
 
+- [x] 필터 UI (open/closed 토글 — `s`키)
 - [ ] 필터 UI (author, label, milestone, assignee)
 - [ ] 정렬 UI (newest, oldest, most commented)
 - [ ] 이슈 검색
-- [ ] 이슈 생성 UI (모달 폼)
+- [x] 이슈 생성 UI (모달 폼 — `c`키, Ctrl+Enter 제출)
 - [ ] 이슈 제목/본문 편집
-- [ ] 코멘트 추가 UI (모달)
+- [x] 코멘트 추가 UI (모달 — `c`키 in detail)
 - [ ] 코멘트 편집/삭제
 - [ ] 라벨 추가/제거
 - [ ] Assignee 추가/제거
@@ -51,7 +52,9 @@
 - [ ] 이슈 핀
 - [ ] 이슈 이전 (transfer)
 - [ ] 이슈 템플릿
-- [ ] 페이지네이션 UI (다음/이전)
+- [x] 페이지네이션 UI (n/p 키로 다음/이전)
+- [x] 이슈 상세 메타정보 (labels, assignees, milestone)
+- [x] 이슈 상세 스크롤 (j/k, PageUp/Down, 마우스)
 
 ## Phase 2 — Pull Requests 탭 완성
 

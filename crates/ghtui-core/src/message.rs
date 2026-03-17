@@ -24,12 +24,15 @@ pub enum Message {
     ReviewSubmitted,
 
     // Issue
-    IssueListLoaded(Vec<Issue>, Pagination),
+    IssueListLoaded(Vec<Issue>, Pagination, IssueFilters),
     IssueDetailLoaded(Box<IssueDetail>),
     IssueClosed(u64),
     IssueReopened(u64),
     IssueCreated(u64),
     CommentAdded,
+    IssueToggleStateFilter,
+    IssueNextPage,
+    IssuePrevPage,
 
     // Actions
     RunsLoaded(Vec<WorkflowRun>, Pagination),
@@ -75,6 +78,7 @@ pub enum Message {
     GlobalTabSelect(usize),
     ToggleTheme,
     ModalOpen(ModalKind),
+    ModalSubmit,
     ModalClose,
     Tick,
     Resize(u16, u16),

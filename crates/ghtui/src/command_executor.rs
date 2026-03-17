@@ -56,7 +56,7 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
         // Issues
         Command::FetchIssueList(repo, filters, page) => {
             match client.list_issues(&repo, &filters, page, 30).await {
-                Ok((issues, pagination)) => Message::IssueListLoaded(issues, pagination),
+                Ok((issues, pagination)) => Message::IssueListLoaded(issues, pagination, filters),
                 Err(e) => Message::Error(e.into()),
             }
         }

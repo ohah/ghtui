@@ -42,7 +42,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(0)])
+        .constraints([Constraint::Length(5), Constraint::Min(0)])
         .split(area);
 
     let state_color = match issue.state {
@@ -50,7 +50,8 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         ghtui_core::types::IssueState::Closed => theme.done,
     };
 
-    let title_lines = vec![
+    // Header with metadata
+    let mut header_lines = vec![
         Line::from(vec![
             Span::styled(
                 format!(" {} ", issue.state),
@@ -63,32 +64,93 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 format!(" #{}", issue.number),
                 Style::default().fg(theme.fg_muted),
             ),
+            Span::styled(
+                format!("  by @{}", issue.user.login),
+                Style::default().fg(theme.fg_dim),
+            ),
+            Span::styled(
+                format!("  {}", issue.created_at.format("%Y-%m-%d")),
+                Style::default().fg(theme.fg_dim),
+            ),
         ]),
         Line::styled(format!(" {}", issue.title), theme.text_bold()),
     ];
 
-    let title = Paragraph::new(title_lines)
+    // Labels
+    if !issue.labels.is_empty() {
+        let mut label_spans: Vec<Span> = vec![Span::styled(
+            " Labels: ",
+            Style::default().fg(theme.fg_muted),
+        )];
+        for label in &issue.labels {
+            label_spans.push(Span::styled(
+                format!(" {} ", label.name),
+                Style::default().fg(theme.accent),
+            ));
+            label_spans.push(Span::raw(" "));
+        }
+        header_lines.push(Line::from(label_spans));
+    }
+
+    // Assignees + Milestone on same line
+    let mut meta_spans: Vec<Span> = Vec::new();
+    if !issue.assignees.is_empty() {
+        meta_spans.push(Span::styled(
+            " Assignees: ",
+            Style::default().fg(theme.fg_muted),
+        ));
+        let names: Vec<String> = issue.assignees.iter().map(|a| a.login.clone()).collect();
+        meta_spans.push(Span::styled(names.join(", "), theme.text()));
+    }
+    if let Some(ref milestone) = issue.milestone {
+        if !meta_spans.is_empty() {
+            meta_spans.push(Span::raw("  "));
+        }
+        meta_spans.push(Span::styled(
+            " Milestone: ",
+            Style::default().fg(theme.fg_muted),
+        ));
+        meta_spans.push(Span::styled(milestone.title.clone(), theme.text()));
+    }
+    if !meta_spans.is_empty() {
+        header_lines.push(Line::from(meta_spans));
+    }
+
+    let header = Paragraph::new(header_lines)
         .style(Style::default().bg(theme.bg))
         .block(
             Block::default()
                 .borders(Borders::BOTTOM)
                 .border_style(theme.border_style()),
         );
-    frame.render_widget(title, chunks[0]);
+    frame.render_widget(header, chunks[0]);
 
-    let mut lines = Vec::new();
+    // Body + Comments
+    let mut lines: Vec<Line<'static>> = Vec::new();
 
     if let Some(ref body) = issue.body {
-        lines.extend(render_markdown(body));
-        lines.push(Line::raw(""));
-        lines.push(Line::styled("─".repeat(40), theme.border_style()));
+        if !body.is_empty() {
+            lines.push(Line::raw(""));
+            lines.extend(render_markdown(body));
+            lines.push(Line::raw(""));
+            lines.push(Line::styled("─".repeat(40), theme.border_style()));
+        }
     }
+
+    let comment_count = detail_state.detail.comments.len();
+    lines.push(Line::raw(""));
+    lines.push(Line::styled(
+        format!("  Comments ({})", comment_count),
+        Style::default()
+            .fg(theme.accent)
+            .add_modifier(Modifier::BOLD),
+    ));
 
     for comment in &detail_state.detail.comments {
         lines.push(Line::raw(""));
         lines.push(Line::from(vec![
             Span::styled(
-                format!("@{}", comment.user.login),
+                format!("  @{}", comment.user.login),
                 Style::default()
                     .fg(theme.accent)
                     .add_modifier(Modifier::BOLD),
@@ -102,13 +164,20 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         lines.push(Line::styled("─".repeat(40), theme.border_style()));
     }
 
+    if comment_count == 0 {
+        lines.push(Line::styled(
+            "  No comments yet. Press 'c' to add one.".to_string(),
+            theme.text_dim(),
+        ));
+    }
+
     let paragraph = Paragraph::new(lines)
         .style(theme.text())
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .border_style(theme.border_style())
-                .title(" Comments "),
+                .title(" Body & Comments "),
         )
         .wrap(Wrap { trim: false })
         .scroll((detail_state.scroll as u16, 0));
