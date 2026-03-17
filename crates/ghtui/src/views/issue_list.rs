@@ -48,7 +48,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
     // Card height: 4 lines per card (border top, title+labels, meta, border bottom)
     // Cards laid out horizontally, 2 per row
-    let card_rows = (pinned_count + 1) / 2; // ceil div
+    let card_rows = pinned_count.div_ceil(2); // ceil div
     let pinned_height = if pinned_count > 0 {
         (card_rows as u16 * 4) + 1 // +1 for "Pinned" header
     } else {
@@ -116,7 +116,7 @@ fn render_filter_bar(
             .unwrap_or_else(|| "open".to_string());
         let is_open = filter_state == "open";
 
-        let line = Line::from(vec![
+        let mut line = Line::from(vec![
             Span::styled(" Filter: ", Style::default().fg(theme.fg_muted)),
             Span::styled(
                 if is_open { " ● Open " } else { "   Open " },
@@ -147,10 +147,37 @@ fn render_filter_bar(
                 Style::default().fg(theme.fg_muted),
             ),
             Span::styled(
-                "  (s:state  o:sort  /:search)",
+                "  (s:state  o:sort  /:search  F:clear)",
                 Style::default().fg(theme.fg_dim),
             ),
         ]);
+
+        // Show active filters
+        let filters = &list_state.filters;
+        let mut filter_parts: Vec<Span> = Vec::new();
+        if let Some(ref label) = filters.label {
+            filter_parts.push(Span::styled(
+                format!("  label:{}", label),
+                Style::default().fg(theme.accent),
+            ));
+        }
+        if let Some(ref author) = filters.author {
+            filter_parts.push(Span::styled(
+                format!("  author:{}", author),
+                Style::default().fg(theme.accent),
+            ));
+        }
+        if let Some(ref assignee) = filters.assignee {
+            filter_parts.push(Span::styled(
+                format!("  assignee:{}", assignee),
+                Style::default().fg(theme.accent),
+            ));
+        }
+        if !filter_parts.is_empty() {
+            let mut new_spans = line.spans.clone();
+            new_spans.extend(filter_parts);
+            line = Line::from(new_spans);
+        }
         let bar = Paragraph::new(line).style(Style::default().bg(theme.bg_subtle));
         frame.render_widget(bar, area);
     }
@@ -227,7 +254,7 @@ fn render_pinned_cards(
                 ghtui_core::types::IssueState::Closed => theme.done,
             };
 
-            let mut title_spans = vec![
+            let title_spans = vec![
                 Span::styled(state_icon, Style::default().fg(state_color)),
                 Span::styled(
                     issue.title.clone(),

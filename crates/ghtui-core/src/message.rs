@@ -40,6 +40,12 @@ pub enum Message {
     IssueLockToggle,
     IssuePinToggle,
     IssuePinnedNumbersLoaded(Vec<u64>),
+    IssueFilterByLabel(String),        // Set label filter
+    IssueFilterByAuthor(String),       // Set author filter
+    IssueFilterByAssignee(String),     // Set assignee filter
+    IssueFilterClear,                  // Clear all filters
+    IssueTransfer,                     // Transfer issue to another repo
+    IssueTemplatesLoaded(Vec<String>), // Template names loaded
     IssueSearchInput(String),
     IssueSearchSubmit,
     IssueSearchCancel,

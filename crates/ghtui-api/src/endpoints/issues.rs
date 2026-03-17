@@ -33,6 +33,9 @@ impl GithubClient {
         if let Some(ref assignee) = filters.assignee {
             params.push(format!("assignee={}", assignee));
         }
+        if let Some(ref author) = filters.author {
+            params.push(format!("creator={}", author));
+        }
 
         let path = format!(
             "/repos/{}/{}/issues?{}",
@@ -450,5 +453,100 @@ impl GithubClient {
         let variables = serde_json::json!({ "issueId": node_id });
         self.graphql(query, variables).await?;
         Ok(())
+    }
+
+    /// Transfer issue to another repository via GraphQL.
+    pub async fn transfer_issue(
+        &self,
+        repo: &RepoId,
+        number: u64,
+        dest_owner: &str,
+        dest_name: &str,
+    ) -> Result<(), ApiError> {
+        let node_id = self.get_issue_node_id(repo, number).await?;
+
+        // Get destination repo node ID
+        let repo_query = r#"
+            query($owner: String!, $name: String!) {
+                repository(owner: $owner, name: $name) { id }
+            }
+        "#;
+        let repo_vars = serde_json::json!({
+            "owner": dest_owner,
+            "name": dest_name,
+        });
+        let repo_result = self.graphql(repo_query, repo_vars).await?;
+        let dest_repo_id = repo_result
+            .pointer("/data/repository/id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| ApiError::Other("Destination repository not found".into()))?
+            .to_string();
+
+        let query = r#"
+            mutation($issueId: ID!, $repositoryId: ID!) {
+                transferIssue(input: { issueId: $issueId, repositoryId: $repositoryId }) {
+                    issue { number }
+                }
+            }
+        "#;
+        let variables = serde_json::json!({
+            "issueId": node_id,
+            "repositoryId": dest_repo_id,
+        });
+        self.graphql(query, variables).await?;
+        Ok(())
+    }
+
+    /// Fetch issue template names from .github/ISSUE_TEMPLATE directory.
+    pub async fn list_issue_templates(&self, repo: &RepoId) -> Result<Vec<String>, ApiError> {
+        let path = format!(
+            "/repos/{}/{}/contents/.github/ISSUE_TEMPLATE",
+            repo.owner, repo.name
+        );
+        match self.get(&path).await {
+            Ok(body) => {
+                let files: Vec<serde_json::Value> = serde_json::from_str(&body).unwrap_or_default();
+                let names: Vec<String> = files
+                    .iter()
+                    .filter_map(|f| {
+                        let name = f.get("name")?.as_str()?;
+                        if name.ends_with(".md")
+                            || name.ends_with(".yml")
+                            || name.ends_with(".yaml")
+                        {
+                            Some(name.to_string())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                Ok(names)
+            }
+            Err(ApiError::NotFound(_)) => Ok(Vec::new()),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Fetch a specific issue template content.
+    pub async fn get_issue_template(
+        &self,
+        repo: &RepoId,
+        filename: &str,
+    ) -> Result<String, ApiError> {
+        let path = format!(
+            "/repos/{}/{}/contents/.github/ISSUE_TEMPLATE/{}",
+            repo.owner, repo.name, filename
+        );
+        let body = self.get(&path).await?;
+        let file: serde_json::Value = serde_json::from_str(&body)?;
+
+        // Content is base64 encoded
+        let content = file.get("content").and_then(|v| v.as_str()).unwrap_or("");
+        let decoded = content.replace('\n', "");
+        use base64::Engine;
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(decoded.as_bytes())
+            .unwrap_or_default();
+        Ok(String::from_utf8(bytes).unwrap_or_default())
     }
 }
