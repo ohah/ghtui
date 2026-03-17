@@ -142,7 +142,19 @@ impl GithubClient {
             repo.owner, repo.name, number
         );
         let timeline = match self.get(&timeline_path).await {
-            Ok(body) => serde_json::from_str(&body).unwrap_or_default(),
+            Ok(body) => {
+                if let Ok(arr) = serde_json::from_str::<Vec<serde_json::Value>>(&body) {
+                    arr.into_iter()
+                        .filter_map(|item| {
+                            serde_json::from_value::<ghtui_core::types::issue::TimelineEvent>(item)
+                                .ok()
+                                .filter(|e| !e.event.is_empty())
+                        })
+                        .collect()
+                } else {
+                    Vec::new()
+                }
+            }
             Err(_) => Vec::new(),
         };
 
