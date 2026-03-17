@@ -59,7 +59,7 @@ impl std::fmt::Display for ReviewState {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PullRequest {
     pub number: u64,
     pub title: String,
@@ -73,12 +73,9 @@ pub struct PullRequest {
     pub head_ref: String,
     pub base_ref: String,
     pub draft: bool,
-    #[serde(default)]
     pub labels: Vec<Label>,
-    #[serde(default)]
     pub assignees: Vec<User>,
     pub milestone: Option<Milestone>,
-    #[serde(default)]
     pub requested_reviewers: Vec<User>,
     pub additions: Option<u32>,
     pub deletions: Option<u32>,
@@ -86,6 +83,76 @@ pub struct PullRequest {
     pub mergeable: Option<bool>,
     pub comments: Option<u32>,
     pub review_comments: Option<u32>,
+}
+
+// GitHub API returns head/base as nested objects: { "ref": "...", ... }
+#[derive(Deserialize)]
+struct GitRef {
+    #[serde(rename = "ref")]
+    ref_name: String,
+}
+
+#[derive(Deserialize)]
+struct ApiPullRequest {
+    number: u64,
+    title: String,
+    state: PrState,
+    user: User,
+    body: Option<String>,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+    merged_at: Option<DateTime<Utc>>,
+    closed_at: Option<DateTime<Utc>>,
+    head: GitRef,
+    base: GitRef,
+    #[serde(default)]
+    draft: bool,
+    #[serde(default)]
+    labels: Vec<Label>,
+    #[serde(default)]
+    assignees: Vec<User>,
+    milestone: Option<Milestone>,
+    #[serde(default)]
+    requested_reviewers: Vec<User>,
+    additions: Option<u32>,
+    deletions: Option<u32>,
+    changed_files: Option<u32>,
+    mergeable: Option<bool>,
+    comments: Option<u32>,
+    review_comments: Option<u32>,
+}
+
+impl<'de> Deserialize<'de> for PullRequest {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let api = ApiPullRequest::deserialize(deserializer)?;
+        Ok(PullRequest {
+            number: api.number,
+            title: api.title,
+            state: api.state,
+            user: api.user,
+            body: api.body,
+            created_at: api.created_at,
+            updated_at: api.updated_at,
+            merged_at: api.merged_at,
+            closed_at: api.closed_at,
+            head_ref: api.head.ref_name,
+            base_ref: api.base.ref_name,
+            draft: api.draft,
+            labels: api.labels,
+            assignees: api.assignees,
+            milestone: api.milestone,
+            requested_reviewers: api.requested_reviewers,
+            additions: api.additions,
+            deletions: api.deletions,
+            changed_files: api.changed_files,
+            mergeable: api.mergeable,
+            comments: api.comments,
+            review_comments: api.review_comments,
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
