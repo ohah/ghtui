@@ -33,9 +33,11 @@ pub enum Message {
     CommentAdded,
     CommentUpdated,
     IssueToggleStateFilter,
+    IssueSortCycle, // Cycle sort: created/updated/comments
     IssueNextPage,
     IssuePrevPage,
     IssueSearchStart,
+    IssueLockToggle, // Lock/unlock issue
     IssueSearchInput(String),
     IssueSearchSubmit,
     IssueSearchCancel,

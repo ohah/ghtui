@@ -98,6 +98,8 @@ pub struct Issue {
     pub milestone: Option<Milestone>,
     pub comments: Option<u32>,
     #[serde(default)]
+    pub locked: bool,
+    #[serde(default)]
     pub reactions: Option<Reactions>,
 }
 

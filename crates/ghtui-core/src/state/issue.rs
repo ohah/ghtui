@@ -99,6 +99,24 @@ impl IssueListState {
             Some(IssueState::Closed) => Some(IssueState::Open),
         };
     }
+
+    pub fn cycle_sort(&mut self) {
+        self.filters.sort = match self.filters.sort.as_deref() {
+            None | Some("created") => Some("updated".to_string()),
+            Some("updated") => Some("comments".to_string()),
+            Some("comments") => Some("created".to_string()),
+            _ => Some("created".to_string()),
+        };
+    }
+
+    pub fn sort_display(&self) -> &str {
+        match self.filters.sort.as_deref() {
+            None | Some("created") => "Newest",
+            Some("updated") => "Recently updated",
+            Some("comments") => "Most commented",
+            _ => "Newest",
+        }
+    }
 }
 
 /// Focus sections in issue detail view

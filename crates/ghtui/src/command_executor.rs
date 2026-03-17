@@ -75,6 +75,14 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Ok(()) => Message::IssueReopened(number),
             Err(e) => Message::Error(e.into()),
         },
+        Command::LockIssue(repo, number) => match client.lock_issue(&repo, number).await {
+            Ok(()) => Message::IssueUpdated(number),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::UnlockIssue(repo, number) => match client.unlock_issue(&repo, number).await {
+            Ok(()) => Message::IssueUpdated(number),
+            Err(e) => Message::Error(e.into()),
+        },
         Command::CreateIssue(repo, input) => match client.create_issue(&repo, &input).await {
             Ok(number) => Message::IssueCreated(number),
             Err(e) => Message::Error(e.into()),
