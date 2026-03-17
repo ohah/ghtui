@@ -45,6 +45,7 @@ fn make_pr(number: u64, title: &str) -> PullRequest {
         comments: None,
         review_comments: None,
         auto_merge: false,
+        reactions: None,
     }
 }
 

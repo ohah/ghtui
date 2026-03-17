@@ -85,6 +85,7 @@ pub struct PullRequest {
     pub comments: Option<u32>,
     pub review_comments: Option<u32>,
     pub auto_merge: bool,
+    pub reactions: Option<super::issue::Reactions>,
 }
 
 // GitHub API returns head/base as nested objects: { "ref": "...", ... }
@@ -124,6 +125,7 @@ struct ApiPullRequest {
     comments: Option<u32>,
     review_comments: Option<u32>,
     auto_merge: Option<serde_json::Value>,
+    reactions: Option<super::issue::Reactions>,
 }
 
 impl<'de> Deserialize<'de> for PullRequest {
@@ -158,6 +160,7 @@ impl<'de> Deserialize<'de> for PullRequest {
             review_comments: api.review_comments,
             auto_merge: api.auto_merge.is_some()
                 && !matches!(api.auto_merge, Some(serde_json::Value::Null)),
+            reactions: api.reactions,
         })
     }
 }
