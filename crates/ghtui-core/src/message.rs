@@ -255,6 +255,8 @@ pub enum Message {
     DependabotAlertsLoaded(Vec<security::DependabotAlert>),
     CodeScanningAlertsLoaded(Vec<security::CodeScanningAlert>),
     SecretScanningAlertsLoaded(Vec<security::SecretScanningAlert>),
+    SecurityToggleDetail,
+    SecurityOpenInBrowser,
 
     // Settings
     SettingsRepoLoaded(Box<settings::Repository>),

@@ -127,7 +127,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         Route::ActionDetail { .. } | Route::JobLog { .. } => handle_action_detail_keys(key, state),
         Route::Search { .. } => handle_search_keys(key, state),
         Route::Notifications => handle_notification_keys(key),
-        Route::Security { .. } => handle_settings_keys(key),
+        Route::Security { .. } => handle_security_keys(key, state),
         Route::Insights { .. } => handle_settings_keys(key),
         Route::Settings { .. } => handle_settings_keys(key),
         _ => handle_list_keys(key),
@@ -203,6 +203,32 @@ fn handle_list_keys(key: KeyEvent) -> Option<Message> {
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
         KeyCode::Enter => Some(Message::ListSelect(0)),
         KeyCode::Char('r') => Some(Message::Tick), // refresh
+        _ => None,
+    }
+}
+
+fn handle_security_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let detail_open = state.security.as_ref().is_some_and(|s| s.detail_open);
+
+    if detail_open {
+        return match key.code {
+            KeyCode::Esc | KeyCode::Enter => Some(Message::SecurityToggleDetail),
+            KeyCode::Char('j') | KeyCode::Down | KeyCode::PageDown => Some(Message::ScrollDown),
+            KeyCode::Char('k') | KeyCode::Up | KeyCode::PageUp => Some(Message::ScrollUp),
+            KeyCode::Char('o') => Some(Message::SecurityOpenInBrowser),
+            KeyCode::Tab => Some(Message::TabChanged(1)),
+            KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
+            _ => None,
+        };
+    }
+
+    match key.code {
+        KeyCode::Tab => Some(Message::TabChanged(1)),
+        KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Enter => Some(Message::SecurityToggleDetail),
+        KeyCode::Char('o') => Some(Message::SecurityOpenInBrowser),
         _ => None,
     }
 }

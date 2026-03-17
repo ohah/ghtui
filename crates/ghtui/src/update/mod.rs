@@ -2575,6 +2575,36 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::SecurityToggleDetail => {
+            if let Some(ref mut sec) = state.security {
+                sec.detail_open = !sec.detail_open;
+                sec.detail_scroll = 0;
+            }
+            vec![]
+        }
+        Message::SecurityOpenInBrowser => {
+            if let Some(ref sec) = state.security {
+                let url = match sec.tab {
+                    0 => sec
+                        .dependabot_alerts
+                        .get(sec.selected)
+                        .map(|a| a.html_url.clone()),
+                    1 => sec
+                        .code_scanning_alerts
+                        .get(sec.selected)
+                        .map(|a| a.html_url.clone()),
+                    2 => sec
+                        .secret_scanning_alerts
+                        .get(sec.selected)
+                        .map(|a| a.html_url.clone()),
+                    _ => None,
+                };
+                if let Some(url) = url {
+                    return vec![Command::OpenInBrowser(url)];
+                }
+            }
+            vec![]
+        }
 
         // Settings
         Message::SettingsRepoLoaded(repo) => {
@@ -2647,6 +2677,14 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
 
         // Scroll — context-aware
         Message::ScrollUp => {
+            if matches!(state.route, Route::Security { .. }) {
+                if let Some(ref mut sec) = state.security {
+                    if sec.detail_open {
+                        sec.detail_scroll = sec.detail_scroll.saturating_sub(3);
+                        return vec![];
+                    }
+                }
+            }
             if matches!(state.route, Route::ActionDetail { .. }) {
                 if let Some(ref mut detail) = state.action_detail {
                     if detail.log.is_some() {
@@ -2674,6 +2712,14 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             update(state, Message::ListSelect(usize::MAX))
         }
         Message::ScrollDown => {
+            if matches!(state.route, Route::Security { .. }) {
+                if let Some(ref mut sec) = state.security {
+                    if sec.detail_open {
+                        sec.detail_scroll += 3;
+                        return vec![];
+                    }
+                }
+            }
             if matches!(state.route, Route::ActionDetail { .. }) {
                 if let Some(ref mut detail) = state.action_detail {
                     if detail.log.is_some() {
