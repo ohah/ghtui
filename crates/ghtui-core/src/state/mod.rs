@@ -1,4 +1,5 @@
 pub mod actions;
+pub mod insights;
 pub mod issue;
 pub mod notification;
 pub mod pr;
@@ -15,6 +16,7 @@ use crate::theme::Theme;
 use crate::types::common::RepoId;
 
 pub use actions::*;
+pub use insights::*;
 pub use issue::*;
 pub use notification::*;
 pub use pr::*;
@@ -58,6 +60,7 @@ pub struct AppState {
     pub action_detail: Option<ActionDetailState>,
     pub notifications: Option<NotificationListState>,
     pub search: Option<SearchViewState>,
+    pub insights: Option<InsightsState>,
     pub security: Option<SecurityState>,
     pub settings: Option<SettingsState>,
 
@@ -98,6 +101,7 @@ impl AppState {
             action_detail: None,
             notifications: None,
             search: None,
+            insights: None,
             security: None,
             settings: None,
             current_repo: repo,

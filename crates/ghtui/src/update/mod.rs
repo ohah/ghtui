@@ -32,6 +32,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.action_detail = None;
             state.notifications = None;
             state.search = None;
+            state.insights = None;
             state.security = None;
             state.settings = None;
             // Refresh current view
@@ -150,6 +151,40 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
 
+        // Insights
+        Message::ContributorStatsLoaded(stats) => {
+            state.loading.remove("insights");
+            state.loading.remove("contributors");
+            if state.insights.is_none() {
+                state.insights = Some(InsightsState::default());
+            }
+            if let Some(ref mut ins) = state.insights {
+                ins.contributors = stats;
+            }
+            vec![]
+        }
+        Message::CommitActivityLoaded(activity) => {
+            state.loading.remove("commit_activity");
+            if let Some(ref mut ins) = state.insights {
+                ins.commit_activity = activity;
+            }
+            vec![]
+        }
+        Message::TrafficClonesLoaded(clones) => {
+            state.loading.remove("traffic_clones");
+            if let Some(ref mut ins) = state.insights {
+                ins.traffic_clones = Some(clones);
+            }
+            vec![]
+        }
+        Message::TrafficViewsLoaded(views) => {
+            state.loading.remove("traffic_views");
+            if let Some(ref mut ins) = state.insights {
+                ins.traffic_views = Some(views);
+            }
+            vec![]
+        }
+
         // Search
         Message::SearchResults(results) => {
             state.loading.remove("search");
@@ -247,6 +282,15 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         settings.tab = settings.tab.saturating_sub(1);
                     } else {
                         settings.tab = (settings.tab + delta).min(max);
+                    }
+                }
+            } else if matches!(state.route, Route::Insights { .. }) {
+                if let Some(ref mut ins) = state.insights {
+                    let max = ins.tab_count().saturating_sub(1);
+                    if delta == usize::MAX {
+                        ins.tab = ins.tab.saturating_sub(1);
+                    } else {
+                        ins.tab = (ins.tab + delta).min(max);
                     }
                 }
             } else if matches!(state.route, Route::Security { .. }) {
@@ -393,7 +437,19 @@ fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command> {
                 Command::FetchSecretScanningAlerts(repo.clone()),
             ]
         }
-        Route::Insights { .. } => vec![],
+        Route::Insights { repo } => {
+            state.loading.insert("insights".to_string());
+            state.loading.insert("contributors".to_string());
+            state.loading.insert("commit_activity".to_string());
+            state.loading.insert("traffic_clones".to_string());
+            state.loading.insert("traffic_views".to_string());
+            vec![
+                Command::FetchContributorStats(repo.clone()),
+                Command::FetchCommitActivity(repo.clone()),
+                Command::FetchTrafficClones(repo.clone()),
+                Command::FetchTrafficViews(repo.clone()),
+            ]
+        }
         Route::Settings { repo } => {
             state.loading.insert("settings".to_string());
             vec![Command::FetchRepoSettings(repo.clone())]
@@ -508,6 +564,15 @@ fn handle_list_select(state: &mut AppState, delta: usize) {
                     list.select_prev();
                 } else if delta > 0 {
                     list.select_next();
+                }
+            }
+        }
+        Route::Insights { .. } => {
+            if let Some(ref mut ins) = state.insights {
+                if delta == usize::MAX {
+                    ins.scroll = ins.scroll.saturating_sub(1);
+                } else if delta > 0 {
+                    ins.scroll += 1;
                 }
             }
         }

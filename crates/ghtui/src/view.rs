@@ -64,13 +64,7 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
             "Documentation and wiki pages",
         ),
         Route::Security { .. } => views::security::render(frame, state, content_area),
-        Route::Insights { .. } => views::placeholder::render(
-            frame,
-            state,
-            content_area,
-            "Insights",
-            "Contributors, traffic, commits, and code frequency",
-        ),
+        Route::Insights { .. } => views::insights::render(frame, state, content_area),
         Route::Settings { .. } => views::settings::render(frame, state, content_area),
         Route::Search { .. } => views::placeholder::render(
             frame,

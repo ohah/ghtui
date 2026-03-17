@@ -45,6 +45,12 @@ pub enum Message {
     // Search
     SearchResults(SearchResultSet),
 
+    // Insights
+    ContributorStatsLoaded(Vec<insights::ContributorStats>),
+    CommitActivityLoaded(Vec<insights::CommitActivity>),
+    TrafficClonesLoaded(insights::TrafficClones),
+    TrafficViewsLoaded(insights::TrafficViews),
+
     // Security
     DependabotAlertsLoaded(Vec<security::DependabotAlert>),
     CodeScanningAlertsLoaded(Vec<security::CodeScanningAlert>),

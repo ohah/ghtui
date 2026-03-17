@@ -13,7 +13,7 @@
 | 5 | Projects | - | placeholder | 미구현 |
 | 6 | Wiki | - | placeholder | 미구현 |
 | 7 | Security | ✅ | security.rs | Dependabot, Code Scanning, Secret Scanning (read-only) |
-| 8 | Insights | - | placeholder | 미구현 |
+| 8 | Insights | ✅ | insights.rs | Contributors, Commit Activity, Traffic (read-only) |
 | 9 | Settings | ✅ | settings.rs | 일반설정, 브랜치 보호, Collaborators (read-only) |
 
 ### 완료된 기반 기능
@@ -127,9 +127,9 @@
 
 ## Phase 7 — Insights 탭
 
-- [ ] Contributors API (커밋 수, additions/deletions)
-- [ ] 커밋 활동 그래프 (ascii chart)
-- [ ] 트래픽 (clones, views)
+- [x] Contributors API (커밋 수, additions/deletions)
+- [x] 커밋 활동 그래프 (ascii chart)
+- [x] 트래픽 (clones, views)
 - [ ] Code frequency
 - [ ] Dependency graph
 - [ ] Forks 네트워크
