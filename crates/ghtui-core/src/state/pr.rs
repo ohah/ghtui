@@ -129,6 +129,9 @@ pub struct PrDetailState {
     pub diff_cursor: usize,                // diff line cursor position
     pub diff_select_anchor: Option<usize>, // shift+move selection anchor
     pub diff_collapsed: HashSet<usize>,    // collapsed file indices
+    /// Inline review comment editor: (file_path, line_number)
+    pub diff_comment_target: Option<(String, u32)>,
+    pub diff_comment_editor: TextEditor,
     pub tab: usize,
     pub comment_input: String,
     pub focus: PrSection,
@@ -149,6 +152,8 @@ impl PrDetailState {
             diff_cursor: 0,
             diff_select_anchor: None,
             diff_collapsed: HashSet::new(),
+            diff_comment_target: None,
+            diff_comment_editor: TextEditor::new(),
             tab: 0,
             comment_input: String::new(),
             focus: PrSection::Title,

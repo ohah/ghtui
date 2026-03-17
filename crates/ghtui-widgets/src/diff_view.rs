@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use ghtui_core::editor::TextEditor;
 use ghtui_core::theme::Theme;
 use ghtui_core::types::{DiffFile, DiffFileStatus, DiffLineKind, ReviewComment};
 use ratatui::buffer::Buffer;
@@ -100,6 +101,8 @@ pub struct DiffView<'a> {
     review_comments: &'a [ReviewComment],
     theme: &'a Theme,
     block: Option<Block<'a>>,
+    /// Inline comment editor: (file_path, line_number, editor)
+    comment_editor: Option<(&'a str, u32, &'a TextEditor)>,
 }
 
 impl<'a> DiffView<'a> {
@@ -109,11 +112,17 @@ impl<'a> DiffView<'a> {
             review_comments: &[],
             theme,
             block: None,
+            comment_editor: None,
         }
     }
 
     pub fn review_comments(mut self, comments: &'a [ReviewComment]) -> Self {
         self.review_comments = comments;
+        self
+    }
+
+    pub fn comment_editor(mut self, path: &'a str, line: u32, editor: &'a TextEditor) -> Self {
+        self.comment_editor = Some((path, line, editor));
         self
     }
 
@@ -438,6 +447,77 @@ impl<'a> DiffView<'a> {
                             Style::default().fg(theme.border),
                         ));
                         line_ids.push(DiffLineId::Summary);
+                    }
+
+                    // Show inline comment editor if targeting this line
+                    if let Some((editor_path, editor_line, editor)) = &self.comment_editor {
+                        if *editor_path == file.filename && *editor_line == ln {
+                            lines.push(Line::from(vec![
+                                Span::styled("          ┌─ ", Style::default().fg(theme.accent)),
+                                Span::styled(
+                                    "Review comment (Ctrl+Enter:submit  Esc:cancel)",
+                                    Style::default()
+                                        .fg(theme.accent)
+                                        .add_modifier(Modifier::BOLD),
+                                ),
+                            ]));
+                            line_ids.push(DiffLineId::Summary);
+
+                            let content = editor.content();
+                            if content.is_empty() {
+                                lines.push(Line::from(vec![
+                                    Span::styled("          │ ", Style::default().fg(theme.accent)),
+                                    Span::styled(
+                                        "█",
+                                        Style::default()
+                                            .fg(theme.accent)
+                                            .add_modifier(Modifier::SLOW_BLINK),
+                                    ),
+                                ]));
+                            } else {
+                                for (ei, editor_line_text) in content.lines().enumerate() {
+                                    let is_cursor_line = ei == editor.cursor_row;
+                                    let mut spans = vec![Span::styled(
+                                        "          │ ",
+                                        Style::default().fg(theme.accent),
+                                    )];
+                                    if is_cursor_line {
+                                        let col = editor.cursor_byte_col();
+                                        let before =
+                                            &editor_line_text[..col.min(editor_line_text.len())];
+                                        let after =
+                                            &editor_line_text[col.min(editor_line_text.len())..];
+                                        spans.push(Span::styled(
+                                            before.to_string(),
+                                            Style::default().fg(theme.fg),
+                                        ));
+                                        spans.push(Span::styled(
+                                            "█",
+                                            Style::default()
+                                                .fg(theme.accent)
+                                                .add_modifier(Modifier::SLOW_BLINK),
+                                        ));
+                                        spans.push(Span::styled(
+                                            after.to_string(),
+                                            Style::default().fg(theme.fg),
+                                        ));
+                                    } else {
+                                        spans.push(Span::styled(
+                                            editor_line_text.to_string(),
+                                            Style::default().fg(theme.fg),
+                                        ));
+                                    }
+                                    lines.push(Line::from(spans));
+                                }
+                            }
+                            line_ids.push(DiffLineId::Summary);
+
+                            lines.push(Line::styled(
+                                "          └───────────",
+                                Style::default().fg(theme.accent),
+                            ));
+                            line_ids.push(DiffLineId::Summary);
+                        }
                     }
                 }
             }

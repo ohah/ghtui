@@ -477,43 +477,81 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::PrEditChar(c) => {
             if let Some(ref mut detail) = state.pr_detail {
-                detail.editor.insert_char(c);
+                if detail.diff_comment_target.is_some() {
+                    detail.diff_comment_editor.insert_char(c);
+                } else {
+                    detail.editor.insert_char(c);
+                }
             }
             vec![]
         }
         Message::PrEditNewline => {
             if let Some(ref mut detail) = state.pr_detail {
-                detail.editor.insert_newline();
+                if detail.diff_comment_target.is_some() {
+                    detail.diff_comment_editor.insert_newline();
+                } else {
+                    detail.editor.insert_newline();
+                }
             }
             vec![]
         }
         Message::PrEditBackspace => {
             if let Some(ref mut detail) = state.pr_detail {
-                detail.editor.backspace();
+                if detail.diff_comment_target.is_some() {
+                    detail.diff_comment_editor.backspace();
+                } else {
+                    detail.editor.backspace();
+                }
             }
             vec![]
         }
         Message::PrEditCursorLeft => {
             if let Some(ref mut detail) = state.pr_detail {
-                detail.editor.move_left();
+                if detail.diff_comment_target.is_some() {
+                    detail.diff_comment_editor.move_left();
+                } else {
+                    detail.editor.move_left();
+                }
             }
             vec![]
         }
         Message::PrEditCursorRight => {
             if let Some(ref mut detail) = state.pr_detail {
-                detail.editor.move_right();
+                if detail.diff_comment_target.is_some() {
+                    detail.diff_comment_editor.move_right();
+                } else {
+                    detail.editor.move_right();
+                }
             }
             vec![]
         }
         Message::PrEditCursorUp => {
             if let Some(ref mut detail) = state.pr_detail {
-                detail.editor.move_up();
+                if detail.diff_comment_target.is_some() {
+                    detail.diff_comment_editor.move_up();
+                } else {
+                    detail.editor.move_up();
+                }
             }
             vec![]
         }
         Message::PrEditCursorDown => {
             if let Some(ref mut detail) = state.pr_detail {
-                detail.editor.move_down();
+                if detail.diff_comment_target.is_some() {
+                    detail.diff_comment_editor.move_down();
+                } else {
+                    detail.editor.move_down();
+                }
+            }
+            vec![]
+        }
+        Message::PrEditDelete => {
+            if let Some(ref mut detail) = state.pr_detail {
+                if detail.diff_comment_target.is_some() {
+                    detail.diff_comment_editor.delete();
+                } else {
+                    detail.editor.delete();
+                }
             }
             vec![]
         }
@@ -526,12 +564,6 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::PrEditEnd => {
             if let Some(ref mut detail) = state.pr_detail {
                 detail.editor.move_end();
-            }
-            vec![]
-        }
-        Message::PrEditDelete => {
-            if let Some(ref mut detail) = state.pr_detail {
-                detail.editor.delete();
             }
             vec![]
         }
@@ -686,11 +718,20 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::PrDiffToggleCollapse => {
             if let Some(ref mut detail) = state.pr_detail {
-                if let Some(fi) = find_cursor_file(detail) {
-                    if detail.diff_collapsed.contains(&fi) {
-                        detail.diff_collapsed.remove(&fi);
+                if let Some((fi, is_header)) = find_cursor_file_info(detail) {
+                    if is_header {
+                        // File header → toggle fold
+                        if detail.diff_collapsed.contains(&fi) {
+                            detail.diff_collapsed.remove(&fi);
+                        } else {
+                            detail.diff_collapsed.insert(fi);
+                        }
                     } else {
-                        detail.diff_collapsed.insert(fi);
+                        // Code line → open inline comment editor
+                        if let Some(target) = find_cursor_line_info(detail) {
+                            detail.diff_comment_target = Some(target);
+                            detail.diff_comment_editor = ghtui_core::editor::TextEditor::new();
+                        }
                     }
                 }
             }
@@ -709,6 +750,43 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 if let Some(fi) = find_cursor_file(detail) {
                     detail.diff_collapsed.insert(fi);
                 }
+            }
+            vec![]
+        }
+        Message::PrDiffCommentSubmit => {
+            if let Some(ref detail) = state.pr_detail {
+                if let (Some((path, line)), Some(repo)) =
+                    (&detail.diff_comment_target, &state.current_repo)
+                {
+                    let body = detail.diff_comment_editor.content();
+                    if body.trim().is_empty() {
+                        state
+                            .push_toast("Comment cannot be empty".to_string(), ToastLevel::Warning);
+                        return vec![];
+                    }
+                    let number = detail.detail.pr.number;
+                    let input = ghtui_core::types::ReviewInput {
+                        event: ghtui_core::types::ReviewEvent::Comment,
+                        body: None,
+                        comments: vec![ghtui_core::types::ReviewCommentInput {
+                            path: path.clone(),
+                            line: *line,
+                            body,
+                        }],
+                    };
+                    if let Some(ref mut d) = state.pr_detail {
+                        d.diff_comment_target = None;
+                        d.diff_comment_editor = ghtui_core::editor::TextEditor::new();
+                    }
+                    return vec![Command::SubmitReview(repo.clone(), number, input)];
+                }
+            }
+            vec![]
+        }
+        Message::PrDiffCommentCancel => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.diff_comment_target = None;
+                detail.diff_comment_editor = ghtui_core::editor::TextEditor::new();
             }
             vec![]
         }
@@ -2444,9 +2522,55 @@ fn refresh_current_view(state: &mut AppState) -> Vec<Command> {
     }
 }
 
+/// Count how many review comment lines appear after a given diff line
+fn count_review_comment_lines(
+    review_comments: &[ghtui_core::types::ReviewComment],
+    filename: &str,
+    line_num: Option<u32>,
+) -> usize {
+    let Some(ln) = line_num else { return 0 };
+    let matching: Vec<_> = review_comments
+        .iter()
+        .filter(|rc| rc.path == filename && (rc.line == Some(ln) || rc.original_line == Some(ln)))
+        .collect();
+    if matching.is_empty() {
+        return 0;
+    }
+    let mut count = 0;
+    let roots: Vec<_> = matching
+        .iter()
+        .filter(|rc| rc.in_reply_to_id.is_none())
+        .collect();
+    for root in &roots {
+        count += 1; // header line (┌─)
+        count += root.body.lines().count(); // body lines (│)
+        let replies = matching
+            .iter()
+            .filter(|rc| rc.in_reply_to_id == Some(root.id))
+            .count();
+        count += replies; // reply lines (│ ↳)
+        count += 1; // footer line (└─)
+    }
+    // Orphan comments
+    let orphans = matching
+        .iter()
+        .filter(|rc| {
+            rc.in_reply_to_id.is_some() && !roots.iter().any(|r| Some(r.id) == rc.in_reply_to_id)
+        })
+        .count();
+    count += orphans * 2; // header + footer per orphan
+    count
+}
+
 /// Find which file index the diff cursor is currently on
 fn find_cursor_file(detail: &PrDetailState) -> Option<usize> {
+    find_cursor_file_info(detail).map(|(fi, _)| fi)
+}
+
+/// Find file index and whether cursor is on the file header line
+fn find_cursor_file_info(detail: &PrDetailState) -> Option<(usize, bool)> {
     let files = detail.diff.as_ref()?;
+    let review_comments = &detail.detail.review_comments;
     let summary_lines = files.len() + 3; // header + empty + files + empty
     if detail.diff_cursor < summary_lines {
         return None;
@@ -2454,15 +2578,67 @@ fn find_cursor_file(detail: &PrDetailState) -> Option<usize> {
     let mut line = summary_lines;
     for (fi, file) in files.iter().enumerate() {
         let collapsed = detail.diff_collapsed.contains(&fi);
-        let file_lines = if collapsed {
-            1
-        } else {
-            1 + file.hunks.iter().map(|h| 1 + h.lines.len()).sum::<usize>() + 1
-        };
-        if detail.diff_cursor >= line && detail.diff_cursor < line + file_lines {
-            return Some(fi);
+        let file_header_line = line;
+        if collapsed {
+            if detail.diff_cursor == file_header_line {
+                return Some((fi, true));
+            }
+            line += 1;
+            continue;
+        }
+        // Count: file header + hunks (each with header + lines + review comments) + trailing empty
+        let mut file_lines = 1; // file header
+        for hunk in &file.hunks {
+            file_lines += 1; // hunk header
+            for diff_line in &hunk.lines {
+                file_lines += 1; // the code line itself
+                let target = diff_line.new_line.or(diff_line.old_line);
+                file_lines += count_review_comment_lines(review_comments, &file.filename, target);
+            }
+        }
+        file_lines += 1; // trailing empty line
+
+        if detail.diff_cursor >= file_header_line
+            && detail.diff_cursor < file_header_line + file_lines
+        {
+            let is_header = detail.diff_cursor == file_header_line;
+            return Some((fi, is_header));
         }
         line += file_lines;
+    }
+    None
+}
+
+/// Find the file path and line number at the current diff cursor position
+fn find_cursor_line_info(detail: &PrDetailState) -> Option<(String, u32)> {
+    let files = detail.diff.as_ref()?;
+    let review_comments = &detail.detail.review_comments;
+    let summary_lines = files.len() + 3;
+    if detail.diff_cursor < summary_lines {
+        return None;
+    }
+    let mut line = summary_lines;
+    for (fi, file) in files.iter().enumerate() {
+        let collapsed = detail.diff_collapsed.contains(&fi);
+        if collapsed {
+            line += 1;
+            continue;
+        }
+        line += 1; // file header
+        for hunk in &file.hunks {
+            line += 1; // hunk header
+            for diff_line in &hunk.lines {
+                if detail.diff_cursor == line {
+                    // Found the line — return new_line or old_line
+                    let ln = diff_line.new_line.or(diff_line.old_line)?;
+                    return Some((file.filename.clone(), ln));
+                }
+                line += 1;
+                let target = diff_line.new_line.or(diff_line.old_line);
+                line += count_review_comment_lines(review_comments, &file.filename, target);
+            }
+        }
+        line += 1; // trailing empty
     }
     None
 }

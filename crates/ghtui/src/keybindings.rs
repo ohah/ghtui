@@ -86,9 +86,13 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
             .pr_detail
             .as_ref()
             .is_some_and(|d| d.tab == 1 && d.diff_select_anchor.is_some());
+        let pr_diff_commenting = state
+            .pr_detail
+            .as_ref()
+            .is_some_and(|d| d.diff_comment_target.is_some());
         if (matches!(state.route, Route::IssueDetail { .. }) && issue_editing)
             || (matches!(state.route, Route::PrDetail { .. })
-                && (pr_editing || pr_picker || pr_diff_select))
+                && (pr_editing || pr_picker || pr_diff_select || pr_diff_commenting))
         {
             // Fall through to route-specific handler
         } else {
@@ -281,6 +285,29 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     let on_diff_tab = state.pr_detail.as_ref().is_some_and(|d| d.tab == 1);
 
     if on_diff_tab {
+        // Inline comment editor mode
+        let diff_commenting = state
+            .pr_detail
+            .as_ref()
+            .is_some_and(|d| d.diff_comment_target.is_some());
+
+        if diff_commenting {
+            let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+            return match key.code {
+                KeyCode::Esc => Some(Message::PrDiffCommentCancel),
+                KeyCode::Enter if ctrl => Some(Message::PrDiffCommentSubmit),
+                KeyCode::Enter => Some(Message::PrEditNewline),
+                KeyCode::Char(c) => Some(Message::PrEditChar(c)),
+                KeyCode::Backspace => Some(Message::PrEditBackspace),
+                KeyCode::Delete => Some(Message::PrEditDelete),
+                KeyCode::Left => Some(Message::PrEditCursorLeft),
+                KeyCode::Right => Some(Message::PrEditCursorRight),
+                KeyCode::Up => Some(Message::PrEditCursorUp),
+                KeyCode::Down => Some(Message::PrEditCursorDown),
+                _ => None,
+            };
+        }
+
         let shift = key.modifiers.contains(KeyModifiers::SHIFT);
         return match key.code {
             KeyCode::Tab => Some(Message::TabChanged(1)),

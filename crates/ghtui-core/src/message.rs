@@ -82,6 +82,8 @@ pub enum Message {
     PrDiffExpand,         // l/Right — unfold file
     PrDiffCollapse,       // h/Left — fold file
     PrDiffClearSelection, // Esc in diff
+    PrDiffCommentSubmit,  // Ctrl+Enter in diff comment editor
+    PrDiffCommentCancel,  // Esc in diff comment editor
 
     // Issue
     IssueListLoaded(Vec<Issue>, Pagination, IssueFilters),
