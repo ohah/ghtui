@@ -90,6 +90,8 @@ pub enum Message {
     PrDiffTreeUp,           // Move up in file tree
     PrDiffTreeDown,         // Move down in file tree
     PrDiffTreeSelect,       // Select file in tree → jump to diff
+    PrApprove,              // Approve PR
+    PrRequestChanges,       // Request changes on PR
     PrChangeBase,           // Change merge target branch
 
     // Issue

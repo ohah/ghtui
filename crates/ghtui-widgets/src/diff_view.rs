@@ -24,11 +24,17 @@ fn box_top(label_spans: Vec<Span<'static>>, border: Style, width: usize) -> Line
     Line::from(spans)
 }
 
-/// │ content │  (border chars use border_style, content keeps its own styles)
-fn box_mid(content: Vec<Span<'static>>, border: Style) -> Line<'static> {
+/// │ content          │  (padded to width, border chars use border_style)
+fn box_mid(content: Vec<Span<'static>>, border: Style, width: usize) -> Line<'static> {
+    let content_width = width.saturating_sub(BOX_INDENT + 2); // -2 for " │"
+    let actual: usize = content.iter().map(|s| s.content.chars().count()).sum();
+    let padding = content_width.saturating_sub(actual);
     let mut result = vec![Span::styled(format!("{}│ ", BOX_PAD), border)];
     result.extend(content);
-    result.push(Span::styled(" │", border));
+    if padding > 0 {
+        result.push(Span::raw(" ".repeat(padding)));
+    }
+    result.push(Span::styled("│", border));
     Line::from(result)
 }
 
@@ -147,6 +153,7 @@ impl<'a> DiffView<'a> {
         body: &str,
         theme: &Theme,
         border_style: Style,
+        width: usize,
         lines: &mut Vec<Line<'static>>,
         line_ids: &mut Vec<DiffLineId>,
     ) {
@@ -164,6 +171,7 @@ impl<'a> DiffView<'a> {
                             .add_modifier(Modifier::BOLD),
                     )],
                     border_style,
+                    width,
                 ));
                 line_ids.push(DiffLineId::Summary);
                 continue;
@@ -180,6 +188,7 @@ impl<'a> DiffView<'a> {
                         Style::default().fg(theme.fg_muted),
                     )],
                     border_style,
+                    width,
                 ));
                 line_ids.push(DiffLineId::Summary);
                 continue;
@@ -192,6 +201,7 @@ impl<'a> DiffView<'a> {
                         Style::default().fg(theme.diff_add_fg).bg(theme.diff_add_bg),
                     )],
                     border_style,
+                    width,
                 ));
             } else if in_code_block {
                 lines.push(box_mid(
@@ -200,6 +210,7 @@ impl<'a> DiffView<'a> {
                         Style::default().fg(theme.fg).bg(theme.bg_subtle),
                     )],
                     border_style,
+                    width,
                 ));
             } else {
                 lines.push(box_mid(
@@ -208,6 +219,7 @@ impl<'a> DiffView<'a> {
                         Style::default().fg(theme.fg),
                     )],
                     border_style,
+                    width,
                 ));
             }
             line_ids.push(DiffLineId::Summary);
@@ -461,7 +473,14 @@ impl<'a> DiffView<'a> {
                         ));
                         line_ids.push(DiffLineId::Summary);
 
-                        Self::render_comment_body(&root.body, theme, border_style, lines, line_ids);
+                        Self::render_comment_body(
+                            &root.body,
+                            theme,
+                            border_style,
+                            width,
+                            lines,
+                            line_ids,
+                        );
 
                         let replies: Vec<&&ReviewComment> = matching
                             .iter()
@@ -480,6 +499,7 @@ impl<'a> DiffView<'a> {
                                     ),
                                 ],
                                 border_style,
+                                width,
                             ));
                             line_ids.push(DiffLineId::Summary);
                         }
@@ -506,6 +526,7 @@ impl<'a> DiffView<'a> {
                             &orphan.body,
                             theme,
                             border_style,
+                            width,
                             lines,
                             line_ids,
                         );
@@ -550,6 +571,7 @@ impl<'a> DiffView<'a> {
                                             ),
                                         ],
                                         accent_style,
+                                        width,
                                     ));
                                 } else {
                                     lines.push(box_mid(
@@ -558,6 +580,7 @@ impl<'a> DiffView<'a> {
                                             Style::default().fg(theme.fg),
                                         )],
                                         accent_style,
+                                        width,
                                     ));
                                 }
                                 line_ids.push(DiffLineId::Summary);

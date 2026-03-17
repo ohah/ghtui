@@ -378,6 +378,8 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         KeyCode::Char('m') => Some(Message::ModalOpen(ModalKind::MergePr)),
         KeyCode::Char('d') => Some(Message::PrDeleteComment),
         KeyCode::Char('x') => Some(Message::PrToggleState),
+        KeyCode::Char('A') => Some(Message::PrApprove),
+        KeyCode::Char('R') => Some(Message::PrRequestChanges),
         KeyCode::Char('b') => Some(Message::PrChangeBase),
         KeyCode::Char('o') => Some(Message::PrOpenInBrowser),
         KeyCode::Char('+') => Some(Message::PrAddReaction("+1".to_string())),
