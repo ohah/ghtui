@@ -31,7 +31,10 @@ pub enum Command {
     SetIssueAssignees(RepoId, u64, Vec<String>),
     FetchRepoLabels(RepoId),
     FetchCollaboratorsForPicker(RepoId),
-    DeleteComment(RepoId, u64), // comment_id
+    DeleteComment(RepoId, u64),
+    AddReaction(RepoId, u64, String, bool), // repo, id, reaction, is_issue (vs comment)
+    SetMilestone(RepoId, u64, Option<u64>), // repo, issue_number, milestone_number
+    FetchMilestones(RepoId),
     AddComment(RepoId, u64, String),
     UpdateComment(RepoId, u64, u64, String),
 

@@ -1,5 +1,5 @@
 use crate::editor::TextEditor;
-use crate::types::common::Label;
+use crate::types::common::{Label, Milestone};
 use crate::types::{Issue, IssueDetail, IssueFilters, IssueState, Pagination};
 
 #[derive(Debug)]
@@ -28,6 +28,31 @@ pub struct AssigneePickerState {
     pub selected_names: Vec<String>,
     pub cursor: usize,
 }
+
+/// Milestone picker state
+#[derive(Debug)]
+pub struct MilestonePickerState {
+    pub available: Vec<Milestone>,
+    pub selected: Option<u64>, // milestone number
+    pub cursor: usize,
+}
+
+/// Reaction picker state
+#[derive(Debug)]
+pub struct ReactionPickerState {
+    pub cursor: usize,
+}
+
+pub const REACTION_OPTIONS: &[(&str, &str)] = &[
+    ("+1", "👍"),
+    ("-1", "👎"),
+    ("laugh", "😄"),
+    ("hooray", "🎉"),
+    ("confused", "😕"),
+    ("heart", "❤️"),
+    ("rocket", "🚀"),
+    ("eyes", "👀"),
+];
 
 impl IssueListState {
     pub fn new(items: Vec<Issue>, pagination: Pagination) -> Self {
@@ -119,6 +144,8 @@ pub struct IssueDetailState {
     pub editor: TextEditor,
     pub label_picker: Option<LabelPickerState>,
     pub assignee_picker: Option<AssigneePickerState>,
+    pub milestone_picker: Option<MilestonePickerState>,
+    pub reaction_picker: Option<ReactionPickerState>,
 }
 
 impl IssueDetailState {
@@ -131,6 +158,8 @@ impl IssueDetailState {
             editor: TextEditor::new(),
             label_picker: None,
             assignee_picker: None,
+            milestone_picker: None,
+            reaction_picker: None,
         }
     }
 
@@ -139,7 +168,10 @@ impl IssueDetailState {
     }
 
     pub fn has_picker(&self) -> bool {
-        self.label_picker.is_some() || self.assignee_picker.is_some()
+        self.label_picker.is_some()
+            || self.assignee_picker.is_some()
+            || self.milestone_picker.is_some()
+            || self.reaction_picker.is_some()
     }
 
     /// All navigable sections in order

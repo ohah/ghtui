@@ -82,7 +82,76 @@ impl GithubClient {
         let comments_body = self.get(&comments_path).await?;
         let comments: Vec<IssueComment> = serde_json::from_str(&comments_body).unwrap_or_default();
 
-        Ok(IssueDetail { issue, comments })
+        // Fetch timeline events
+        let timeline_path = format!(
+            "/repos/{}/{}/issues/{}/timeline?per_page=50",
+            repo.owner, repo.name, number
+        );
+        let timeline = match self.get(&timeline_path).await {
+            Ok(body) => serde_json::from_str(&body).unwrap_or_default(),
+            Err(_) => Vec::new(),
+        };
+
+        Ok(IssueDetail {
+            issue,
+            comments,
+            timeline,
+        })
+    }
+
+    pub async fn add_reaction(
+        &self,
+        repo: &RepoId,
+        comment_id: u64,
+        reaction: &str,
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/issues/comments/{}/reactions",
+            repo.owner, repo.name, comment_id
+        );
+        let body = json!({ "content": reaction });
+        self.post(&path, &body).await?;
+        Ok(())
+    }
+
+    pub async fn add_issue_reaction(
+        &self,
+        repo: &RepoId,
+        number: u64,
+        reaction: &str,
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/issues/{}/reactions",
+            repo.owner, repo.name, number
+        );
+        let body = json!({ "content": reaction });
+        self.post(&path, &body).await?;
+        Ok(())
+    }
+
+    pub async fn set_issue_milestone(
+        &self,
+        repo: &RepoId,
+        number: u64,
+        milestone_number: Option<u64>,
+    ) -> Result<(), ApiError> {
+        let path = format!("/repos/{}/{}/issues/{}", repo.owner, repo.name, number);
+        let body = json!({ "milestone": milestone_number });
+        self.patch(&path, &body).await?;
+        Ok(())
+    }
+
+    pub async fn list_milestones(
+        &self,
+        repo: &RepoId,
+    ) -> Result<Vec<ghtui_core::types::common::Milestone>, ApiError> {
+        let path = format!(
+            "/repos/{}/{}/milestones?state=open&per_page=30",
+            repo.owner, repo.name
+        );
+        let body = self.get(&path).await?;
+        let milestones: Vec<ghtui_core::types::common::Milestone> = serde_json::from_str(&body)?;
+        Ok(milestones)
     }
 
     pub async fn create_issue(
