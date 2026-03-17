@@ -155,6 +155,7 @@ impl GithubClient {
         let response = self.http.post(&url).json(body).send().await?;
 
         self.update_rate_limit(&response);
+        self.invalidate_cache(path);
 
         let status = response.status();
         let text = response.text().await?;
@@ -175,6 +176,7 @@ impl GithubClient {
         let response = self.http.patch(&url).json(body).send().await?;
 
         self.update_rate_limit(&response);
+        self.invalidate_cache(path);
 
         let status = response.status();
         let text = response.text().await?;
@@ -195,6 +197,7 @@ impl GithubClient {
         let response = self.http.put(&url).json(body).send().await?;
 
         self.update_rate_limit(&response);
+        self.invalidate_cache(path);
 
         let status = response.status();
         let text = response.text().await?;
@@ -212,6 +215,7 @@ impl GithubClient {
         let response = self.http.delete(&url).send().await?;
 
         self.update_rate_limit(&response);
+        self.invalidate_cache(path);
 
         let status = response.status();
         if !status.is_success() {
@@ -220,6 +224,31 @@ impl GithubClient {
         }
 
         Ok(())
+    }
+
+    /// Invalidate cache entries that match or are prefixed by the given path.
+    /// E.g. PATCH /repos/o/r/issues/1 invalidates both the issue and its parent list.
+    fn invalidate_cache(&self, path: &str) {
+        let url = self.url(path);
+        let mut cache = self.cache.lock().unwrap();
+
+        // Collect keys to remove (exact match + parent paths)
+        let keys_to_remove: Vec<String> = cache
+            .iter()
+            .map(|(k, _)| k.clone())
+            .filter(|k| {
+                // Remove exact match
+                k == &url
+                // Remove parent paths (e.g. /issues when /issues/1 is modified)
+                || url.starts_with(k.as_str())
+                // Remove child paths (e.g. /issues/1/comments when /issues/1 is modified)
+                || k.starts_with(url.as_str())
+            })
+            .collect();
+
+        for key in keys_to_remove {
+            cache.pop(&key);
+        }
     }
 
     fn update_rate_limit(&self, response: &reqwest::Response) {
