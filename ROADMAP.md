@@ -135,9 +135,9 @@
 - [x] 파일별 Viewed 체크 (`V` — 로컬 추적, 파일트리에 ✓ 표시)
 - [x] auto_merge 상태 PR 헤더에 표시
 
-### Phase 2-7 남은 기능
-- [ ] Side-by-side diff 모드
-- [ ] 리뷰 스레드 resolve/unresolve
+### Phase 2-7 완료 (Diff 모드)
+- [x] Side-by-side diff 모드 (`s` 토글, 좌우 분할 렌더링)
+- [ ] 리뷰 스레드 resolve/unresolve (보류 — GraphQL thread ID 필요)
 
 ## Phase 3 — Actions 탭 완성
 

@@ -130,6 +130,7 @@ pub struct DiffView<'a> {
     theme: &'a Theme,
     block: Option<Block<'a>>,
     comment_editor: Option<(&'a str, u32, &'a TextEditor)>,
+    side_by_side: bool,
 }
 
 impl<'a> DiffView<'a> {
@@ -140,6 +141,7 @@ impl<'a> DiffView<'a> {
             theme,
             block: None,
             comment_editor: None,
+            side_by_side: false,
         }
     }
     pub fn review_comments(mut self, comments: &'a [ReviewComment]) -> Self {
@@ -148,6 +150,10 @@ impl<'a> DiffView<'a> {
     }
     pub fn comment_editor(mut self, path: &'a str, line: u32, editor: &'a TextEditor) -> Self {
         self.comment_editor = Some((path, line, editor));
+        self
+    }
+    pub fn side_by_side(mut self, enabled: bool) -> Self {
+        self.side_by_side = enabled;
         self
     }
     pub fn block(mut self, block: Block<'a>) -> Self {
@@ -632,6 +638,276 @@ impl<'a> DiffView<'a> {
         lines.push(Line::raw(""));
         line_ids.push(DiffLineId::Summary);
     }
+
+    fn render_file_diff_side_by_side(
+        &self,
+        file: &DiffFile,
+        file_idx: usize,
+        lines: &mut Vec<Line<'static>>,
+        line_ids: &mut Vec<DiffLineId>,
+        state: &DiffViewState,
+        width: usize,
+    ) {
+        let theme = self.theme;
+        let collapsed = state.collapsed_files.contains(&file_idx);
+        let status_label = match file.status {
+            DiffFileStatus::Added => " ADDED ",
+            DiffFileStatus::Removed => " DELETED ",
+            DiffFileStatus::Modified => " MODIFIED ",
+            DiffFileStatus::Renamed => " RENAMED ",
+        };
+        let status_color = match file.status {
+            DiffFileStatus::Added => theme.diff_add_fg,
+            DiffFileStatus::Removed => theme.diff_remove_fg,
+            DiffFileStatus::Modified => theme.warning,
+            DiffFileStatus::Renamed => theme.info,
+        };
+        let fold_icon = if collapsed { "▸" } else { "▾" };
+
+        // File header (same as unified)
+        lines.push(Line::from(vec![
+            Span::styled(
+                format!(" {} ", fold_icon),
+                Style::default().fg(theme.fg_dim),
+            ),
+            Span::styled(
+                status_label,
+                Style::default()
+                    .fg(theme.bg)
+                    .bg(status_color)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" {} ", file.filename),
+                Style::default()
+                    .fg(theme.fg)
+                    .bg(theme.bg_subtle)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!(" +{} -{} ", file.additions, file.deletions),
+                Style::default().fg(theme.fg_dim).bg(theme.bg_subtle),
+            ),
+        ]));
+        line_ids.push(DiffLineId::FileHeader(file_idx));
+
+        if collapsed {
+            return;
+        }
+
+        // Each column gets half the width minus the separator
+        let half_w = width.saturating_sub(3) / 2; // 3 for " │ " separator
+        let gutter_w: usize = 5; // "NNNN "
+
+        for (hi, hunk) in file.hunks.iter().enumerate() {
+            // Hunk header spans entire width
+            lines.push(Line::styled(
+                format!(" {}", hunk.header),
+                Style::default()
+                    .fg(theme.diff_hunk)
+                    .bg(theme.bg_subtle)
+                    .add_modifier(Modifier::ITALIC),
+            ));
+            line_ids.push(DiffLineId::HunkHeader(file_idx, hi));
+
+            // Build paired lines: match removals with additions
+            let mut li = 0;
+            let hunk_lines = &hunk.lines;
+            while li < hunk_lines.len() {
+                let diff_line = &hunk_lines[li];
+                match diff_line.kind {
+                    DiffLineKind::Context => {
+                        let old_ln = diff_line
+                            .old_line
+                            .map(|n| format!("{:>4} ", n))
+                            .unwrap_or_else(|| "     ".to_string());
+                        let new_ln = diff_line
+                            .new_line
+                            .map(|n| format!("{:>4} ", n))
+                            .unwrap_or_else(|| "     ".to_string());
+                        let content = &diff_line.content;
+                        let left_content = truncate_or_pad(
+                            &format!(" {}", content),
+                            half_w.saturating_sub(gutter_w),
+                        );
+                        let right_content = truncate_or_pad(
+                            &format!(" {}", content),
+                            half_w.saturating_sub(gutter_w),
+                        );
+                        lines.push(Line::from(vec![
+                            Span::styled(old_ln, Style::default().fg(theme.fg_muted)),
+                            Span::styled(left_content, Style::default().fg(theme.fg_dim)),
+                            Span::styled(" │ ", Style::default().fg(theme.border)),
+                            Span::styled(new_ln, Style::default().fg(theme.fg_muted)),
+                            Span::styled(right_content, Style::default().fg(theme.fg_dim)),
+                        ]));
+                        line_ids.push(DiffLineId::Code(file_idx, hi, li));
+                        li += 1;
+                    }
+                    DiffLineKind::Remove => {
+                        // Collect consecutive removals
+                        let rem_start = li;
+                        while li < hunk_lines.len() && hunk_lines[li].kind == DiffLineKind::Remove {
+                            li += 1;
+                        }
+                        // Collect consecutive additions following
+                        let add_start = li;
+                        while li < hunk_lines.len() && hunk_lines[li].kind == DiffLineKind::Add {
+                            li += 1;
+                        }
+                        let rem_count = add_start - rem_start;
+                        let add_count = li - add_start;
+                        let pair_count = rem_count.max(add_count);
+
+                        for pi in 0..pair_count {
+                            let left = if pi < rem_count {
+                                let dl = &hunk_lines[rem_start + pi];
+                                let ln = dl
+                                    .old_line
+                                    .map(|n| format!("{:>4} ", n))
+                                    .unwrap_or_else(|| "     ".to_string());
+                                let content = truncate_or_pad(
+                                    &format!("-{}", dl.content),
+                                    half_w.saturating_sub(gutter_w),
+                                );
+                                (ln, content, true)
+                            } else {
+                                (
+                                    "     ".to_string(),
+                                    " ".repeat(half_w.saturating_sub(gutter_w)),
+                                    false,
+                                )
+                            };
+
+                            let right = if pi < add_count {
+                                let dl = &hunk_lines[add_start + pi];
+                                let ln = dl
+                                    .new_line
+                                    .map(|n| format!("{:>4} ", n))
+                                    .unwrap_or_else(|| "     ".to_string());
+                                let content = truncate_or_pad(
+                                    &format!("+{}", dl.content),
+                                    half_w.saturating_sub(gutter_w),
+                                );
+                                (ln, content, true)
+                            } else {
+                                (
+                                    "     ".to_string(),
+                                    " ".repeat(half_w.saturating_sub(gutter_w)),
+                                    false,
+                                )
+                            };
+
+                            let left_gutter_style = if left.2 {
+                                Style::default()
+                                    .fg(theme.diff_remove_fg)
+                                    .bg(theme.diff_remove_bg)
+                            } else {
+                                Style::default().fg(theme.fg_muted)
+                            };
+                            let left_content_style = if left.2 {
+                                Style::default()
+                                    .fg(theme.diff_remove_fg)
+                                    .bg(theme.diff_remove_bg)
+                            } else {
+                                Style::default()
+                            };
+                            let right_gutter_style = if right.2 {
+                                Style::default().fg(theme.diff_add_fg).bg(theme.diff_add_bg)
+                            } else {
+                                Style::default().fg(theme.fg_muted)
+                            };
+                            let right_content_style = if right.2 {
+                                Style::default().fg(theme.diff_add_fg).bg(theme.diff_add_bg)
+                            } else {
+                                Style::default()
+                            };
+
+                            lines.push(Line::from(vec![
+                                Span::styled(left.0, left_gutter_style),
+                                Span::styled(left.1, left_content_style),
+                                Span::styled(" │ ", Style::default().fg(theme.border)),
+                                Span::styled(right.0, right_gutter_style),
+                                Span::styled(right.1, right_content_style),
+                            ]));
+
+                            // Map to the original line index for cursor tracking
+                            let orig_idx = if pi < rem_count {
+                                rem_start + pi
+                            } else {
+                                add_start + pi
+                            };
+                            line_ids.push(DiffLineId::Code(file_idx, hi, orig_idx));
+                        }
+                    }
+                    DiffLineKind::Add => {
+                        // Standalone addition (no preceding removal)
+                        let new_ln = diff_line
+                            .new_line
+                            .map(|n| format!("{:>4} ", n))
+                            .unwrap_or_else(|| "     ".to_string());
+                        let empty_left = " ".repeat(half_w.saturating_sub(gutter_w));
+                        let right_content = truncate_or_pad(
+                            &format!("+{}", diff_line.content),
+                            half_w.saturating_sub(gutter_w),
+                        );
+                        lines.push(Line::from(vec![
+                            Span::styled("     ", Style::default().fg(theme.fg_muted)),
+                            Span::styled(empty_left, Style::default()),
+                            Span::styled(" │ ", Style::default().fg(theme.border)),
+                            Span::styled(
+                                new_ln,
+                                Style::default().fg(theme.diff_add_fg).bg(theme.diff_add_bg),
+                            ),
+                            Span::styled(
+                                right_content,
+                                Style::default().fg(theme.diff_add_fg).bg(theme.diff_add_bg),
+                            ),
+                        ]));
+                        line_ids.push(DiffLineId::Code(file_idx, hi, li));
+                        li += 1;
+                    }
+                    DiffLineKind::Header => {
+                        lines.push(Line::styled(
+                            format!("{}{}", BOX_PAD, diff_line.content),
+                            Style::default().fg(theme.diff_hunk),
+                        ));
+                        line_ids.push(DiffLineId::Code(file_idx, hi, li));
+                        li += 1;
+                    }
+                }
+            }
+        }
+
+        lines.push(Line::raw(""));
+        line_ids.push(DiffLineId::Summary);
+    }
+}
+
+/// Truncate string to `max_width` or pad with spaces to fill.
+fn truncate_or_pad(s: &str, max_width: usize) -> String {
+    let w = UnicodeWidthStr::width(s);
+    if w >= max_width {
+        // Truncate: take chars until we reach max_width
+        let mut result = String::new();
+        let mut current_w = 0;
+        for ch in s.chars() {
+            let cw = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0);
+            if current_w + cw > max_width {
+                break;
+            }
+            result.push(ch);
+            current_w += cw;
+        }
+        // Pad remaining if we stopped short due to wide chars
+        while current_w < max_width {
+            result.push(' ');
+            current_w += 1;
+        }
+        result
+    } else {
+        format!("{}{}", s, " ".repeat(max_width - w))
+    }
 }
 
 impl StatefulWidget for DiffView<'_> {
@@ -646,7 +922,18 @@ impl StatefulWidget for DiffView<'_> {
         self.render_file_summary(&mut all_lines, &mut line_ids, state);
         for (fi, file) in self.files.iter().enumerate() {
             let inner_width = width.saturating_sub(2); // account for block borders
-            self.render_file_diff(file, fi, &mut all_lines, &mut line_ids, state, inner_width);
+            if self.side_by_side {
+                self.render_file_diff_side_by_side(
+                    file,
+                    fi,
+                    &mut all_lines,
+                    &mut line_ids,
+                    state,
+                    inner_width,
+                );
+            } else {
+                self.render_file_diff(file, fi, &mut all_lines, &mut line_ids, state, inner_width);
+            }
         }
 
         state.total_lines = all_lines.len();
