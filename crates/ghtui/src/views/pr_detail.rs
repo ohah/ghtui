@@ -287,15 +287,15 @@ fn render_header(
         header_lines.push(Line::from(spans));
     }
 
-    // Branch info
+    // Branch info (base ← head, matching GitHub web)
     header_lines.push(Line::from(vec![
         Span::styled(
-            format!(" {} ", pr.head_ref),
+            format!(" {} ", pr.base_ref),
             Style::default().fg(theme.accent),
         ),
-        Span::styled(" → ", Style::default().fg(theme.fg_dim)),
+        Span::styled(" ← ", Style::default().fg(theme.fg_dim)),
         Span::styled(
-            format!("{} ", pr.base_ref),
+            format!("{} ", pr.head_ref),
             Style::default().fg(theme.accent),
         ),
     ]));
