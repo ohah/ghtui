@@ -572,6 +572,13 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        // PR diff toggle side-by-side mode
+        Message::PrDiffToggleSideBySide => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.diff_side_by_side = !detail.diff_side_by_side;
+            }
+            vec![]
+        }
         // PR diff mark viewed (local only)
         Message::PrDiffMarkViewed => {
             if let Some(ref mut detail) = state.pr_detail {
