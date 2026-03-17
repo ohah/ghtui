@@ -1,5 +1,6 @@
 use ghtui_core::router::Route;
 use ghtui_core::state::*;
+use ghtui_core::types::{IssueFilters, IssueState};
 use ghtui_core::{AppState, Command, Message};
 
 pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
@@ -80,9 +81,9 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
 
         // Issues
-        Message::IssueListLoaded(issues, pagination) => {
+        Message::IssueListLoaded(issues, pagination, filters) => {
             state.loading.remove("issue_list");
-            state.issue_list = Some(IssueListState::new(issues, pagination));
+            state.issue_list = Some(IssueListState::with_filters(issues, pagination, filters));
             vec![]
         }
         Message::IssueDetailLoaded(detail) => {
@@ -108,6 +109,51 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.input_mode = InputMode::Normal;
             state.modal = None;
             refresh_current_view(state)
+        }
+        Message::IssueToggleStateFilter => {
+            if let Some(ref repo) = state.current_repo {
+                let filters = if let Some(ref mut list) = state.issue_list {
+                    list.toggle_state_filter();
+                    list.filters.clone()
+                } else {
+                    IssueFilters {
+                        state: Some(IssueState::Closed),
+                        ..Default::default()
+                    }
+                };
+                state.loading.insert("issue_list".to_string());
+                vec![Command::FetchIssueList(repo.clone(), filters, 1)]
+            } else {
+                vec![]
+            }
+        }
+        Message::IssueNextPage => {
+            if let (Some(repo), Some(list)) = (&state.current_repo, &state.issue_list) {
+                if list.pagination.has_next {
+                    let next_page = list.pagination.page + 1;
+                    let filters = list.filters.clone();
+                    state.loading.insert("issue_list".to_string());
+                    vec![Command::FetchIssueList(repo.clone(), filters, next_page)]
+                } else {
+                    vec![]
+                }
+            } else {
+                vec![]
+            }
+        }
+        Message::IssuePrevPage => {
+            if let (Some(repo), Some(list)) = (&state.current_repo, &state.issue_list) {
+                if list.pagination.page > 1 {
+                    let prev_page = list.pagination.page - 1;
+                    let filters = list.filters.clone();
+                    state.loading.insert("issue_list".to_string());
+                    vec![Command::FetchIssueList(repo.clone(), filters, prev_page)]
+                } else {
+                    vec![]
+                }
+            } else {
+                vec![]
+            }
         }
 
         // Actions
@@ -289,13 +335,18 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
 
         // Scroll — context-aware
         Message::ScrollUp => {
-            // Action Detail with log: scroll log
             if matches!(state.route, Route::ActionDetail { .. }) {
                 if let Some(ref mut detail) = state.action_detail {
                     if detail.log.is_some() {
                         detail.log_scroll = detail.log_scroll.saturating_sub(3);
                         return vec![];
                     }
+                }
+            }
+            if matches!(state.route, Route::IssueDetail { .. }) {
+                if let Some(ref mut detail) = state.issue_detail {
+                    detail.scroll = detail.scroll.saturating_sub(3);
+                    return vec![];
                 }
             }
             update(state, Message::ListSelect(usize::MAX))
@@ -307,6 +358,12 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         detail.log_scroll += 3;
                         return vec![];
                     }
+                }
+            }
+            if matches!(state.route, Route::IssueDetail { .. }) {
+                if let Some(ref mut detail) = state.issue_detail {
+                    detail.scroll += 3;
+                    return vec![];
                 }
             }
             update(state, Message::ListSelect(1))
@@ -420,13 +477,63 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::ModalOpen(kind) => {
+            state.input_buffer.clear();
             state.modal = Some(kind);
             state.input_mode = InputMode::Insert;
             vec![]
         }
+        Message::ModalSubmit => {
+            let cmds = match state.modal {
+                Some(ghtui_core::ModalKind::AddComment) => {
+                    let body = state.input_buffer.clone();
+                    if body.trim().is_empty() {
+                        vec![]
+                    } else if let Some(ref repo) = state.current_repo {
+                        match &state.route {
+                            Route::IssueDetail { number, .. } => {
+                                vec![Command::AddComment(repo.clone(), *number, body)]
+                            }
+                            Route::PrDetail { number, .. } => {
+                                vec![Command::AddComment(repo.clone(), *number, body)]
+                            }
+                            _ => vec![],
+                        }
+                    } else {
+                        vec![]
+                    }
+                }
+                Some(ghtui_core::ModalKind::CreateIssue) => {
+                    let input = state.input_buffer.clone();
+                    let mut lines = input.splitn(2, '\n');
+                    let title = lines.next().unwrap_or("").trim().to_string();
+                    let body = lines.next().unwrap_or("").trim().to_string();
+                    if title.is_empty() {
+                        state.push_toast("Title cannot be empty".to_string(), ToastLevel::Warning);
+                        return vec![];
+                    }
+                    if let Some(ref repo) = state.current_repo {
+                        let input = ghtui_core::types::CreateIssueInput {
+                            title,
+                            body,
+                            labels: vec![],
+                            assignees: vec![],
+                        };
+                        vec![Command::CreateIssue(repo.clone(), input)]
+                    } else {
+                        vec![]
+                    }
+                }
+                _ => vec![],
+            };
+            state.modal = None;
+            state.input_mode = InputMode::Normal;
+            state.input_buffer.clear();
+            cmds
+        }
         Message::ModalClose => {
             state.modal = None;
             state.input_mode = InputMode::Normal;
+            state.input_buffer.clear();
             vec![]
         }
         Message::Tick => {

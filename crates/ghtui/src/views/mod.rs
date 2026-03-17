@@ -3,6 +3,7 @@ pub mod action_detail;
 pub mod actions_list;
 pub mod dashboard;
 pub mod help;
+pub mod input_modal;
 pub mod insights;
 pub mod issue_detail;
 pub mod issue_list;

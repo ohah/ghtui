@@ -72,6 +72,16 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
         match modal {
             ModalKind::Help => views::help::render(frame, size),
             ModalKind::AccountSwitcher => views::account_switcher::render(frame, state, size),
+            ModalKind::AddComment => {
+                views::input_modal::render(frame, state, size, "Add Comment", "Enter your comment:")
+            }
+            ModalKind::CreateIssue => views::input_modal::render(
+                frame,
+                state,
+                size,
+                "Create Issue",
+                "First line = Title, rest = Body",
+            ),
             _ => {}
         }
     }

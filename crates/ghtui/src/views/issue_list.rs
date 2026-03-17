@@ -1,7 +1,7 @@
 use ghtui_core::AppState;
 use ratatui::Frame;
-use ratatui::layout::Rect;
-use ratatui::style::Style;
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
+use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph};
 
@@ -39,6 +39,54 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     };
 
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Min(0),
+            Constraint::Length(1),
+        ])
+        .split(area);
+
+    // Filter bar
+    let filter_state = list_state
+        .filters
+        .state
+        .map(|s| format!("{}", s))
+        .unwrap_or_else(|| "open".to_string());
+    let is_open = filter_state == "open";
+
+    let filter_line = Line::from(vec![
+        Span::styled(" Filter: ", Style::default().fg(theme.fg_muted)),
+        Span::styled(
+            if is_open { " ● Open " } else { "   Open " },
+            if is_open {
+                Style::default()
+                    .fg(theme.success)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme.fg_muted)
+            },
+        ),
+        Span::styled(" / ", Style::default().fg(theme.fg_dim)),
+        Span::styled(
+            if !is_open {
+                " ● Closed "
+            } else {
+                "   Closed "
+            },
+            if !is_open {
+                Style::default().fg(theme.done).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme.fg_muted)
+            },
+        ),
+        Span::styled("  (s:toggle)", Style::default().fg(theme.fg_dim)),
+    ]);
+    let filter_bar = Paragraph::new(filter_line).style(Style::default().bg(theme.bg_subtle));
+    frame.render_widget(filter_bar, chunks[0]);
+
+    // Issue list
     let items: Vec<ListItem> = list_state
         .items
         .iter()
@@ -61,21 +109,42 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 theme.text()
             };
 
-            let labels: Vec<Span> = issue
-                .labels
-                .iter()
-                .map(|l| Span::styled(format!(" {} ", l.name), Style::default().fg(theme.accent)))
-                .collect();
-
             let mut spans = vec![
                 state_icon,
-                Span::styled(&issue.title, title_style),
+                Span::styled(issue.title.clone(), title_style),
                 Span::styled(
                     format!(" #{}", issue.number),
                     Style::default().fg(theme.fg_muted),
                 ),
             ];
-            spans.extend(labels);
+
+            // Labels
+            for label in &issue.labels {
+                spans.push(Span::styled(
+                    format!(" {} ", label.name),
+                    Style::default().fg(theme.accent),
+                ));
+            }
+
+            // Comment count
+            if let Some(count) = issue.comments {
+                if count > 0 {
+                    spans.push(Span::styled(
+                        format!("  💬{}", count),
+                        Style::default().fg(theme.fg_dim),
+                    ));
+                }
+            }
+
+            // Assignees
+            if !issue.assignees.is_empty() {
+                let assignees: Vec<String> =
+                    issue.assignees.iter().map(|a| a.login.clone()).collect();
+                spans.push(Span::styled(
+                    format!("  → {}", assignees.join(", ")),
+                    Style::default().fg(theme.fg_dim),
+                ));
+            }
 
             ListItem::new(Line::from(spans))
         })
@@ -94,5 +163,27 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
     let mut list_widget_state = ListState::default();
     list_widget_state.select(Some(list_state.selected));
-    frame.render_stateful_widget(list, area, &mut list_widget_state);
+    frame.render_stateful_widget(list, chunks[1], &mut list_widget_state);
+
+    // Pagination footer
+    let page = list_state.pagination.page;
+    let has_next = list_state.pagination.has_next;
+    let page_info = format!(" Page {} ", page);
+    let nav_hint = match (page > 1, has_next) {
+        (true, true) => "p:Prev n:Next",
+        (true, false) => "p:Prev",
+        (false, true) => "n:Next",
+        (false, false) => "",
+    };
+
+    let footer_line = Line::from(vec![
+        Span::styled(page_info, Style::default().fg(theme.fg_muted)),
+        Span::styled(format!(" {} ", nav_hint), Style::default().fg(theme.fg_dim)),
+        Span::styled(
+            " c:Create  s:Filter  Enter:Open ",
+            Style::default().fg(theme.fg_dim),
+        ),
+    ]);
+    let footer = Paragraph::new(footer_line).style(Style::default().bg(theme.bg_subtle));
+    frame.render_widget(footer, chunks[2]);
 }

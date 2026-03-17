@@ -21,7 +21,7 @@ fn handle_insert_mode(key: KeyEvent) -> Option<Message> {
         KeyCode::Esc => Some(Message::ModalClose),
         KeyCode::Enter => {
             if key.modifiers.contains(KeyModifiers::CONTROL) {
-                Some(Message::ModalClose)
+                Some(Message::ModalSubmit)
             } else {
                 Some(Message::InputChanged("\n".to_string()))
             }
@@ -88,6 +88,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
     // Route-specific keys
     match &state.route {
         Route::PrDetail { .. } => handle_pr_detail_keys(key),
+        Route::IssueList { .. } => handle_issue_list_keys(key),
         Route::IssueDetail { .. } => handle_issue_detail_keys(key),
         Route::ActionDetail { .. } | Route::JobLog { .. } => handle_action_detail_keys(key),
         Route::Security { .. } => handle_settings_keys(key),
@@ -170,11 +171,27 @@ fn handle_pr_detail_keys(key: KeyEvent) -> Option<Message> {
     }
 }
 
+fn handle_issue_list_keys(key: KeyEvent) -> Option<Message> {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Enter => Some(Message::ListSelect(0)),
+        KeyCode::Char('r') => Some(Message::Tick), // refresh
+        KeyCode::Char('s') => Some(Message::IssueToggleStateFilter), // toggle open/closed
+        KeyCode::Char('n') => Some(Message::IssueNextPage),
+        KeyCode::Char('p') => Some(Message::IssuePrevPage),
+        KeyCode::Char('c') => Some(Message::ModalOpen(ModalKind::CreateIssue)),
+        _ => None,
+    }
+}
+
 fn handle_issue_detail_keys(key: KeyEvent) -> Option<Message> {
     match key.code {
         KeyCode::Char('c') => Some(Message::ModalOpen(ModalKind::AddComment)),
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ScrollDown),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ScrollUp),
+        KeyCode::PageDown => Some(Message::ScrollDown),
+        KeyCode::PageUp => Some(Message::ScrollUp),
         _ => None,
     }
 }
