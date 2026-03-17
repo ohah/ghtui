@@ -3,6 +3,7 @@ use ghtui_core::message::ModalKind;
 use ghtui_core::router::Route;
 use ghtui_core::state::InputMode;
 use ghtui_core::state::issue::InlineEditTarget;
+use ghtui_core::state::pr::PrInlineEditTarget;
 use ghtui_core::{AppState, Message};
 
 pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<Message> {
@@ -76,11 +77,14 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
     }
 
     // Esc behavior: in detail views go back, in list views do nothing
-    // (but IssueDetail handles Esc in its own handler when editing)
+    // (but IssueDetail/PrDetail handles Esc in its own handler when editing)
     if key.code == KeyCode::Esc {
-        // If editing inline in IssueDetail, let the route handler deal with it
         let issue_editing = state.issue_detail.as_ref().is_some_and(|d| d.is_editing());
-        if matches!(state.route, Route::IssueDetail { .. }) && issue_editing {
+        let pr_editing = state.pr_detail.as_ref().is_some_and(|d| d.is_editing());
+        let pr_picker = state.pr_detail.as_ref().is_some_and(|d| d.has_picker());
+        if (matches!(state.route, Route::IssueDetail { .. }) && issue_editing)
+            || (matches!(state.route, Route::PrDetail { .. }) && (pr_editing || pr_picker))
+        {
             // Fall through to route-specific handler
         } else {
             return match &state.route {
@@ -95,7 +99,8 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
 
     // Route-specific keys
     match &state.route {
-        Route::PrDetail { .. } => handle_pr_detail_keys(key),
+        Route::PrList { .. } => handle_pr_list_keys(key, state),
+        Route::PrDetail { .. } => handle_pr_detail_keys(key, state),
         Route::IssueList { .. } => handle_issue_list_keys(key, state),
         Route::IssueDetail { .. } => handle_issue_detail_keys(key, state),
         Route::ActionDetail { .. } | Route::JobLog { .. } => handle_action_detail_keys(key),
@@ -167,14 +172,125 @@ fn handle_action_detail_keys(key: KeyEvent) -> Option<Message> {
     }
 }
 
-fn handle_pr_detail_keys(key: KeyEvent) -> Option<Message> {
+fn handle_pr_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let search_mode = state.pr_list.as_ref().is_some_and(|l| l.search_mode);
+
+    if search_mode {
+        return match key.code {
+            KeyCode::Esc => Some(Message::PrSearchCancel),
+            KeyCode::Enter => Some(Message::PrSearchSubmit),
+            KeyCode::Char(c) => Some(Message::PrSearchInput(c.to_string())),
+            KeyCode::Backspace => Some(Message::PrSearchInput("\x08".to_string())),
+            _ => None,
+        };
+    }
+
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Enter => Some(Message::ListSelect(0)),
+        KeyCode::Char('r') => Some(Message::Tick),
+        KeyCode::Char('s') => Some(Message::PrToggleStateFilter),
+        KeyCode::Char('n') => Some(Message::PrNextPage),
+        KeyCode::Char('p') => Some(Message::PrPrevPage),
+        KeyCode::Char('c') => Some(Message::ModalOpen(ModalKind::CreatePr)),
+        KeyCode::Char('/') => Some(Message::PrSearchStart),
+        KeyCode::Char('o') => Some(Message::PrSortCycle),
+        KeyCode::Char('F') => Some(Message::PrFilterClear),
+        _ => None,
+    }
+}
+
+fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let is_editing = state.pr_detail.as_ref().is_some_and(|d| d.is_editing());
+
+    if is_editing {
+        let is_title_edit = state
+            .pr_detail
+            .as_ref()
+            .is_some_and(|d| matches!(d.edit_target, Some(PrInlineEditTarget::PrTitle)));
+
+        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        let alt = key.modifiers.contains(KeyModifiers::ALT);
+
+        return match key.code {
+            KeyCode::Esc => Some(Message::PrEditCancel),
+            KeyCode::Enter if ctrl || is_title_edit => Some(Message::PrEditSubmit),
+            KeyCode::Enter => Some(Message::PrEditNewline),
+            KeyCode::Char('z') if ctrl => Some(Message::PrEditUndo),
+            KeyCode::Char('y') if ctrl => Some(Message::PrEditRedo),
+            KeyCode::Char(c) => Some(Message::PrEditChar(c)),
+            KeyCode::Backspace => Some(Message::PrEditBackspace),
+            KeyCode::Delete => Some(Message::PrEditDelete),
+            KeyCode::Tab => Some(Message::PrEditTab),
+            KeyCode::Left if ctrl || alt => Some(Message::PrEditWordLeft),
+            KeyCode::Right if ctrl || alt => Some(Message::PrEditWordRight),
+            KeyCode::Left => Some(Message::PrEditCursorLeft),
+            KeyCode::Right => Some(Message::PrEditCursorRight),
+            KeyCode::Up => Some(Message::PrEditCursorUp),
+            KeyCode::Down => Some(Message::PrEditCursorDown),
+            KeyCode::Home => Some(Message::PrEditHome),
+            KeyCode::End => Some(Message::PrEditEnd),
+            KeyCode::PageUp => Some(Message::PrEditPageUp),
+            KeyCode::PageDown => Some(Message::PrEditPageDown),
+            _ => None,
+        };
+    }
+
+    // Picker mode
+    let has_picker = state.pr_detail.as_ref().is_some_and(|d| d.has_picker());
+
+    if has_picker {
+        if let Some(ref detail) = state.pr_detail {
+            if detail.label_picker.is_some() {
+                return match key.code {
+                    KeyCode::Esc => Some(Message::PrLabelCancel),
+                    KeyCode::Enter | KeyCode::Char(' ') => detail
+                        .label_picker
+                        .as_ref()
+                        .map(|p| Message::PrLabelSelect(p.cursor)),
+                    KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+                    KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+                    KeyCode::Char('s') => Some(Message::PrLabelApply),
+                    _ => None,
+                };
+            }
+            if detail.assignee_picker.is_some() {
+                return match key.code {
+                    KeyCode::Esc => Some(Message::PrAssigneeCancel),
+                    KeyCode::Enter | KeyCode::Char(' ') => detail
+                        .assignee_picker
+                        .as_ref()
+                        .map(|p| Message::PrAssigneeSelect(p.cursor)),
+                    KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+                    KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+                    KeyCode::Char('s') => Some(Message::PrAssigneeApply),
+                    _ => None,
+                };
+            }
+        }
+        return None;
+    }
+
+    // Normal mode
     match key.code {
         KeyCode::Tab => Some(Message::TabChanged(1)),
         KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
-        KeyCode::Char('c') => Some(Message::ModalOpen(ModalKind::AddComment)),
-        KeyCode::Char('m') => Some(Message::ModalOpen(ModalKind::MergePr)),
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Char('e') => Some(Message::PrStartEditBody),
+        KeyCode::Char('c') => Some(Message::PrStartComment),
+        KeyCode::Char('r') => Some(Message::PrStartReply),
+        KeyCode::Char('l') => Some(Message::PrLabelToggle),
+        KeyCode::Char('a') => Some(Message::PrAssigneeToggle),
+        KeyCode::Char('m') => Some(Message::ModalOpen(ModalKind::MergePr)),
+        KeyCode::Char('d') => Some(Message::PrDeleteComment),
+        KeyCode::Char('x') => Some(Message::PrToggleState),
+        KeyCode::Char('o') => Some(Message::PrOpenInBrowser),
+        KeyCode::Char('+') => Some(Message::PrAddReaction("+1".to_string())),
+        KeyCode::Char('-') => Some(Message::PrAddReaction("-1".to_string())),
+        KeyCode::PageDown => Some(Message::ScrollDown),
+        KeyCode::PageUp => Some(Message::ScrollUp),
         _ => None,
     }
 }

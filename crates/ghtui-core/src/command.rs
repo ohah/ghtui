@@ -19,6 +19,13 @@ pub enum Command {
     ReopenPr(RepoId, u64),
     CreatePr(RepoId, CreatePrInput),
     SubmitReview(RepoId, u64, ReviewInput),
+    SearchPulls(RepoId, String),
+    UpdatePr(RepoId, u64, Option<String>, Option<String>), // repo, number, title, body
+    SetPrLabels(RepoId, u64, Vec<String>),
+    SetPrAssignees(RepoId, u64, Vec<String>),
+    AddPrComment(RepoId, u64, String),
+    UpdatePrComment(RepoId, u64, u64, String),
+    DeletePrComment(RepoId, u64),
 
     // Issue
     FetchIssueList(RepoId, IssueFilters, u32),

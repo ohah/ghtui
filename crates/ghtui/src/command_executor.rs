@@ -1,5 +1,5 @@
 use ghtui_api::GithubClient;
-use ghtui_core::types::IssueFilters;
+use ghtui_core::types::{IssueFilters, PrFilters};
 use ghtui_core::{Command, Message};
 
 pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
@@ -17,7 +17,7 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
         // PR
         Command::FetchPrList(repo, filters, page) => {
             match client.list_pulls(&repo, &filters, page, 30).await {
-                Ok((prs, pagination)) => Message::PrListLoaded(prs, pagination),
+                Ok((prs, pagination)) => Message::PrListLoaded(prs, pagination, filters),
                 Err(e) => Message::Error(e.into()),
             }
         }
@@ -50,6 +50,49 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
         Command::SubmitReview(repo, number, input) => {
             match client.submit_review(&repo, number, &input).await {
                 Ok(()) => Message::ReviewSubmitted,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::SearchPulls(repo, query) => match client.search_pulls(&repo, &query).await {
+            Ok((prs, pagination)) => Message::PrListLoaded(prs, pagination, PrFilters::default()),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::UpdatePr(repo, number, title, body) => {
+            match client
+                .update_pull(&repo, number, title.as_deref(), body.as_deref())
+                .await
+            {
+                Ok(()) => Message::PrUpdated(number),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::SetPrLabels(repo, number, labels) => {
+            match client.set_issue_labels(&repo, number, &labels).await {
+                Ok(()) => Message::PrUpdated(number),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::SetPrAssignees(repo, number, assignees) => {
+            match client.set_issue_assignees(&repo, number, &assignees).await {
+                Ok(()) => Message::PrUpdated(number),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::AddPrComment(repo, number, body) => {
+            match client.add_issue_comment(&repo, number, &body).await {
+                Ok(()) => Message::CommentAdded,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::UpdatePrComment(repo, _pr_number, comment_id, body) => {
+            match client.update_comment(&repo, comment_id, &body).await {
+                Ok(()) => Message::CommentUpdated,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::DeletePrComment(repo, comment_id) => {
+            match client.delete_comment(&repo, comment_id).await {
+                Ok(()) => Message::CommentDeleted,
                 Err(e) => Message::Error(e.into()),
             }
         }
