@@ -1,5 +1,7 @@
 use ghtui_core::AppState;
-use ghtui_core::state::issue::{InlineEditTarget, LabelPickerState};
+use ghtui_core::state::issue::{
+    AssigneePickerState, InlineEditTarget, IssueSection, LabelPickerState,
+};
 use ghtui_widgets::render_markdown;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
@@ -79,6 +81,10 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     // === Label picker overlay ===
     if let Some(ref picker) = detail_state.label_picker {
         render_label_picker(frame, picker, theme, area);
+        return;
+    }
+    if let Some(ref picker) = detail_state.assignee_picker {
+        render_assignee_picker(frame, picker, theme, area);
         return;
     }
 
@@ -163,50 +169,28 @@ fn render_header(
             Style::default().fg(theme.fg_dim),
         ));
     } else {
-        header_lines.push(Line::from(vec![
-            Span::styled(format!(" {}", issue.title), theme.text_bold()),
-            Span::styled("  (T:Edit title)", Style::default().fg(theme.fg_dim)),
-        ]));
-    }
-
-    // Labels
-    if !issue.labels.is_empty() {
-        let mut label_spans: Vec<Span> = vec![Span::styled(
-            " Labels: ",
-            Style::default().fg(theme.fg_muted),
+        let title_focused = detail_state.focus == IssueSection::Title && !detail_state.is_editing();
+        let marker = if title_focused { "▸" } else { " " };
+        let mut spans = vec![Span::styled(
+            format!("{}{}", marker, issue.title),
+            theme.text_bold(),
         )];
-        for label in &issue.labels {
-            label_spans.push(Span::styled(
-                format!(" {} ", label.name),
-                Style::default().fg(theme.accent),
+        if title_focused {
+            spans.push(Span::styled(
+                "  (e:Edit)",
+                Style::default().fg(theme.fg_dim),
             ));
-            label_spans.push(Span::raw(" "));
         }
-        header_lines.push(Line::from(label_spans));
+        header_lines.push(Line::from(spans));
     }
 
-    // Assignees + Milestone
-    let mut meta_spans: Vec<Span> = Vec::new();
-    if !issue.assignees.is_empty() {
-        meta_spans.push(Span::styled(
-            " Assignees: ",
-            Style::default().fg(theme.fg_muted),
-        ));
-        let names: Vec<String> = issue.assignees.iter().map(|a| a.login.clone()).collect();
-        meta_spans.push(Span::styled(names.join(", "), theme.text()));
-    }
+    // Remove labels/assignees from header (moved to body section)
+    // Only show milestone in header
     if let Some(ref milestone) = issue.milestone {
-        if !meta_spans.is_empty() {
-            meta_spans.push(Span::raw("  "));
-        }
-        meta_spans.push(Span::styled(
-            " Milestone: ",
-            Style::default().fg(theme.fg_muted),
-        ));
-        meta_spans.push(Span::styled(milestone.title.clone(), theme.text()));
-    }
-    if !meta_spans.is_empty() {
-        header_lines.push(Line::from(meta_spans));
+        header_lines.push(Line::from(vec![
+            Span::styled(" Milestone: ", Style::default().fg(theme.fg_muted)),
+            Span::styled(milestone.title.clone(), theme.text()),
+        ]));
     }
 
     let header = Paragraph::new(header_lines)
@@ -227,21 +211,86 @@ fn render_body_comments(
 ) {
     let detail_state = state.issue_detail.as_ref().unwrap();
     let issue = &detail_state.detail.issue;
-    let selected_comment = detail_state.selected_comment;
+    let focus = &detail_state.focus;
     let is_editing = detail_state.is_editing();
 
     let mut lines: Vec<Line<'static>> = Vec::new();
 
-    // Issue body
-    let body_selected = selected_comment.is_none();
-    if body_selected && !is_editing {
-        lines.push(Line::styled(
-            "▸ Issue Body  (e:Edit body  c:Comment)".to_string(),
+    // Helper for focus indicator
+    let focus_marker = |section: &IssueSection| -> &'static str {
+        if !is_editing && focus == section {
+            "▸ "
+        } else {
+            "  "
+        }
+    };
+    let focus_style = |section: &IssueSection| -> Style {
+        if !is_editing && focus == section {
             Style::default()
                 .fg(theme.accent)
-                .add_modifier(Modifier::BOLD),
-        ));
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(theme.fg_muted)
+        }
+    };
+
+    // --- Labels section ---
+    let labels_focused = *focus == IssueSection::Labels;
+    if !issue.labels.is_empty() || labels_focused {
+        let mut spans = vec![Span::styled(
+            format!("{}Labels: ", focus_marker(&IssueSection::Labels)),
+            focus_style(&IssueSection::Labels),
+        )];
+        for label in &issue.labels {
+            spans.push(Span::styled(
+                format!(" {} ", label.name),
+                Style::default().fg(theme.accent),
+            ));
+        }
+        if labels_focused && !is_editing {
+            spans.push(Span::styled(
+                "  (l:Edit)",
+                Style::default().fg(theme.fg_dim),
+            ));
+        }
+        lines.push(Line::from(spans));
     }
+
+    // --- Assignees section ---
+    let assignees_focused = *focus == IssueSection::Assignees;
+    if !issue.assignees.is_empty() || assignees_focused {
+        let mut spans = vec![Span::styled(
+            format!("{}Assignees: ", focus_marker(&IssueSection::Assignees)),
+            focus_style(&IssueSection::Assignees),
+        )];
+        for assignee in &issue.assignees {
+            spans.push(Span::styled(format!("@{} ", assignee.login), theme.text()));
+        }
+        if assignees_focused && !is_editing {
+            spans.push(Span::styled(
+                "  (a:Edit)",
+                Style::default().fg(theme.fg_dim),
+            ));
+        }
+        lines.push(Line::from(spans));
+    }
+
+    lines.push(Line::styled("─".repeat(50), theme.border_style()));
+
+    // --- Body section ---
+    let body_focused = *focus == IssueSection::Body;
+    lines.push(Line::styled(
+        format!(
+            "{}Body{}",
+            focus_marker(&IssueSection::Body),
+            if body_focused && !is_editing {
+                "  (e:Edit)"
+            } else {
+                ""
+            }
+        ),
+        focus_style(&IssueSection::Body),
+    ));
 
     if let Some(ref body) = issue.body {
         if !body.is_empty() {
@@ -252,12 +301,12 @@ fn render_body_comments(
     lines.push(Line::raw(""));
     lines.push(Line::styled("─".repeat(50), theme.border_style()));
 
-    // Comments
+    // --- Comments ---
     let comment_count = detail_state.detail.comments.len();
     lines.push(Line::raw(""));
     lines.push(Line::styled(
         format!(
-            "  Comments ({})  j/k:Select  c:New  e:Edit  r:Reply",
+            "  Comments ({})  c:New  x:Close/Reopen  o:Browser",
             comment_count
         ),
         Style::default()
@@ -266,18 +315,15 @@ fn render_body_comments(
     ));
 
     for (i, comment) in detail_state.detail.comments.iter().enumerate() {
-        let is_selected = selected_comment == Some(i);
-        let marker = if is_selected && !is_editing {
-            "▸ "
-        } else {
-            "  "
-        };
+        let section = IssueSection::Comment(i);
+        let is_focused = *focus == section;
+        let marker = focus_marker(&section);
 
         lines.push(Line::raw(""));
         let mut hdr = vec![
             Span::styled(
                 marker.to_string(),
-                if is_selected {
+                if is_focused {
                     Style::default().fg(theme.accent)
                 } else {
                     Style::default()
@@ -294,9 +340,9 @@ fn render_body_comments(
                 Style::default().fg(theme.fg_muted),
             ),
         ];
-        if is_selected && !is_editing {
+        if is_focused && !is_editing {
             hdr.push(Span::styled(
-                "  (e:Edit  r:Reply)".to_string(),
+                format!("  ({})", section.action_hint()),
                 Style::default().fg(theme.fg_dim),
             ));
         }
@@ -399,6 +445,70 @@ fn render_label_picker(
 
     let title = format!(
         " Labels ({}/{}) — Space:Toggle  s:Save  Esc:Cancel ",
+        picker.selected_names.len(),
+        picker.available.len()
+    );
+
+    let list = List::new(items).block(
+        Block::default()
+            .title(title)
+            .borders(Borders::ALL)
+            .style(Style::default().bg(Color::Black)),
+    );
+    frame.render_widget(list, popup_area);
+}
+
+fn render_assignee_picker(
+    frame: &mut Frame,
+    picker: &AssigneePickerState,
+    theme: &ghtui_core::theme::Theme,
+    area: Rect,
+) {
+    let height = (picker.available.len() as u16 + 4).min(area.height.saturating_sub(4));
+    let width = 45.min(area.width.saturating_sub(4));
+    let x = (area.width.saturating_sub(width)) / 2 + area.x;
+    let y = (area.height.saturating_sub(height)) / 2 + area.y;
+    let popup_area = Rect::new(x, y, width, height);
+
+    frame.render_widget(Clear, popup_area);
+
+    let items: Vec<ListItem> = picker
+        .available
+        .iter()
+        .enumerate()
+        .map(|(i, login)| {
+            let is_cursor = i == picker.cursor;
+            let is_selected = picker.selected_names.contains(login);
+            let check = if is_selected { "[x] " } else { "[ ] " };
+            let cursor = if is_cursor { "▸ " } else { "  " };
+
+            let style = if is_cursor {
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD)
+            } else if is_selected {
+                Style::default().fg(theme.success)
+            } else {
+                Style::default().fg(Color::Gray)
+            };
+
+            ListItem::new(Line::from(vec![
+                Span::styled(cursor.to_string(), style),
+                Span::styled(
+                    check.to_string(),
+                    if is_selected {
+                        Style::default().fg(theme.success)
+                    } else {
+                        Style::default().fg(Color::DarkGray)
+                    },
+                ),
+                Span::styled(format!("@{}", login), style),
+            ]))
+        })
+        .collect();
+
+    let title = format!(
+        " Assignees ({}/{}) — Space:Toggle  s:Save  Esc:Cancel ",
         picker.selected_names.len(),
         picker.available.len()
     );

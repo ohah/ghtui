@@ -93,10 +93,28 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 Err(e) => Message::Error(e.into()),
             }
         }
+        Command::SetIssueAssignees(repo, number, assignees) => {
+            match client.set_issue_assignees(&repo, number, &assignees).await {
+                Ok(()) => Message::IssueUpdated(number),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
         Command::FetchRepoLabels(repo) => match client.list_repo_labels(&repo).await {
             Ok(labels) => Message::IssueLabelsLoaded(labels),
             Err(e) => Message::Error(e.into()),
         },
+        Command::FetchCollaboratorsForPicker(repo) => {
+            match client.list_collaborators_logins(&repo).await {
+                Ok(logins) => Message::IssueCollaboratorsLoaded(logins),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::DeleteComment(repo, comment_id) => {
+            match client.delete_comment(&repo, comment_id).await {
+                Ok(()) => Message::CommentDeleted,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
         Command::AddComment(repo, number, body) => {
             match client.add_issue_comment(&repo, number, &body).await {
                 Ok(()) => Message::CommentAdded,

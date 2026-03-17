@@ -287,6 +287,118 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
 
+        // Assignee picker
+        Message::IssueAssigneeToggle => {
+            if let Some(ref repo) = state.current_repo {
+                state.loading.insert("collaborators_picker".to_string());
+                vec![Command::FetchCollaboratorsForPicker(repo.clone())]
+            } else {
+                vec![]
+            }
+        }
+        Message::IssueCollaboratorsLoaded(logins) => {
+            state.loading.remove("collaborators_picker");
+            if let Some(ref mut detail) = state.issue_detail {
+                let current: Vec<String> = detail
+                    .detail
+                    .issue
+                    .assignees
+                    .iter()
+                    .map(|a| a.login.clone())
+                    .collect();
+                detail.assignee_picker = Some(ghtui_core::state::issue::AssigneePickerState {
+                    available: logins,
+                    selected_names: current,
+                    cursor: 0,
+                });
+            }
+            vec![]
+        }
+        Message::IssueAssigneeSelect(idx) => {
+            if let Some(ref mut detail) = state.issue_detail {
+                if let Some(ref mut picker) = detail.assignee_picker {
+                    if let Some(login) = picker.available.get(idx).cloned() {
+                        if picker.selected_names.contains(&login) {
+                            picker.selected_names.retain(|n| n != &login);
+                        } else {
+                            picker.selected_names.push(login);
+                        }
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::IssueAssigneeApply => {
+            if let Some(ref detail) = state.issue_detail {
+                if let (Some(picker), Some(repo)) = (&detail.assignee_picker, &state.current_repo) {
+                    let number = detail.detail.issue.number;
+                    let assignees = picker.selected_names.clone();
+                    let cmds = vec![Command::SetIssueAssignees(repo.clone(), number, assignees)];
+                    if let Some(ref mut detail) = state.issue_detail {
+                        detail.assignee_picker = None;
+                    }
+                    return cmds;
+                }
+            }
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.assignee_picker = None;
+            }
+            vec![]
+        }
+        Message::IssueAssigneeCancel => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.assignee_picker = None;
+            }
+            vec![]
+        }
+
+        // Comment delete
+        Message::IssueDeleteComment => {
+            if let Some(ref detail) = state.issue_detail {
+                if let Some(idx) = detail.selected_comment() {
+                    if let Some(comment) = detail.detail.comments.get(idx) {
+                        if let Some(ref repo) = state.current_repo {
+                            return vec![Command::DeleteComment(repo.clone(), comment.id)];
+                        }
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::CommentDeleted => {
+            state.push_toast("Comment deleted".to_string(), ToastLevel::Success);
+            refresh_current_view(state)
+        }
+
+        // Close/Reopen
+        Message::IssueToggleState => {
+            if let Some(ref detail) = state.issue_detail {
+                if let Some(ref repo) = state.current_repo {
+                    let number = detail.detail.issue.number;
+                    return match detail.detail.issue.state {
+                        IssueState::Open => vec![Command::CloseIssue(repo.clone(), number)],
+                        IssueState::Closed => vec![Command::ReopenIssue(repo.clone(), number)],
+                    };
+                }
+            }
+            vec![]
+        }
+
+        // Open in browser
+        Message::IssueOpenInBrowser => {
+            if let Some(ref detail) = state.issue_detail {
+                if let Some(ref repo) = state.current_repo {
+                    let url = format!(
+                        "https://github.com/{}/issues/{}",
+                        repo.full_name(),
+                        detail.detail.issue.number
+                    );
+                    return vec![Command::OpenInBrowser(url)];
+                }
+            }
+            vec![]
+        }
+
         // Inline editing
         Message::IssueStartEditTitle => {
             if let Some(ref mut detail) = state.issue_detail {
@@ -296,9 +408,12 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::IssueStartEditBody => {
             if let Some(ref mut detail) = state.issue_detail {
-                match detail.selected_comment {
-                    None => detail.start_edit_body(),
-                    Some(idx) => detail.start_edit_comment(idx),
+                use ghtui_core::state::issue::IssueSection;
+                match &detail.focus {
+                    IssueSection::Title => detail.start_edit_title(),
+                    IssueSection::Body => detail.start_edit_body(),
+                    IssueSection::Comment(idx) => detail.start_edit_comment(*idx),
+                    _ => {}
                 }
             }
             vec![]
@@ -311,7 +426,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::IssueStartReply => {
             if let Some(ref mut detail) = state.issue_detail {
-                if let Some(idx) = detail.selected_comment {
+                if let Some(idx) = detail.selected_comment() {
                     detail.start_quote_reply(idx);
                 } else {
                     detail.start_new_comment();
@@ -826,7 +941,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             match &kind {
                 ghtui_core::ModalKind::EditIssue => {
                     if let Some(ref detail) = state.issue_detail {
-                        match detail.selected_comment {
+                        match detail.selected_comment() {
                             None => {
                                 // Editing the issue itself: title\nbody
                                 let issue = &detail.detail.issue;
@@ -848,7 +963,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 ghtui_core::ModalKind::AddComment => {
                     // If a comment is selected, quote it for reply
                     if let Some(ref detail) = state.issue_detail {
-                        if let Some(idx) = detail.selected_comment {
+                        if let Some(idx) = detail.selected_comment() {
                             if let Some(comment) = detail.detail.comments.get(idx) {
                                 let quoted: String = comment
                                     .body
@@ -894,7 +1009,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 Some(ghtui_core::ModalKind::EditIssue) => {
                     if let Some(ref repo) = state.current_repo {
                         if let Some(ref detail) = state.issue_detail {
-                            match detail.selected_comment {
+                            match detail.selected_comment() {
                                 None => {
                                     // Edit issue title/body
                                     let input = state.input_buffer.clone();
@@ -1262,7 +1377,7 @@ fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Command> {
         }
         Route::IssueDetail { .. } => {
             if let Some(ref mut detail) = state.issue_detail {
-                // Label picker mode: move cursor in picker
+                // Picker mode
                 if let Some(ref mut picker) = detail.label_picker {
                     let max = picker.available.len().saturating_sub(1);
                     if delta == usize::MAX {
@@ -1270,10 +1385,17 @@ fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Command> {
                     } else if delta > 0 {
                         picker.cursor = (picker.cursor + 1).min(max);
                     }
+                } else if let Some(ref mut picker) = detail.assignee_picker {
+                    let max = picker.available.len().saturating_sub(1);
+                    if delta == usize::MAX {
+                        picker.cursor = picker.cursor.saturating_sub(1);
+                    } else if delta > 0 {
+                        picker.cursor = (picker.cursor + 1).min(max);
+                    }
                 } else if delta == usize::MAX {
-                    detail.select_prev_comment();
+                    detail.focus_prev();
                 } else if delta > 0 {
-                    detail.select_next_comment();
+                    detail.focus_next();
                 }
             }
         }

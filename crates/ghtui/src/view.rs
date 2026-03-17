@@ -90,7 +90,7 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
                 let hint = if state
                     .issue_detail
                     .as_ref()
-                    .and_then(|d| d.selected_comment)
+                    .and_then(|d| d.selected_comment())
                     .is_some()
                 {
                     "Edit comment (markdown supported):"

@@ -194,4 +194,43 @@ impl GithubClient {
         let labels: Vec<ghtui_core::types::common::Label> = serde_json::from_str(&body)?;
         Ok(labels)
     }
+
+    pub async fn set_issue_assignees(
+        &self,
+        repo: &RepoId,
+        number: u64,
+        assignees: &[String],
+    ) -> Result<(), ApiError> {
+        let path = format!("/repos/{}/{}/issues/{}", repo.owner, repo.name, number);
+        let body = json!({ "assignees": assignees });
+        self.patch(&path, &body).await?;
+        Ok(())
+    }
+
+    pub async fn delete_comment(&self, repo: &RepoId, comment_id: u64) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/issues/comments/{}",
+            repo.owner, repo.name, comment_id
+        );
+        self.delete(&path).await?;
+        Ok(())
+    }
+
+    pub async fn list_collaborators_logins(&self, repo: &RepoId) -> Result<Vec<String>, ApiError> {
+        let path = format!(
+            "/repos/{}/{}/collaborators?per_page=50",
+            repo.owner, repo.name
+        );
+        match self.get(&path).await {
+            Ok(body) => {
+                let collabs: Vec<serde_json::Value> = serde_json::from_str(&body)?;
+                Ok(collabs
+                    .iter()
+                    .filter_map(|c| c.get("login").and_then(|l| l.as_str()).map(String::from))
+                    .collect())
+            }
+            Err(ApiError::GitHub { status: 403, .. }) => Ok(Vec::new()),
+            Err(e) => Err(e),
+        }
+    }
 }

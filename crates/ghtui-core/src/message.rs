@@ -39,15 +39,24 @@ pub enum Message {
     IssueSearchInput(String),
     IssueSearchSubmit,
     IssueSearchCancel,
-    IssueLabelToggle,                      // Open label picker
-    IssueLabelSelect(usize),               // Select label in picker
-    IssueLabelApply,                       // Apply label changes
-    IssueLabelCancel,                      // Cancel label picker
-    IssueLabelsLoaded(Vec<common::Label>), // Available labels loaded
-    IssueStartEditTitle,                   // Edit title (inline in header)
-    IssueStartEditBody,                    // Edit body (fullscreen) or selected comment
-    IssueStartComment,                     // Start new comment
-    IssueStartReply,                       // Start quote reply to selected comment
+    IssueLabelToggle,
+    IssueLabelSelect(usize),
+    IssueLabelApply,
+    IssueLabelCancel,
+    IssueLabelsLoaded(Vec<common::Label>),
+    IssueAssigneeToggle,
+    IssueAssigneeSelect(usize),
+    IssueAssigneeApply,
+    IssueAssigneeCancel,
+    IssueCollaboratorsLoaded(Vec<String>),
+    IssueDeleteComment,
+    CommentDeleted,
+    IssueToggleState,
+    IssueOpenInBrowser,
+    IssueStartEditTitle,
+    IssueStartEditBody,
+    IssueStartComment,
+    IssueStartReply, // Start quote reply to selected comment
     IssueEditChar(char),
     IssueEditNewline,
     IssueEditBackspace,
