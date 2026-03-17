@@ -1968,6 +1968,26 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.loading.remove("job_log");
             if let Some(ref mut detail) = state.action_detail {
                 let _ = job_id;
+                // Check if the selected job is still running → enable log streaming
+                let job_in_progress =
+                    detail
+                        .detail
+                        .jobs
+                        .get(detail.selected_job)
+                        .is_some_and(|j| {
+                            matches!(
+                                j.status,
+                                Some(ghtui_core::types::RunStatus::InProgress)
+                                    | Some(ghtui_core::types::RunStatus::Queued)
+                            )
+                        });
+                detail.log_streaming = job_in_progress;
+                detail.log_poll_counter = 0;
+                // Auto-scroll to bottom if streaming
+                if detail.auto_scroll && detail.log_streaming {
+                    let line_count = lines.len();
+                    detail.log_scroll = line_count.saturating_sub(20);
+                }
                 detail.set_log(lines);
             }
             vec![]
@@ -2877,6 +2897,27 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::Tick => {
             state.tick_toasts();
+            // Log streaming: re-fetch log every 5 ticks (~5 seconds) for in-progress jobs
+            if matches!(state.route, Route::ActionDetail { .. }) {
+                if let Some(ref mut detail) = state.action_detail {
+                    if detail.log_streaming {
+                        detail.log_poll_counter += 1;
+                        if detail.log_poll_counter >= 5 {
+                            detail.log_poll_counter = 0;
+                            if let Some(job) = detail.detail.jobs.get(detail.selected_job) {
+                                let job_id = job.id;
+                                if let Route::ActionDetail { ref repo, run_id } = state.route {
+                                    return vec![Command::FetchJobLog(
+                                        repo.clone(),
+                                        run_id,
+                                        job_id,
+                                    )];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             vec![]
         }
         Message::Resize(w, h) => {

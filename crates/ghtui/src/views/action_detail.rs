@@ -249,7 +249,8 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
     if let Some(ref parsed) = detail.parsed_log {
         let total_lines = parsed.len();
-        let log_title = format!(" Log ({} lines) ", total_lines);
+        let live_indicator = if detail.log_streaming { " LIVE " } else { "" };
+        let log_title = format!(" Log ({} lines){} ", total_lines, live_indicator);
 
         let log_paragraph = Paragraph::new(parsed.clone())
             .style(theme.text())

@@ -9,7 +9,7 @@
 | 1 | Code | - | dashboard.rs | 레포 소개 + README placeholder (파일 브라우저 미구현) |
 | 2 | Issues | ✅ | issue_list, issue_detail | **Phase 1 완료** — 목록(카드UI), 상세(섹션포커스), CRUD, 필터/검색/정렬, 라벨/Assignee/Milestone, 리액션, 타임라인, 핀/잠금/이전 |
 | 3 | Pull requests | ✅ | pr_list, pr_detail | **Phase 2-4 완료** — 목록(필터/검색/정렬), 4탭(Conversation/Commits/Checks/Files changed), 인라인 편집, Approve/Request changes, 파일트리, diff 리뷰 코멘트, suggestion, CI 상태, 타임라인, 액션 바, PR 생성, 리뷰어 관리 |
-| 4 | Actions | ✅ | actions_list, action_detail | 워크플로우 목록, 잡 선택, 로그 뷰어(스크롤), 취소/재실행 |
+| 4 | Actions | ✅ | actions_list, action_detail | **Phase 3 완료** — 필터/검색/페이지, ANSI 컬러 로그, 스텝 접기, 액션 바, Artifact, Workflow dispatch, 환경 승인, 실시간 스트리밍 |
 | 5 | Security | ✅ | security.rs | Dependabot, Code Scanning, Secret Scanning (read-only) |
 | 6 | Insights | ✅ | insights.rs | Contributors, Commit Activity, Traffic (read-only) |
 | 7 | Settings | ✅ | settings.rs | 일반설정, 브랜치 보호, Collaborators (read-only) |
@@ -139,21 +139,32 @@
 - [x] Side-by-side diff 모드 (`s` 토글, 좌우 분할 렌더링)
 - [ ] 리뷰 스레드 resolve/unresolve (보류 — GraphQL thread ID 필요)
 
-## Phase 3 — Actions 탭 완성
+## Phase 3 — Actions 탭 ✅ 완성
 
-현재 되는 것: 런 목록, 잡 선택, 로그 보기(스크롤), 취소, 재실행
+### Phase 3-1 완료 (필터/검색/페이지)
+- [x] 필터 UI (status 순환 `s`, event 순환 `e`, branch 검색 `/`, workflow 필터)
+- [x] 페이지네이션 (`n`/`p`), 필터 초기화 (`F`)
+- [x] 필터 바 렌더링, 상대 시간 표시
+- [x] 워크플로우 목록 API
 
-- [ ] 필터 UI (status, branch, event, actor, workflow)
-- [ ] ANSI 컬러 로그 렌더링 완성
-- [ ] 잡 스텝별 접기/펼치기
-- [ ] 실패한 잡만 재실행
-- [ ] Workflow dispatch (수동 트리거 + 입력값)
-- [ ] Artifact 목록
-- [ ] Artifact 다운로드
-- [ ] 워크플로우 파일 보기
-- [ ] Environment 승인
-- [ ] 런 삭제
-- [ ] 실시간 로그 스트리밍
+### Phase 3-2 완료 (로그/스텝/액션바)
+- [x] ANSI 컬러 로그 렌더링 (SGR, 256-color, truecolor)
+- [x] 잡 스텝별 접기/펼치기 (`h`/`l`)
+- [x] 포커스 시스템 (Jobs ↔ Log ↔ ActionBar)
+- [x] 액션 바 (Cancel/Re-run/Re-run failed/Delete/Open — ActionBarItem enum)
+- [x] ANSI 파싱 최적화 (로드 시 1회 파싱, 렌더 루프 제외)
+
+### Phase 3-3 완료 (API 확장)
+- [x] 실패한 잡만 재실행 (`rerun-failed-jobs` API)
+- [x] Workflow dispatch API (수동 트리거 + 입력값)
+- [x] Artifact 목록 + 다운로드 (redirect 캡처, 브라우저 열기)
+- [x] 워크플로우 파일 보기 (Contents API + base64)
+- [x] Environment 승인/거부 (pending_deployments API)
+- [x] 런 삭제 (DELETE API + 목록 복귀)
+
+### Phase 3-4 완료 (실시간 로그)
+- [x] 실시간 로그 스트리밍 (in_progress 잡 감지 → 5초 폴링 → auto-scroll)
+- [x] LIVE 인디케이터 표시
 
 ## Phase 4 — Notifications 완성
 
