@@ -147,6 +147,7 @@ pub struct PrDetailState {
     pub milestone_picker: Option<MilestonePickerState>,
     pub viewed_files: HashSet<String>,
     pub diff_side_by_side: bool, // side-by-side diff mode
+    pub commit_selected: usize,  // selected commit index in Commits tab
 }
 
 impl PrDetailState {
@@ -176,6 +177,7 @@ impl PrDetailState {
             milestone_picker: None,
             viewed_files: HashSet::new(),
             diff_side_by_side: false,
+            commit_selected: 0,
         }
     }
 
