@@ -200,13 +200,57 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
-        Message::IssueEditInput(text) => {
+        Message::IssueEditChar(c) => {
             if let Some(ref mut detail) = state.issue_detail {
-                if text == "\x08" {
-                    detail.edit_buffer.pop();
-                } else {
-                    detail.edit_buffer.push_str(&text);
-                }
+                detail.editor.insert_char(c);
+            }
+            vec![]
+        }
+        Message::IssueEditNewline => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.insert_newline();
+            }
+            vec![]
+        }
+        Message::IssueEditBackspace => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.backspace();
+            }
+            vec![]
+        }
+        Message::IssueEditCursorLeft => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.move_left();
+            }
+            vec![]
+        }
+        Message::IssueEditCursorRight => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.move_right();
+            }
+            vec![]
+        }
+        Message::IssueEditCursorUp => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.move_up();
+            }
+            vec![]
+        }
+        Message::IssueEditCursorDown => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.move_down();
+            }
+            vec![]
+        }
+        Message::IssueEditHome => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.move_home();
+            }
+            vec![]
+        }
+        Message::IssueEditEnd => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.move_end();
             }
             vec![]
         }
@@ -215,7 +259,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 if let Some(ref repo) = state.current_repo {
                     let cmds = match &detail.edit_target {
                         Some(InlineEditTarget::IssueTitle) => {
-                            let title = detail.edit_buffer.trim().to_string();
+                            let title = detail.editor_text().trim().to_string();
                             let number = detail.detail.issue.number;
                             if title.is_empty() {
                                 vec![]
@@ -229,13 +273,13 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                             }
                         }
                         Some(InlineEditTarget::IssueBody) => {
-                            let body = detail.edit_buffer.clone();
+                            let body = detail.editor_text().clone();
                             let number = detail.detail.issue.number;
                             vec![Command::UpdateIssue(repo.clone(), number, None, Some(body))]
                         }
                         Some(InlineEditTarget::Comment(idx)) => {
                             if let Some(comment) = detail.detail.comments.get(*idx) {
-                                let body = detail.edit_buffer.clone();
+                                let body = detail.editor_text().clone();
                                 if body.trim().is_empty() {
                                     vec![]
                                 } else {
@@ -251,7 +295,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                             }
                         }
                         Some(InlineEditTarget::NewComment | InlineEditTarget::QuoteReply(_)) => {
-                            let body = detail.edit_buffer.clone();
+                            let body = detail.editor_text().clone();
                             if body.trim().is_empty() {
                                 vec![]
                             } else {

@@ -1,3 +1,4 @@
+use crate::editor::TextEditor;
 use crate::types::{Issue, IssueDetail, IssueFilters, IssueState, Pagination};
 
 #[derive(Debug)]
@@ -71,9 +72,9 @@ pub enum InlineEditTarget {
 pub struct IssueDetailState {
     pub detail: IssueDetail,
     pub scroll: usize,
-    pub selected_comment: Option<usize>, // None = issue body, Some(i) = comment index
+    pub selected_comment: Option<usize>,
     pub edit_target: Option<InlineEditTarget>,
-    pub edit_buffer: String,
+    pub editor: TextEditor,
 }
 
 impl IssueDetailState {
@@ -83,7 +84,7 @@ impl IssueDetailState {
             scroll: 0,
             selected_comment: None,
             edit_target: None,
-            edit_buffer: String::new(),
+            editor: TextEditor::new(),
         }
     }
 
@@ -92,24 +93,24 @@ impl IssueDetailState {
     }
 
     pub fn start_edit_title(&mut self) {
-        self.edit_buffer = self.detail.issue.title.clone();
+        self.editor = TextEditor::from_string(&self.detail.issue.title);
         self.edit_target = Some(InlineEditTarget::IssueTitle);
     }
 
     pub fn start_edit_body(&mut self) {
-        self.edit_buffer = self.detail.issue.body.as_deref().unwrap_or("").to_string();
+        self.editor = TextEditor::from_string(self.detail.issue.body.as_deref().unwrap_or(""));
         self.edit_target = Some(InlineEditTarget::IssueBody);
     }
 
     pub fn start_edit_comment(&mut self, index: usize) {
         if let Some(comment) = self.detail.comments.get(index) {
-            self.edit_buffer = comment.body.clone();
+            self.editor = TextEditor::from_string(&comment.body);
             self.edit_target = Some(InlineEditTarget::Comment(index));
         }
     }
 
     pub fn start_new_comment(&mut self) {
-        self.edit_buffer.clear();
+        self.editor = TextEditor::new();
         self.edit_target = Some(InlineEditTarget::NewComment);
     }
 
@@ -121,14 +122,19 @@ impl IssueDetailState {
                 .map(|l| format!("> {}", l))
                 .collect::<Vec<_>>()
                 .join("\n");
-            self.edit_buffer = format!("> @{}\n{}\n\n", comment.user.login, quoted);
+            let text = format!("> @{}\n{}\n\n", comment.user.login, quoted);
+            self.editor = TextEditor::from_string(&text);
             self.edit_target = Some(InlineEditTarget::QuoteReply(index));
         }
     }
 
     pub fn cancel_edit(&mut self) {
         self.edit_target = None;
-        self.edit_buffer.clear();
+        self.editor = TextEditor::new();
+    }
+
+    pub fn editor_text(&self) -> String {
+        self.editor.content()
     }
 
     pub fn select_next_comment(&mut self) {

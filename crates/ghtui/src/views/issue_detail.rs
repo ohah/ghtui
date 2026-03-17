@@ -125,10 +125,16 @@ fn render_header(
 
     // Title: inline editable or normal
     if is_title_editing {
+        let editor = &detail_state.editor;
+        let line = editor.lines.first().map(|s| s.as_str()).unwrap_or("");
+        let col = editor.cursor_col.min(line.len());
+        let before = &line[..col];
+        let after = &line[col..];
+
         header_lines.push(Line::from(vec![
             Span::styled(" ✎ ", Style::default().fg(theme.warning)),
             Span::styled(
-                detail_state.edit_buffer.clone(),
+                before.to_string(),
                 Style::default()
                     .fg(Color::White)
                     .add_modifier(Modifier::BOLD),
@@ -136,12 +142,18 @@ fn render_header(
             Span::styled(
                 "█",
                 Style::default()
-                    .fg(Color::White)
+                    .fg(Color::Rgb(88, 166, 255))
                     .add_modifier(Modifier::SLOW_BLINK),
+            ),
+            Span::styled(
+                after.to_string(),
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
             ),
         ]));
         header_lines.push(Line::styled(
-            " Ctrl+Enter: Save  Esc: Cancel".to_string(),
+            " Enter: Save  Esc: Cancel".to_string(),
             Style::default().fg(theme.fg_dim),
         ));
     } else {
@@ -319,39 +331,49 @@ fn render_fullscreen_editor(
         .constraints([Constraint::Min(0), Constraint::Length(1)])
         .split(area);
 
-    let buffer = &detail_state.edit_buffer;
-    let buffer_lines: Vec<&str> = buffer.split('\n').collect();
-    let total_lines = buffer_lines.len();
+    let editor = &detail_state.editor;
+    let total_lines = editor.line_count();
 
     let mut lines: Vec<Line<'static>> = Vec::new();
-    for (i, line) in buffer_lines.iter().enumerate() {
-        lines.push(Line::from(vec![
-            Span::styled(
-                format!(" {:>3} ", i + 1),
-                Style::default().fg(Color::Rgb(110, 118, 129)),
-            ),
-            Span::styled("│ ", Style::default().fg(Color::Rgb(48, 54, 61))),
-            Span::styled(
-                line.to_string(),
-                Style::default().fg(Color::Rgb(230, 237, 243)),
-            ),
-        ]));
-    }
+    for (i, line) in editor.lines.iter().enumerate() {
+        let is_cursor_line = i == editor.cursor_row;
+        let line_num_style = if is_cursor_line {
+            Style::default().fg(Color::Rgb(230, 237, 243))
+        } else {
+            Style::default().fg(Color::Rgb(110, 118, 129))
+        };
 
-    // Cursor line
-    lines.push(Line::from(vec![
-        Span::styled(
-            format!(" {:>3} ", total_lines + 1),
-            Style::default().fg(Color::Rgb(110, 118, 129)),
-        ),
-        Span::styled("│ ", Style::default().fg(Color::Rgb(48, 54, 61))),
-        Span::styled(
-            "█",
-            Style::default()
-                .fg(Color::White)
-                .add_modifier(Modifier::SLOW_BLINK),
-        ),
-    ]));
+        if is_cursor_line {
+            // Split line at cursor position to insert cursor
+            let col = editor.cursor_col.min(line.len());
+            let before = &line[..col];
+            let after = &line[col..];
+            lines.push(Line::from(vec![
+                Span::styled(format!(" {:>3} ", i + 1), line_num_style),
+                Span::styled("│ ", Style::default().fg(Color::Rgb(48, 54, 61))),
+                Span::styled(
+                    before.to_string(),
+                    Style::default().fg(Color::Rgb(230, 237, 243)),
+                ),
+                Span::styled(
+                    "█",
+                    Style::default()
+                        .fg(Color::Rgb(88, 166, 255))
+                        .add_modifier(Modifier::SLOW_BLINK),
+                ),
+                Span::styled(
+                    after.to_string(),
+                    Style::default().fg(Color::Rgb(230, 237, 243)),
+                ),
+            ]));
+        } else {
+            lines.push(Line::from(vec![
+                Span::styled(format!(" {:>3} ", i + 1), line_num_style),
+                Span::styled("│ ", Style::default().fg(Color::Rgb(48, 54, 61))),
+                Span::styled(line.clone(), Style::default().fg(Color::Rgb(230, 237, 243))),
+            ]));
+        }
+    }
 
     let editor = Paragraph::new(lines)
         .block(
@@ -399,21 +421,37 @@ fn render_bottom_editor(
     title: &str,
 ) {
     let mut lines: Vec<Line<'static>> = Vec::new();
-    let buffer = &detail_state.edit_buffer;
+    let editor = &detail_state.editor;
 
-    for line in buffer.split('\n') {
-        lines.push(Line::styled(
-            format!("  {}", line),
-            Style::default().fg(Color::Rgb(230, 237, 243)),
-        ));
+    for (i, line) in editor.lines.iter().enumerate() {
+        let is_cursor_line = i == editor.cursor_row;
+        if is_cursor_line {
+            let col = editor.cursor_col.min(line.len());
+            let before = &line[..col];
+            let after = &line[col..];
+            lines.push(Line::from(vec![
+                Span::styled(
+                    format!("  {}", before),
+                    Style::default().fg(Color::Rgb(230, 237, 243)),
+                ),
+                Span::styled(
+                    "█",
+                    Style::default()
+                        .fg(Color::Rgb(88, 166, 255))
+                        .add_modifier(Modifier::SLOW_BLINK),
+                ),
+                Span::styled(
+                    after.to_string(),
+                    Style::default().fg(Color::Rgb(230, 237, 243)),
+                ),
+            ]));
+        } else {
+            lines.push(Line::styled(
+                format!("  {}", line),
+                Style::default().fg(Color::Rgb(230, 237, 243)),
+            ));
+        }
     }
-
-    lines.push(Line::styled(
-        "  █".to_string(),
-        Style::default()
-            .fg(Color::White)
-            .add_modifier(Modifier::SLOW_BLINK),
-    ));
 
     lines.push(Line::raw(""));
     lines.push(Line::from(vec![

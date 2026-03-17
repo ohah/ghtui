@@ -35,13 +35,21 @@ pub enum Message {
     IssueToggleStateFilter,
     IssueNextPage,
     IssuePrevPage,
-    IssueStartEditTitle,    // Edit title (inline in header)
-    IssueStartEditBody,     // Edit body (fullscreen) or selected comment
-    IssueStartComment,      // Start new comment
-    IssueStartReply,        // Start quote reply to selected comment
-    IssueEditInput(String), // Input text while editing
-    IssueEditSubmit,        // Submit inline edit
-    IssueEditCancel,        // Cancel inline edit
+    IssueStartEditTitle, // Edit title (inline in header)
+    IssueStartEditBody,  // Edit body (fullscreen) or selected comment
+    IssueStartComment,   // Start new comment
+    IssueStartReply,     // Start quote reply to selected comment
+    IssueEditChar(char), // Insert character
+    IssueEditNewline,    // Insert newline
+    IssueEditBackspace,  // Delete backward
+    IssueEditCursorLeft,
+    IssueEditCursorRight,
+    IssueEditCursorUp,
+    IssueEditCursorDown,
+    IssueEditHome,
+    IssueEditEnd,
+    IssueEditSubmit, // Submit inline edit
+    IssueEditCancel, // Cancel inline edit
 
     // Actions
     RunsLoaded(Vec<WorkflowRun>, Pagination),

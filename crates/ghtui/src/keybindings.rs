@@ -207,14 +207,19 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
             KeyCode::Esc => Some(Message::IssueEditCancel),
             KeyCode::Enter => {
                 if key.modifiers.contains(KeyModifiers::CONTROL) || is_title_edit {
-                    // Ctrl+Enter submits (or plain Enter for title)
                     Some(Message::IssueEditSubmit)
                 } else {
-                    Some(Message::IssueEditInput("\n".to_string()))
+                    Some(Message::IssueEditNewline)
                 }
             }
-            KeyCode::Char(c) => Some(Message::IssueEditInput(c.to_string())),
-            KeyCode::Backspace => Some(Message::IssueEditInput("\x08".to_string())),
+            KeyCode::Char(c) => Some(Message::IssueEditChar(c)),
+            KeyCode::Backspace => Some(Message::IssueEditBackspace),
+            KeyCode::Left => Some(Message::IssueEditCursorLeft),
+            KeyCode::Right => Some(Message::IssueEditCursorRight),
+            KeyCode::Up => Some(Message::IssueEditCursorUp),
+            KeyCode::Down => Some(Message::IssueEditCursorDown),
+            KeyCode::Home => Some(Message::IssueEditHome),
+            KeyCode::End => Some(Message::IssueEditEnd),
             _ => None,
         };
     }
