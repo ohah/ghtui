@@ -96,6 +96,12 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 Err(e) => Message::Error(e.into()),
             }
         }
+        Command::ChangePrBase(repo, number, base) => {
+            match client.change_pull_base(&repo, number, &base).await {
+                Ok(()) => Message::PrUpdated(number),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
 
         // Issues
         Command::FetchIssueList(repo, filters, page) => {

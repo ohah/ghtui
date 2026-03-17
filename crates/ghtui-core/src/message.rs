@@ -85,6 +85,7 @@ pub enum Message {
     PrDiffCommentSubmit,    // Ctrl+Enter in diff comment editor
     PrDiffCommentCancel,    // Esc in diff comment editor
     PrDiffInsertSuggestion, // Insert suggestion template
+    PrChangeBase,           // Change merge target branch
 
     // Issue
     IssueListLoaded(Vec<Issue>, Pagination, IssueFilters),

@@ -77,15 +77,16 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     render_header(frame, detail_state, theme, chunks[0], is_title_editing);
 
     // === Tab bar ===
-    let tabs = ["Conversation", "Diff", "Checks"];
+    let tabs = ["Conversation", "Commits", "Checks", "Files changed"];
     let tab_bar = TabBar::new(&tabs, detail_state.tab);
     frame.render_widget(tab_bar, chunks[1]);
 
     // === Content ===
     match detail_state.tab {
         0 => render_conversation(frame, state, detail_state, chunks[2]),
-        1 => render_diff_tab(frame, state, detail_state, chunks[2]),
+        1 => render_commits(frame, state, detail_state, chunks[2]),
         2 => render_checks(frame, state, detail_state, chunks[2]),
+        3 => render_diff_tab(frame, state, detail_state, chunks[2]),
         _ => {}
     }
 
@@ -484,6 +485,64 @@ fn render_diff_tab(
             );
         frame.render_widget(paragraph, area);
     }
+}
+
+fn render_commits(
+    frame: &mut Frame,
+    state: &AppState,
+    detail: &ghtui_core::state::PrDetailState,
+    area: Rect,
+) {
+    let theme = &state.theme;
+    let commits = &detail.detail.commits;
+
+    let mut lines: Vec<Line> = Vec::new();
+
+    if commits.is_empty() {
+        lines.push(Line::styled("  No commits found", theme.text_dim()));
+    } else {
+        lines.push(Line::from(vec![Span::styled(
+            format!("  {} commits", commits.len()),
+            Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
+        )]));
+        lines.push(Line::raw(""));
+
+        for commit in commits {
+            let short_sha = if commit.sha.len() >= 7 {
+                &commit.sha[..7]
+            } else {
+                &commit.sha
+            };
+            let date_str = commit
+                .date
+                .map(|d| d.format("%Y-%m-%d").to_string())
+                .unwrap_or_default();
+
+            lines.push(Line::from(vec![
+                Span::styled(
+                    format!("  {} ", short_sha),
+                    Style::default().fg(theme.accent),
+                ),
+                Span::styled(commit.message.clone(), Style::default().fg(theme.fg)),
+            ]));
+            lines.push(Line::from(vec![
+                Span::styled(
+                    format!("          {} ", commit.author),
+                    Style::default().fg(theme.fg_dim),
+                ),
+                Span::styled(date_str, Style::default().fg(theme.fg_muted)),
+            ]));
+            lines.push(Line::raw(""));
+        }
+    }
+
+    let paragraph = Paragraph::new(lines).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(theme.border_style())
+            .title(" Commits "),
+    );
+    frame.render_widget(paragraph, area);
 }
 
 fn render_checks(

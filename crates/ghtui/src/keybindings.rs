@@ -85,7 +85,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         let pr_diff_select = state
             .pr_detail
             .as_ref()
-            .is_some_and(|d| d.tab == 1 && d.diff_select_anchor.is_some());
+            .is_some_and(|d| d.tab == 3 && d.diff_select_anchor.is_some());
         let pr_diff_commenting = state
             .pr_detail
             .as_ref()
@@ -282,7 +282,7 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     }
 
     // Check if we're on the diff tab
-    let on_diff_tab = state.pr_detail.as_ref().is_some_and(|d| d.tab == 1);
+    let on_diff_tab = state.pr_detail.as_ref().is_some_and(|d| d.tab == 3);
 
     if on_diff_tab {
         // Inline comment editor mode
@@ -344,6 +344,7 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         KeyCode::Char('m') => Some(Message::ModalOpen(ModalKind::MergePr)),
         KeyCode::Char('d') => Some(Message::PrDeleteComment),
         KeyCode::Char('x') => Some(Message::PrToggleState),
+        KeyCode::Char('b') => Some(Message::PrChangeBase),
         KeyCode::Char('o') => Some(Message::PrOpenInBrowser),
         KeyCode::Char('+') => Some(Message::PrAddReaction("+1".to_string())),
         KeyCode::Char('-') => Some(Message::PrAddReaction("-1".to_string())),
