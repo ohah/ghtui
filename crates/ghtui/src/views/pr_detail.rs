@@ -461,12 +461,14 @@ fn render_diff_tab(
             select_anchor: detail.diff_select_anchor,
             ..Default::default()
         };
-        let diff_view = ghtui_widgets::DiffView::new(files, theme).block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(theme.border_style())
-                .title(" Diff (j/k:move  J/K:select  Enter:fold) "),
-        );
+        let diff_view = ghtui_widgets::DiffView::new(files, theme)
+            .review_comments(&detail.detail.review_comments)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(theme.border_style())
+                    .title(" Diff (j/k:move  J/K:select  Enter:fold) "),
+            );
         frame.render_stateful_widget(diff_view, area, &mut diff_state);
     } else {
         let spinner = ghtui_widgets::Spinner::new(0);

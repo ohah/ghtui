@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use ghtui_core::theme::Theme;
-use ghtui_core::types::{DiffFile, DiffFileStatus, DiffLineKind};
+use ghtui_core::types::{DiffFile, DiffFileStatus, DiffLineKind, ReviewComment};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
@@ -97,6 +97,7 @@ impl DiffViewState {
 
 pub struct DiffView<'a> {
     files: &'a [DiffFile],
+    review_comments: &'a [ReviewComment],
     theme: &'a Theme,
     block: Option<Block<'a>>,
 }
@@ -105,9 +106,15 @@ impl<'a> DiffView<'a> {
     pub fn new(files: &'a [DiffFile], theme: &'a Theme) -> Self {
         Self {
             files,
+            review_comments: &[],
             theme,
             block: None,
         }
+    }
+
+    pub fn review_comments(mut self, comments: &'a [ReviewComment]) -> Self {
+        self.review_comments = comments;
+        self
     }
 
     pub fn block(mut self, block: Block<'a>) -> Self {
@@ -334,6 +341,105 @@ impl<'a> DiffView<'a> {
                     }
                 }
                 line_ids.push(DiffLineId::Code(file_idx, hi, li));
+
+                // Show review comments attached to this line
+                let target_line = diff_line.new_line.or(diff_line.old_line);
+                if let Some(ln) = target_line {
+                    let matching: Vec<&ReviewComment> = self
+                        .review_comments
+                        .iter()
+                        .filter(|rc| {
+                            rc.path == file.filename
+                                && (rc.line == Some(ln) || rc.original_line == Some(ln))
+                        })
+                        .collect();
+
+                    // Group threaded comments (in_reply_to_id)
+                    let roots: Vec<&&ReviewComment> = matching
+                        .iter()
+                        .filter(|rc| rc.in_reply_to_id.is_none())
+                        .collect();
+
+                    for root in &roots {
+                        // Comment box
+                        lines.push(Line::from(vec![
+                            Span::styled("          ┌─ ", Style::default().fg(theme.border)),
+                            Span::styled(
+                                format!("@{}", root.user.login),
+                                Style::default()
+                                    .fg(theme.accent)
+                                    .add_modifier(Modifier::BOLD),
+                            ),
+                            Span::styled(
+                                format!("  {}", root.created_at.format("%m/%d %H:%M")),
+                                Style::default().fg(theme.fg_muted),
+                            ),
+                        ]));
+                        line_ids.push(DiffLineId::Summary);
+
+                        for body_line in root.body.lines() {
+                            lines.push(Line::from(vec![
+                                Span::styled("          │ ", Style::default().fg(theme.border)),
+                                Span::styled(body_line.to_string(), Style::default().fg(theme.fg)),
+                            ]));
+                            line_ids.push(DiffLineId::Summary);
+                        }
+
+                        // Replies
+                        let replies: Vec<&&ReviewComment> = matching
+                            .iter()
+                            .filter(|rc| rc.in_reply_to_id == Some(root.id))
+                            .collect();
+                        for reply in &replies {
+                            lines.push(Line::from(vec![
+                                Span::styled("          │  ↳ ", Style::default().fg(theme.border)),
+                                Span::styled(
+                                    format!("@{}: ", reply.user.login),
+                                    Style::default().fg(theme.accent),
+                                ),
+                                Span::styled(
+                                    reply.body.lines().next().unwrap_or("").to_string(),
+                                    Style::default().fg(theme.fg_dim),
+                                ),
+                            ]));
+                            line_ids.push(DiffLineId::Summary);
+                        }
+
+                        lines.push(Line::styled(
+                            "          └───────────",
+                            Style::default().fg(theme.border),
+                        ));
+                        line_ids.push(DiffLineId::Summary);
+                    }
+
+                    // Show non-root comments that aren't replies to any root in matching
+                    let orphans: Vec<&&ReviewComment> = matching
+                        .iter()
+                        .filter(|rc| {
+                            rc.in_reply_to_id.is_some()
+                                && !roots.iter().any(|r| Some(r.id) == rc.in_reply_to_id)
+                        })
+                        .collect();
+                    for orphan in &orphans {
+                        lines.push(Line::from(vec![
+                            Span::styled("          ┌─ ", Style::default().fg(theme.border)),
+                            Span::styled(
+                                format!("@{}: ", orphan.user.login),
+                                Style::default().fg(theme.accent),
+                            ),
+                            Span::styled(
+                                orphan.body.lines().next().unwrap_or("").to_string(),
+                                Style::default().fg(theme.fg),
+                            ),
+                        ]));
+                        line_ids.push(DiffLineId::Summary);
+                        lines.push(Line::styled(
+                            "          └───────────",
+                            Style::default().fg(theme.border),
+                        ));
+                        line_ids.push(DiffLineId::Summary);
+                    }
+                }
             }
         }
 
