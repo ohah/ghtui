@@ -105,6 +105,41 @@ impl GithubClient {
         Ok(number)
     }
 
+    pub async fn update_issue(
+        &self,
+        repo: &RepoId,
+        number: u64,
+        title: Option<&str>,
+        body: Option<&str>,
+    ) -> Result<(), ApiError> {
+        let path = format!("/repos/{}/{}/issues/{}", repo.owner, repo.name, number);
+        let mut payload = serde_json::Map::new();
+        if let Some(t) = title {
+            payload.insert("title".to_string(), json!(t));
+        }
+        if let Some(b) = body {
+            payload.insert("body".to_string(), json!(b));
+        }
+        self.patch(&path, &serde_json::Value::Object(payload))
+            .await?;
+        Ok(())
+    }
+
+    pub async fn update_comment(
+        &self,
+        repo: &RepoId,
+        comment_id: u64,
+        body: &str,
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/issues/comments/{}",
+            repo.owner, repo.name, comment_id
+        );
+        let payload = json!({ "body": body });
+        self.patch(&path, &payload).await?;
+        Ok(())
+    }
+
     pub async fn close_issue(&self, repo: &RepoId, number: u64) -> Result<(), ApiError> {
         let path = format!("/repos/{}/{}/issues/{}", repo.owner, repo.name, number);
         let body = json!({ "state": "closed" });
