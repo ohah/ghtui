@@ -9,7 +9,7 @@
 | 1 | Code | - | dashboard.rs | 레포 소개 + README placeholder (파일 브라우저 미구현) |
 | 2 | Issues | ✅ | issue_list, issue_detail | 목록, 상세, 닫기/열기 |
 | 3 | Pull requests | ✅ | pr_list, pr_detail | 목록, 상세(Conversation/Diff/Checks), 머지, 리뷰 |
-| 4 | Actions | ✅ | actions_list, action_detail | 워크플로우 목록, 잡 목록, 로그, 취소/재실행 |
+| 4 | Actions | ✅ | actions_list, action_detail | 워크플로우 목록, 잡 선택, 로그 뷰어, 취소/재실행 |
 | 5 | Security | ✅ | security.rs | Dependabot, Code Scanning, Secret Scanning (read-only) |
 | 6 | Insights | ✅ | insights.rs | Contributors, Commit Activity, Traffic (read-only) |
 | 7 | Settings | ✅ | settings.rs | 일반설정, 브랜치 보호, Collaborators (read-only) |
@@ -20,10 +20,13 @@
 - Elm architecture (Message → update → Command → API → Message)
 - GitHub API 클라이언트 (인증, LRU 캐시, rate limit)
 - GitHub Primer 기반 테마 (Dark / Light, `t`키 토글)
-- Tab / Shift-Tab / 1-9 탭 네비게이션
+- Tab / Shift-Tab / 1-7 탭 네비게이션 (서브탭 overflow → 글로벌 탭 이동)
 - diff 파서, 마크다운 렌더러
 - Notifications API + 뷰, Search API
-- rustfmt + clippy 설정, 96개 테스트
+- 멀티 계정 지원 (gh CLI hosts.yml, `S`키 전환)
+- 마우스 지원 (클릭으로 탭/리스트 선택, 스크롤)
+- GitHub Actions CI (check, test, clippy, fmt)
+- rustfmt + clippy 설정
 
 ---
 
@@ -81,7 +84,7 @@
 
 ## Phase 3 — Actions 탭 완성
 
-현재 되는 것: 런 목록, 잡 목록, 로그 보기, 취소, 재실행
+현재 되는 것: 런 목록, 잡 선택, 로그 보기(스크롤), 취소, 재실행
 
 - [ ] 필터 UI (status, branch, event, actor, workflow)
 - [ ] ANSI 컬러 로그 렌더링 완성
@@ -114,7 +117,7 @@
 - [ ] 레포 검색
 - [ ] 최근 검색 히스토리
 
-## Phase 6 — Security 탭
+## Phase 6 — Security 탭 나머지
 
 - [x] Dependabot alerts API 연동
 - [x] 취약점 목록 (severity별 필터)
@@ -123,7 +126,7 @@
 - [x] Secret scanning alerts
 - [ ] Security advisories
 
-## Phase 7 — Insights 탭
+## Phase 7 — Insights 탭 나머지
 
 - [x] Contributors API (커밋 수, additions/deletions)
 - [x] 커밋 활동 그래프 (ascii chart)
@@ -132,7 +135,7 @@
 - [ ] Dependency graph
 - [ ] Forks 네트워크
 
-## Phase 8 — Settings 탭
+## Phase 8 — Settings 탭 나머지
 
 - [x] Repository API (read-only 우선)
 - [x] 일반 설정 (이름, description, visibility)
@@ -141,22 +144,7 @@
 - [ ] Webhooks 목록
 - [ ] Deploy keys
 
-## Phase 9 — Projects 탭
-
-- [ ] GitHub Projects v2 GraphQL API 연동
-- [ ] 프로젝트 목록
-- [ ] 보드 뷰 (컬럼 + 카드)
-- [ ] 아이템 상세 보기
-- [ ] 아이템 상태 변경
-
-## Phase 10 — Wiki 탭
-
-- [ ] Wiki pages API (git-based)
-- [ ] 위키 페이지 목록
-- [ ] 위키 페이지 마크다운 렌더링
-- [ ] 위키 페이지 생성/편집
-
-## Phase 11 — Code 탭 (작업량 최대)
+## Phase 9 — Code 탭 (작업량 최대)
 
 - [ ] GitHub Contents API 연동
 - [ ] 파일 트리 브라우저 (접기/펼치기)
@@ -167,25 +155,26 @@
 - [ ] 커밋 상세 (diff, 메시지, 메타데이터)
 - [ ] README.md 실제 렌더링
 
-## Phase 12 — UX 개선
+## Phase 10 — UX 개선
 
 - [ ] Command palette (Ctrl-P, fuzzy search)
 - [ ] 커스텀 키바인딩 설정 (config.toml)
-- [ ] 마우스 지원 (클릭, 스크롤)
+- [x] 마우스 지원 (클릭, 스크롤)
 - [ ] 반응형 레이아웃 (좁은 터미널)
 - [ ] 이미지 미리보기 (sixel/kitty protocol)
 
-## Phase 13 — 배포 & 에코시스템
+## Phase 11 — 배포 & 에코시스템
 
 - [ ] `cargo install ghtui`
 - [ ] Homebrew formula
 - [ ] GitHub Releases (macOS/Linux/Windows)
-- [ ] CI/CD (GitHub Actions: test, lint, release)
+- [x] CI/CD (GitHub Actions: test, lint, release)
 - [ ] crates.io 게시
 - [ ] CHANGELOG.md 자동 생성
 
-## Phase 14 — 고급 기능
+## Phase 12 — 고급 기능
 
+- [x] 멀티 계정 지원 (gh CLI hosts.yml)
 - [ ] GitHub Enterprise Server 지원
 - [ ] 멀티 레포 대시보드
 - [ ] Discussions 탭
@@ -193,3 +182,10 @@
 - [ ] Organization 탐색 (팀, 멤버)
 - [ ] 오프라인 모드 (캐시 기반)
 - [ ] 플러그인 시스템
+
+## 보류 (UI에서 제거됨)
+
+> 사용 빈도가 낮아 UI에서 제거. 수요가 생기면 재추가 예정.
+
+- ~~Projects 탭~~ (GraphQL 필수, 사용 빈도 낮음)
+- ~~Wiki 탭~~ (공식 REST API 없음, 사용 빈도 낮음)
