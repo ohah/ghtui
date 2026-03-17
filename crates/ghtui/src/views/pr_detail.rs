@@ -467,7 +467,7 @@ fn render_diff_tab(
                 Block::default()
                     .borders(Borders::ALL)
                     .border_style(theme.border_style())
-                    .title(" Diff (j/k:move  J/K:select  Enter:fold) "),
+                    .title(" Diff (j/k:move  J/K:select  h/l:fold  Enter:toggle) "),
             );
         frame.render_stateful_widget(diff_view, area, &mut diff_state);
     } else {

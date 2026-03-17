@@ -686,32 +686,28 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::PrDiffToggleCollapse => {
             if let Some(ref mut detail) = state.pr_detail {
-                if let Some(ref files) = detail.diff {
-                    // Calculate which file the cursor is on by counting rendered lines
-                    let summary_lines = files.len() + 3; // header + empty + files + empty
-                    if detail.diff_cursor >= summary_lines {
-                        let mut line = summary_lines;
-                        for (fi, file) in files.iter().enumerate() {
-                            let collapsed = detail.diff_collapsed.contains(&fi);
-                            let file_start = line;
-                            let file_lines = if collapsed {
-                                1 // just the header
-                            } else {
-                                1 + file.hunks.iter().map(|h| 1 + h.lines.len()).sum::<usize>() + 1 // trailing empty
-                            };
-                            if detail.diff_cursor >= file_start
-                                && detail.diff_cursor < file_start + file_lines
-                            {
-                                if detail.diff_collapsed.contains(&fi) {
-                                    detail.diff_collapsed.remove(&fi);
-                                } else {
-                                    detail.diff_collapsed.insert(fi);
-                                }
-                                break;
-                            }
-                            line += file_lines;
-                        }
+                if let Some(fi) = find_cursor_file(detail) {
+                    if detail.diff_collapsed.contains(&fi) {
+                        detail.diff_collapsed.remove(&fi);
+                    } else {
+                        detail.diff_collapsed.insert(fi);
                     }
+                }
+            }
+            vec![]
+        }
+        Message::PrDiffExpand => {
+            if let Some(ref mut detail) = state.pr_detail {
+                if let Some(fi) = find_cursor_file(detail) {
+                    detail.diff_collapsed.remove(&fi);
+                }
+            }
+            vec![]
+        }
+        Message::PrDiffCollapse => {
+            if let Some(ref mut detail) = state.pr_detail {
+                if let Some(fi) = find_cursor_file(detail) {
+                    detail.diff_collapsed.insert(fi);
                 }
             }
             vec![]
@@ -2446,4 +2442,27 @@ fn refresh_current_view(state: &mut AppState) -> Vec<Command> {
         }
         _ => vec![],
     }
+}
+
+/// Find which file index the diff cursor is currently on
+fn find_cursor_file(detail: &PrDetailState) -> Option<usize> {
+    let files = detail.diff.as_ref()?;
+    let summary_lines = files.len() + 3; // header + empty + files + empty
+    if detail.diff_cursor < summary_lines {
+        return None;
+    }
+    let mut line = summary_lines;
+    for (fi, file) in files.iter().enumerate() {
+        let collapsed = detail.diff_collapsed.contains(&fi);
+        let file_lines = if collapsed {
+            1
+        } else {
+            1 + file.hunks.iter().map(|h| 1 + h.lines.len()).sum::<usize>() + 1
+        };
+        if detail.diff_cursor >= line && detail.diff_cursor < line + file_lines {
+            return Some(fi);
+        }
+        line += file_lines;
+    }
+    None
 }

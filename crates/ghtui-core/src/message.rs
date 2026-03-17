@@ -79,6 +79,8 @@ pub enum Message {
     PrDiffSelectDown,     // Shift+j/Down — extend selection
     PrDiffSelectUp,       // Shift+k/Up — extend selection
     PrDiffToggleCollapse, // Enter — fold/unfold file
+    PrDiffExpand,         // l/Right — unfold file
+    PrDiffCollapse,       // h/Left — fold file
     PrDiffClearSelection, // Esc in diff
 
     // Issue
