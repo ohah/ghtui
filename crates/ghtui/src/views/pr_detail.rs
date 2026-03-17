@@ -569,6 +569,11 @@ fn render_conversation(
         lines.push(Line::raw(""));
     }
 
+    // Clamp scroll to content height
+    let content_height = area.height.saturating_sub(2) as usize; // borders
+    let max_scroll = lines.len().saturating_sub(content_height);
+    let scroll = detail.scroll.min(max_scroll);
+
     let paragraph = Paragraph::new(lines)
         .style(theme.text())
         .block(
@@ -578,7 +583,7 @@ fn render_conversation(
                 .title(" Conversation "),
         )
         .wrap(Wrap { trim: false })
-        .scroll((detail.scroll as u16, 0));
+        .scroll((scroll as u16, 0));
 
     frame.render_widget(paragraph, area);
 }
