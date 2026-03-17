@@ -40,21 +40,29 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         return handle_modal_keys(key, state);
     }
 
-    // Global keys
-    match key.code {
-        KeyCode::Char('q') => return Some(Message::Quit),
-        KeyCode::Char('?') => return Some(Message::ModalOpen(ModalKind::Help)),
-        KeyCode::Char('t') => return Some(Message::ToggleTheme),
-        KeyCode::Char('S') => return Some(Message::ModalOpen(ModalKind::AccountSwitcher)),
-        // Tab navigation: 1-9 for global tabs (matching GitHub web)
-        KeyCode::Char('1') => return Some(Message::GlobalTabSelect(0)), // Code
-        KeyCode::Char('2') => return Some(Message::GlobalTabSelect(1)), // Issues
-        KeyCode::Char('3') => return Some(Message::GlobalTabSelect(2)), // Pull requests
-        KeyCode::Char('4') => return Some(Message::GlobalTabSelect(3)), // Actions
-        KeyCode::Char('5') => return Some(Message::GlobalTabSelect(4)), // Security
-        KeyCode::Char('6') => return Some(Message::GlobalTabSelect(5)), // Insights
-        KeyCode::Char('7') => return Some(Message::GlobalTabSelect(6)), // Settings
-        _ => {}
+    // Skip global keys when editing inline or in diff comment
+    let is_inline_editing = state.issue_detail.as_ref().is_some_and(|d| d.is_editing())
+        || state.pr_detail.as_ref().is_some_and(|d| {
+            d.is_editing() || d.diff_comment_target.is_some() || d.action_bar_focused
+        });
+
+    if !is_inline_editing {
+        // Global keys
+        match key.code {
+            KeyCode::Char('q') => return Some(Message::Quit),
+            KeyCode::Char('?') => return Some(Message::ModalOpen(ModalKind::Help)),
+            KeyCode::Char('t') => return Some(Message::ToggleTheme),
+            KeyCode::Char('S') => return Some(Message::ModalOpen(ModalKind::AccountSwitcher)),
+            // Tab navigation: 1-9 for global tabs (matching GitHub web)
+            KeyCode::Char('1') => return Some(Message::GlobalTabSelect(0)),
+            KeyCode::Char('2') => return Some(Message::GlobalTabSelect(1)),
+            KeyCode::Char('3') => return Some(Message::GlobalTabSelect(2)),
+            KeyCode::Char('4') => return Some(Message::GlobalTabSelect(3)),
+            KeyCode::Char('5') => return Some(Message::GlobalTabSelect(4)),
+            KeyCode::Char('6') => return Some(Message::GlobalTabSelect(5)),
+            KeyCode::Char('7') => return Some(Message::GlobalTabSelect(6)),
+            _ => {}
+        }
     }
 
     // Tab / Shift-Tab for global tab navigation (except in detail views which use Tab internally)
