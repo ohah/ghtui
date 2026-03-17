@@ -310,7 +310,8 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         KeyCode::Char('m') => Some(Message::IssueMilestoneToggle),
         KeyCode::Char('d') => Some(Message::IssueDeleteComment),
         KeyCode::Char('x') => Some(Message::IssueToggleState),
-        KeyCode::Char('L') => Some(Message::IssueLockToggle), // Shift+L: lock/unlock
+        KeyCode::Char('L') => Some(Message::IssueLockToggle),
+        KeyCode::Char('P') => Some(Message::IssuePinToggle),
         KeyCode::Char('o') => Some(Message::IssueOpenInBrowser),
         // Quick reactions
         KeyCode::Char('+') => Some(Message::IssueAddReaction("+1".to_string())),

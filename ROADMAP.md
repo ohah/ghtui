@@ -55,7 +55,7 @@
 - [x] 타임라인 이벤트 (labeled, assigned, closed, renamed 등 표시)
 - [x] 교차 참조 (타임라인에서 cross-referenced 이벤트 표시)
 - [x] 이슈 잠금/해제 (`L`키 — Shift+L)
-- [ ] 이슈 핀 (GitHub API 미지원 — admin only, REST 없음)
+- [x] 이슈 핀/해제 (`P`키 — GraphQL pinIssue/unpinIssue mutation)
 - [ ] 이슈 이전 (GitHub API 제한 — org 레포 간 전용)
 - [ ] 이슈 템플릿 (생성 시 템플릿 선택 — 추후)
 - [x] 페이지네이션 UI (n/p 키로 다음/이전)

@@ -366,4 +366,56 @@ impl GithubClient {
         self.delete(&path).await?;
         Ok(())
     }
+
+    /// Get the GraphQL node ID for an issue (needed for mutations).
+    pub async fn get_issue_node_id(&self, repo: &RepoId, number: u64) -> Result<String, ApiError> {
+        let query = r#"
+            query($owner: String!, $name: String!, $number: Int!) {
+                repository(owner: $owner, name: $name) {
+                    issue(number: $number) {
+                        id
+                    }
+                }
+            }
+        "#;
+        let variables = serde_json::json!({
+            "owner": repo.owner,
+            "name": repo.name,
+            "number": number,
+        });
+        let result = self.graphql(query, variables).await?;
+        result
+            .pointer("/data/repository/issue/id")
+            .and_then(|v| v.as_str())
+            .map(String::from)
+            .ok_or_else(|| ApiError::Other("Could not get issue node ID".into()))
+    }
+
+    pub async fn pin_issue(&self, repo: &RepoId, number: u64) -> Result<(), ApiError> {
+        let node_id = self.get_issue_node_id(repo, number).await?;
+        let query = r#"
+            mutation($issueId: ID!) {
+                pinIssue(input: { issueId: $issueId }) {
+                    issue { id }
+                }
+            }
+        "#;
+        let variables = serde_json::json!({ "issueId": node_id });
+        self.graphql(query, variables).await?;
+        Ok(())
+    }
+
+    pub async fn unpin_issue(&self, repo: &RepoId, number: u64) -> Result<(), ApiError> {
+        let node_id = self.get_issue_node_id(repo, number).await?;
+        let query = r#"
+            mutation($issueId: ID!) {
+                unpinIssue(input: { issueId: $issueId }) {
+                    issue { id }
+                }
+            }
+        "#;
+        let variables = serde_json::json!({ "issueId": node_id });
+        self.graphql(query, variables).await?;
+        Ok(())
+    }
 }

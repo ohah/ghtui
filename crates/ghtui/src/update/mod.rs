@@ -167,6 +167,16 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::IssuePinToggle => {
+            if let Some(ref detail) = state.issue_detail {
+                if let Some(ref repo) = state.current_repo {
+                    let number = detail.detail.issue.number;
+                    // Try pin first; if already pinned, the API will error and we unpin
+                    return vec![Command::PinIssue(repo.clone(), number)];
+                }
+            }
+            vec![]
+        }
         Message::IssueNextPage => {
             if let (Some(repo), Some(list)) = (&state.current_repo, &state.issue_list) {
                 if list.pagination.has_next {
