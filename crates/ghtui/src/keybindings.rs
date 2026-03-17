@@ -20,12 +20,13 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<Message> {
 
 fn handle_insert_mode(key: KeyEvent) -> Option<Message> {
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+    let alt = key.modifiers.contains(KeyModifiers::ALT);
     match key.code {
         KeyCode::Esc => Some(Message::ModalClose),
-        // Ctrl+Enter: submit (various terminal encodings)
-        KeyCode::Enter if ctrl => Some(Message::ModalSubmit),
-        KeyCode::Char('j') if ctrl => Some(Message::ModalSubmit),
-        KeyCode::Char('m') if ctrl => Some(Message::ModalSubmit),
+        // Ctrl+S: save/submit (reliable across all terminals)
+        KeyCode::Char('s') if ctrl => Some(Message::ModalSubmit),
+        // Ctrl+Enter / Alt+Enter: submit
+        KeyCode::Enter if ctrl || alt => Some(Message::ModalSubmit),
         KeyCode::Enter => Some(Message::InputChanged("\n".to_string())),
         KeyCode::Char(c) => Some(Message::InputChanged(c.to_string())),
         KeyCode::Backspace => Some(Message::InputChanged("\x08".to_string())),
@@ -223,9 +224,8 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
 
         return match key.code {
             KeyCode::Esc => Some(Message::PrEditCancel),
-            KeyCode::Enter if ctrl || is_title_edit => Some(Message::PrEditSubmit),
-            KeyCode::Char('j') if ctrl => Some(Message::PrEditSubmit),
-            KeyCode::Char('m') if ctrl => Some(Message::PrEditSubmit),
+            KeyCode::Char('s') if ctrl => Some(Message::PrEditSubmit),
+            KeyCode::Enter if ctrl || alt || is_title_edit => Some(Message::PrEditSubmit),
             KeyCode::Enter => Some(Message::PrEditNewline),
             KeyCode::Char('z') if ctrl => Some(Message::PrEditUndo),
             KeyCode::Char('y') if ctrl => Some(Message::PrEditRedo),
@@ -294,13 +294,17 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
 
         if diff_commenting {
             let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+            let alt = key.modifiers.contains(KeyModifiers::ALT);
             return match key.code {
                 KeyCode::Esc => Some(Message::PrDiffCommentCancel),
-                // Ctrl+Enter: submit (various terminal encodings)
+                // Ctrl+S: save/submit (reliable across all terminals)
+                KeyCode::Char('s') if ctrl => Some(Message::PrDiffCommentSubmit),
+                // Alt+Enter: submit fallback
+                KeyCode::Enter if alt => Some(Message::PrDiffCommentSubmit),
+                // Ctrl+Enter: submit (works in some terminals)
                 KeyCode::Enter if ctrl => Some(Message::PrDiffCommentSubmit),
-                KeyCode::Char('j') if ctrl => Some(Message::PrDiffCommentSubmit),
-                KeyCode::Char('m') if ctrl => Some(Message::PrDiffCommentSubmit),
-                KeyCode::Char('s') if ctrl => Some(Message::PrDiffInsertSuggestion),
+                // Ctrl+G: insert suggestion template
+                KeyCode::Char('g') if ctrl => Some(Message::PrDiffInsertSuggestion),
                 KeyCode::Enter => Some(Message::PrEditNewline),
                 KeyCode::Char(c) => Some(Message::PrEditChar(c)),
                 KeyCode::Backspace => Some(Message::PrEditBackspace),
@@ -452,9 +456,8 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
 
         return match key.code {
             KeyCode::Esc => Some(Message::IssueEditCancel),
-            KeyCode::Enter if ctrl || is_title_edit => Some(Message::IssueEditSubmit),
-            KeyCode::Char('j') if ctrl => Some(Message::IssueEditSubmit),
-            KeyCode::Char('m') if ctrl => Some(Message::IssueEditSubmit),
+            KeyCode::Char('s') if ctrl => Some(Message::IssueEditSubmit),
+            KeyCode::Enter if ctrl || alt || is_title_edit => Some(Message::IssueEditSubmit),
             KeyCode::Enter => Some(Message::IssueEditNewline),
             // Ctrl+Z/Y undo/redo
             KeyCode::Char('z') if ctrl => Some(Message::IssueEditUndo),

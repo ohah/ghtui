@@ -545,7 +545,7 @@ impl<'a> DiffView<'a> {
                         if *editor_path == file.filename && *editor_line == ln {
                             lines.push(box_top(
                                 vec![Span::styled(
-                                    " Review comment  Ctrl+Enter:submit  Esc:cancel  Ctrl+S:suggestion ",
+                                    " Review comment  Ctrl+S:submit  Ctrl+G:suggestion  Esc:cancel ",
                                     Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
                                 )],
                                 accent_style,
@@ -596,7 +596,7 @@ impl<'a> DiffView<'a> {
                             lines.push(box_mid(
                                 vec![
                                     Span::styled(
-                                        " [Ctrl+Enter] Submit ",
+                                        " [Ctrl+S] Submit ",
                                         Style::default()
                                             .fg(theme.bg)
                                             .bg(theme.success)
@@ -604,7 +604,7 @@ impl<'a> DiffView<'a> {
                                     ),
                                     Span::styled("  ", Style::default()),
                                     Span::styled(
-                                        " [Ctrl+S] Suggestion ",
+                                        " [Ctrl+G] Suggestion ",
                                         Style::default()
                                             .fg(theme.bg)
                                             .bg(theme.info)
