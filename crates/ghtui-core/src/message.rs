@@ -76,14 +76,15 @@ pub enum Message {
     // PR diff navigation
     PrDiffCursorDown,
     PrDiffCursorUp,
-    PrDiffSelectDown,     // Shift+j/Down — extend selection
-    PrDiffSelectUp,       // Shift+k/Up — extend selection
-    PrDiffToggleCollapse, // Enter — fold/unfold file
-    PrDiffExpand,         // l/Right — unfold file
-    PrDiffCollapse,       // h/Left — fold file
-    PrDiffClearSelection, // Esc in diff
-    PrDiffCommentSubmit,  // Ctrl+Enter in diff comment editor
-    PrDiffCommentCancel,  // Esc in diff comment editor
+    PrDiffSelectDown,       // Shift+j/Down — extend selection
+    PrDiffSelectUp,         // Shift+k/Up — extend selection
+    PrDiffToggleCollapse,   // Enter — fold/unfold file
+    PrDiffExpand,           // l/Right — unfold file
+    PrDiffCollapse,         // h/Left — fold file
+    PrDiffClearSelection,   // Esc in diff
+    PrDiffCommentSubmit,    // Ctrl+Enter in diff comment editor
+    PrDiffCommentCancel,    // Esc in diff comment editor
+    PrDiffInsertSuggestion, // Insert suggestion template
 
     // Issue
     IssueListLoaded(Vec<Issue>, Pagination, IssueFilters),
