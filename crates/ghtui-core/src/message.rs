@@ -85,6 +85,11 @@ pub enum Message {
     PrDiffCommentSubmit,    // Ctrl+Enter in diff comment editor
     PrDiffCommentCancel,    // Esc in diff comment editor
     PrDiffInsertSuggestion, // Insert suggestion template
+    PrDiffToggleTree,       // Toggle file tree panel
+    PrDiffTreeFocus,        // Toggle focus between tree and diff
+    PrDiffTreeUp,           // Move up in file tree
+    PrDiffTreeDown,         // Move down in file tree
+    PrDiffTreeSelect,       // Select file in tree → jump to diff
     PrChangeBase,           // Change merge target branch
 
     // Issue

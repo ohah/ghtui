@@ -132,6 +132,9 @@ pub struct PrDetailState {
     /// Inline review comment editor: (file_path, line_number)
     pub diff_comment_target: Option<(String, u32)>,
     pub diff_comment_editor: TextEditor,
+    pub show_file_tree: bool,      // file tree panel visible
+    pub file_tree_focused: bool,   // focus on tree vs diff
+    pub file_tree_selected: usize, // selected file in tree
     pub tab: usize,
     pub comment_input: String,
     pub focus: PrSection,
@@ -154,6 +157,9 @@ impl PrDetailState {
             diff_collapsed: HashSet::new(),
             diff_comment_target: None,
             diff_comment_editor: TextEditor::new(),
+            show_file_tree: true,
+            file_tree_focused: false,
+            file_tree_selected: 0,
             tab: 0,
             comment_input: String::new(),
             focus: PrSection::Title,

@@ -313,10 +313,40 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             };
         }
 
+        // File tree focused
+        let tree_focused = state
+            .pr_detail
+            .as_ref()
+            .is_some_and(|d| d.file_tree_focused && d.show_file_tree);
+
+        if tree_focused {
+            return match key.code {
+                KeyCode::Char('j') | KeyCode::Down => Some(Message::PrDiffTreeDown),
+                KeyCode::Char('k') | KeyCode::Up => Some(Message::PrDiffTreeUp),
+                KeyCode::Enter => Some(Message::PrDiffTreeSelect),
+                KeyCode::Char('t') => Some(Message::PrDiffToggleTree),
+                KeyCode::Tab => Some(Message::PrDiffTreeFocus), // switch to diff
+                KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
+                KeyCode::Esc => Some(Message::PrDiffTreeFocus), // unfocus tree
+                KeyCode::Char('o') => Some(Message::PrOpenInBrowser),
+                _ => None,
+            };
+        }
+
+        // Diff focused
         let shift = key.modifiers.contains(KeyModifiers::SHIFT);
         return match key.code {
-            KeyCode::Tab => Some(Message::TabChanged(1)),
+            KeyCode::Tab => {
+                // If tree is visible, focus tree; otherwise next global tab
+                let has_tree = state.pr_detail.as_ref().is_some_and(|d| d.show_file_tree);
+                if has_tree {
+                    Some(Message::PrDiffTreeFocus)
+                } else {
+                    Some(Message::TabChanged(1))
+                }
+            }
             KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
+            KeyCode::Char('t') => Some(Message::PrDiffToggleTree),
             KeyCode::Char('j') | KeyCode::Down if shift => Some(Message::PrDiffSelectDown),
             KeyCode::Char('k') | KeyCode::Up if shift => Some(Message::PrDiffSelectUp),
             KeyCode::Char('J') => Some(Message::PrDiffSelectDown),

@@ -823,6 +823,66 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::PrDiffToggleTree => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.show_file_tree = !detail.show_file_tree;
+                if !detail.show_file_tree {
+                    detail.file_tree_focused = false;
+                }
+            }
+            vec![]
+        }
+        Message::PrDiffTreeFocus => {
+            if let Some(ref mut detail) = state.pr_detail {
+                if detail.show_file_tree {
+                    detail.file_tree_focused = !detail.file_tree_focused;
+                }
+            }
+            vec![]
+        }
+        Message::PrDiffTreeUp => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.file_tree_selected = detail.file_tree_selected.saturating_sub(1);
+            }
+            vec![]
+        }
+        Message::PrDiffTreeDown => {
+            if let Some(ref mut detail) = state.pr_detail {
+                if let Some(ref files) = detail.diff {
+                    let max = files.len().saturating_sub(1);
+                    detail.file_tree_selected = (detail.file_tree_selected + 1).min(max);
+                }
+            }
+            vec![]
+        }
+        Message::PrDiffTreeSelect => {
+            // Jump diff cursor to selected file
+            if let Some(ref mut detail) = state.pr_detail {
+                if let Some(ref files) = detail.diff {
+                    let target_fi = detail.file_tree_selected;
+                    // Calculate line position of target file header
+                    let summary_lines = files.len() + 3;
+                    let mut line = summary_lines;
+                    for (fi, file) in files.iter().enumerate() {
+                        if fi == target_fi {
+                            detail.diff_cursor = line;
+                            detail.file_tree_focused = false; // switch focus to diff
+                            // Expand if collapsed
+                            detail.diff_collapsed.remove(&fi);
+                            break;
+                        }
+                        let collapsed = detail.diff_collapsed.contains(&fi);
+                        if collapsed {
+                            line += 1;
+                        } else {
+                            line +=
+                                1 + file.hunks.iter().map(|h| 1 + h.lines.len()).sum::<usize>() + 1;
+                        }
+                    }
+                }
+            }
+            vec![]
+        }
 
         // Issues
         Message::IssueListLoaded(issues, pagination, filters) => {
