@@ -203,23 +203,32 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
             .as_ref()
             .is_some_and(|d| matches!(d.edit_target, Some(InlineEditTarget::IssueTitle)));
 
+        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        let alt = key.modifiers.contains(KeyModifiers::ALT);
+
         return match key.code {
             KeyCode::Esc => Some(Message::IssueEditCancel),
-            KeyCode::Enter => {
-                if key.modifiers.contains(KeyModifiers::CONTROL) || is_title_edit {
-                    Some(Message::IssueEditSubmit)
-                } else {
-                    Some(Message::IssueEditNewline)
-                }
-            }
+            KeyCode::Enter if ctrl || is_title_edit => Some(Message::IssueEditSubmit),
+            KeyCode::Enter => Some(Message::IssueEditNewline),
+            // Ctrl+Z/Y undo/redo
+            KeyCode::Char('z') if ctrl => Some(Message::IssueEditUndo),
+            KeyCode::Char('y') if ctrl => Some(Message::IssueEditRedo),
+            // Regular char input
             KeyCode::Char(c) => Some(Message::IssueEditChar(c)),
             KeyCode::Backspace => Some(Message::IssueEditBackspace),
+            KeyCode::Delete => Some(Message::IssueEditDelete),
+            KeyCode::Tab => Some(Message::IssueEditTab),
+            // Ctrl+Left/Right or Alt+Left/Right for word movement
+            KeyCode::Left if ctrl || alt => Some(Message::IssueEditWordLeft),
+            KeyCode::Right if ctrl || alt => Some(Message::IssueEditWordRight),
             KeyCode::Left => Some(Message::IssueEditCursorLeft),
             KeyCode::Right => Some(Message::IssueEditCursorRight),
             KeyCode::Up => Some(Message::IssueEditCursorUp),
             KeyCode::Down => Some(Message::IssueEditCursorDown),
             KeyCode::Home => Some(Message::IssueEditHome),
             KeyCode::End => Some(Message::IssueEditEnd),
+            KeyCode::PageUp => Some(Message::IssueEditPageUp),
+            KeyCode::PageDown => Some(Message::IssueEditPageDown),
             _ => None,
         };
     }

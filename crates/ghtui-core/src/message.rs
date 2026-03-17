@@ -39,17 +39,25 @@ pub enum Message {
     IssueStartEditBody,  // Edit body (fullscreen) or selected comment
     IssueStartComment,   // Start new comment
     IssueStartReply,     // Start quote reply to selected comment
-    IssueEditChar(char), // Insert character
-    IssueEditNewline,    // Insert newline
-    IssueEditBackspace,  // Delete backward
+    IssueEditChar(char),
+    IssueEditNewline,
+    IssueEditBackspace,
+    IssueEditDelete,
+    IssueEditTab,
     IssueEditCursorLeft,
     IssueEditCursorRight,
     IssueEditCursorUp,
     IssueEditCursorDown,
+    IssueEditWordLeft,
+    IssueEditWordRight,
     IssueEditHome,
     IssueEditEnd,
-    IssueEditSubmit, // Submit inline edit
-    IssueEditCancel, // Cancel inline edit
+    IssueEditPageUp,
+    IssueEditPageDown,
+    IssueEditUndo,
+    IssueEditRedo,
+    IssueEditSubmit,
+    IssueEditCancel,
 
     // Actions
     RunsLoaded(Vec<WorkflowRun>, Pagination),
