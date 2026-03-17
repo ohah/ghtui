@@ -10,38 +10,35 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Paragraph, StatefulWidget, Widget};
 
 const BOX_PAD: &str = "          ";
-const BOX_INDENT: usize = 12; // BOX_PAD(10) + border+space(2)
+const BOX_INDENT: usize = 12; // BOX_PAD(10) + "│ "(2)
 
-/// Build a full-width box top line: ╭──────────────────╮
-fn box_top(label: &str, style: Style, width: usize) -> Line<'static> {
-    let inner = width.saturating_sub(BOX_INDENT + 1); // -1 for right border
-    let label_len = label.chars().count();
-    let fill = inner.saturating_sub(label_len + 1); // +1 for space after ╭─
-    Line::from(vec![
-        Span::styled(format!("{}╭─", BOX_PAD), style),
-        Span::styled(label.to_string(), style),
-        Span::styled("─".repeat(fill), style),
-        Span::styled("╮", style),
-    ])
+/// ╭─ label ─────────╮  (border_style for box chars, label keeps its own style)
+fn box_top(label_spans: Vec<Span<'static>>, border: Style, width: usize) -> Line<'static> {
+    let content_width = width.saturating_sub(BOX_INDENT + 1); // -1 for ╮
+    let label_len: usize = label_spans.iter().map(|s| s.content.chars().count()).sum();
+    let fill = content_width.saturating_sub(label_len + 1);
+    let mut spans = vec![Span::styled(format!("{}╭─", BOX_PAD), border)];
+    spans.extend(label_spans);
+    spans.push(Span::styled("─".repeat(fill), border));
+    spans.push(Span::styled("╮", border));
+    Line::from(spans)
 }
 
-/// Build a full-width box middle line: │ content          │
-fn box_mid(spans: Vec<Span<'static>>, style: Style, _width: usize) -> Line<'static> {
-    let mut result = vec![Span::styled(format!("{}│ ", BOX_PAD), style)];
-    result.extend(spans);
-    // Note: right border is hard to align perfectly with variable-width content
-    // We append it but it may not align exactly at terminal edge
-    result.push(Span::styled(" │", style));
+/// │ content │  (border chars use border_style, content keeps its own styles)
+fn box_mid(content: Vec<Span<'static>>, border: Style) -> Line<'static> {
+    let mut result = vec![Span::styled(format!("{}│ ", BOX_PAD), border)];
+    result.extend(content);
+    result.push(Span::styled(" │", border));
     Line::from(result)
 }
 
-/// Build a full-width box bottom line: ╰──────────────────╯
-fn box_btm(style: Style, width: usize) -> Line<'static> {
-    let inner = width.saturating_sub(BOX_INDENT + 1);
+/// ╰─────────────────╯
+fn box_btm(border: Style, width: usize) -> Line<'static> {
+    let content_width = width.saturating_sub(BOX_INDENT + 1);
     Line::from(vec![
-        Span::styled(format!("{}╰─", BOX_PAD), style),
-        Span::styled("─".repeat(inner), style),
-        Span::styled("╯", style),
+        Span::styled(format!("{}╰─", BOX_PAD), border),
+        Span::styled("─".repeat(content_width), border),
+        Span::styled("╯", border),
     ])
 }
 
@@ -150,7 +147,6 @@ impl<'a> DiffView<'a> {
         body: &str,
         theme: &Theme,
         border_style: Style,
-        width: usize,
         lines: &mut Vec<Line<'static>>,
         line_ids: &mut Vec<DiffLineId>,
     ) {
@@ -168,7 +164,6 @@ impl<'a> DiffView<'a> {
                             .add_modifier(Modifier::BOLD),
                     )],
                     border_style,
-                    width,
                 ));
                 line_ids.push(DiffLineId::Summary);
                 continue;
@@ -185,7 +180,6 @@ impl<'a> DiffView<'a> {
                         Style::default().fg(theme.fg_muted),
                     )],
                     border_style,
-                    width,
                 ));
                 line_ids.push(DiffLineId::Summary);
                 continue;
@@ -198,7 +192,6 @@ impl<'a> DiffView<'a> {
                         Style::default().fg(theme.diff_add_fg).bg(theme.diff_add_bg),
                     )],
                     border_style,
-                    width,
                 ));
             } else if in_code_block {
                 lines.push(box_mid(
@@ -207,7 +200,6 @@ impl<'a> DiffView<'a> {
                         Style::default().fg(theme.fg).bg(theme.bg_subtle),
                     )],
                     border_style,
-                    width,
                 ));
             } else {
                 lines.push(box_mid(
@@ -216,7 +208,6 @@ impl<'a> DiffView<'a> {
                         Style::default().fg(theme.fg),
                     )],
                     border_style,
-                    width,
                 ));
             }
             line_ids.push(DiffLineId::Summary);
@@ -452,22 +443,25 @@ impl<'a> DiffView<'a> {
                         .collect();
 
                     for root in &roots {
-                        let header = format!(
-                            " @{}  {} ",
-                            root.user.login,
-                            root.created_at.format("%m/%d %H:%M")
-                        );
-                        lines.push(box_top(&header, border_style, width));
-                        line_ids.push(DiffLineId::Summary);
-
-                        Self::render_comment_body(
-                            &root.body,
-                            theme,
+                        lines.push(box_top(
+                            vec![
+                                Span::styled(
+                                    format!(" @{}", root.user.login),
+                                    Style::default()
+                                        .fg(theme.accent)
+                                        .add_modifier(Modifier::BOLD),
+                                ),
+                                Span::styled(
+                                    format!("  {} ", root.created_at.format("%m/%d %H:%M")),
+                                    Style::default().fg(theme.fg_muted),
+                                ),
+                            ],
                             border_style,
                             width,
-                            lines,
-                            line_ids,
-                        );
+                        ));
+                        line_ids.push(DiffLineId::Summary);
+
+                        Self::render_comment_body(&root.body, theme, border_style, lines, line_ids);
 
                         let replies: Vec<&&ReviewComment> = matching
                             .iter()
@@ -486,7 +480,6 @@ impl<'a> DiffView<'a> {
                                     ),
                                 ],
                                 border_style,
-                                width,
                             ));
                             line_ids.push(DiffLineId::Summary);
                         }
@@ -500,14 +493,19 @@ impl<'a> DiffView<'a> {
                         rc.in_reply_to_id.is_some()
                             && !roots.iter().any(|r| Some(r.id) == rc.in_reply_to_id)
                     }) {
-                        let header = format!(" @{} ", orphan.user.login);
-                        lines.push(box_top(&header, border_style, width));
+                        lines.push(box_top(
+                            vec![Span::styled(
+                                format!(" @{} ", orphan.user.login),
+                                Style::default().fg(theme.accent),
+                            )],
+                            border_style,
+                            width,
+                        ));
                         line_ids.push(DiffLineId::Summary);
                         Self::render_comment_body(
                             &orphan.body,
                             theme,
                             border_style,
-                            width,
                             lines,
                             line_ids,
                         );
@@ -519,7 +517,10 @@ impl<'a> DiffView<'a> {
                     if let Some((editor_path, editor_line, editor)) = &self.comment_editor {
                         if *editor_path == file.filename && *editor_line == ln {
                             lines.push(box_top(
-                                " Review comment  Ctrl+Enter:submit  Esc:cancel  s:suggestion ",
+                                vec![Span::styled(
+                                    " Review comment  Ctrl+Enter:submit  Esc:cancel  Ctrl+S:suggestion ",
+                                    Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
+                                )],
                                 accent_style,
                                 width,
                             ));
@@ -549,7 +550,6 @@ impl<'a> DiffView<'a> {
                                             ),
                                         ],
                                         accent_style,
-                                        width,
                                     ));
                                 } else {
                                     lines.push(box_mid(
@@ -558,7 +558,6 @@ impl<'a> DiffView<'a> {
                                             Style::default().fg(theme.fg),
                                         )],
                                         accent_style,
-                                        width,
                                     ));
                                 }
                                 line_ids.push(DiffLineId::Summary);
@@ -588,7 +587,8 @@ impl StatefulWidget for DiffView<'_> {
 
         self.render_file_summary(&mut all_lines, &mut line_ids, state);
         for (fi, file) in self.files.iter().enumerate() {
-            self.render_file_diff(file, fi, &mut all_lines, &mut line_ids, state, width);
+            let inner_width = width.saturating_sub(2); // account for block borders
+            self.render_file_diff(file, fi, &mut all_lines, &mut line_ids, state, inner_width);
         }
 
         state.total_lines = all_lines.len();
