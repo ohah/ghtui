@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | 1 | Code | - | dashboard.rs | 레포 소개 + README placeholder (파일 브라우저 미구현) |
 | 2 | Issues | ✅ | issue_list, issue_detail | **Phase 1 완료** — 목록(카드UI), 상세(섹션포커스), CRUD, 필터/검색/정렬, 라벨/Assignee/Milestone, 리액션, 타임라인, 핀/잠금/이전 |
-| 3 | Pull requests | ✅ | pr_list, pr_detail | 목록, 상세(Conversation/Diff/Checks), 머지, 리뷰 |
+| 3 | Pull requests | ✅ | pr_list, pr_detail | 목록(필터/검색/정렬/페이지네이션), 상세(섹션포커스, 인라인편집, 라벨/Assignee 피커, Conversation/Diff/Checks), 머지, 리뷰, 리액션 |
 | 4 | Actions | ✅ | actions_list, action_detail | 워크플로우 목록, 잡 선택, 로그 뷰어(스크롤), 취소/재실행 |
 | 5 | Security | ✅ | security.rs | Dependabot, Code Scanning, Secret Scanning (read-only) |
 | 6 | Insights | ✅ | insights.rs | Contributors, Commit Activity, Traffic (read-only) |
@@ -65,15 +65,22 @@
 
 ## Phase 2 — Pull Requests 탭 완성
 
-현재 되는 것: 목록, 상세, 머지(merge/squash/rebase), 닫기/열기, 리뷰 제출, diff 보기
+### Phase 2-1 완료 (Issues 탭 패리티)
+- [x] 필터 UI (state 토글 `s`, author/label/assignee)
+- [x] 정렬 UI (`o` 순환: Newest/Updated/Popular/Long-running)
+- [x] PR 검색 (`/` → GitHub Search API)
+- [x] 페이지네이션 UI (`n`/`p`)
+- [x] PR 제목/본문 인라인 편집 (`e` on focused section)
+- [x] 코멘트 추가/편집/삭제/인용답글 (`c`/`e`/`d`/`r`)
+- [x] 라벨 추가/제거 (`l` → 피커)
+- [x] Assignee 추가/제거 (`a` → 피커)
+- [x] 리액션 (`+`/`-`)
+- [x] 닫기/열기 (`x`), 브라우저에서 열기 (`o`)
+- [x] 섹션 포커스 네비게이션 (Title→Labels→Assignees→Body→Comments)
+- [x] 필터 초기화 (`Shift+F`)
 
-- [ ] 필터 UI (author, reviewer, label, milestone)
-- [ ] 정렬 UI
-- [ ] PR 검색
+### Phase 2-2 남은 기능
 - [ ] PR 생성 UI (모달 폼)
-- [ ] PR 제목/본문 편집
-- [ ] 코멘트 추가 UI (모달)
-- [ ] 코멘트 편집/삭제
 - [ ] Draft 토글
 - [ ] Auto-merge 활성화
 - [ ] Side-by-side diff 모드
@@ -82,15 +89,11 @@
 - [ ] 리뷰 스레드 resolve/unresolve
 - [ ] Checks/CI 상태 데이터 연동
 - [ ] 리뷰어 추가/제거
-- [ ] 라벨 추가/제거
-- [ ] Assignee 추가/제거
 - [ ] Milestone 설정
 - [ ] Linked issues
-- [ ] 리액션
 - [ ] 파일 트리 in diff
 - [ ] 파일별 Viewed 체크
 - [ ] 타임라인 이벤트
-- [ ] 페이지네이션 UI
 
 ## Phase 3 — Actions 탭 완성
 

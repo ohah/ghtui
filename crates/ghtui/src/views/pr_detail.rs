@@ -251,7 +251,7 @@ fn render_conversation(
                 .fg(theme.accent)
                 .add_modifier(Modifier::BOLD)
         } else {
-            Style::default().fg(theme.fg_muted)
+            Style::default().fg(theme.fg_dim)
         }
     };
 
@@ -300,7 +300,7 @@ fn render_conversation(
     if !detail.detail.reviews.is_empty() {
         let mut spans = vec![Span::styled(
             "  Reviewers: ",
-            Style::default().fg(theme.fg_muted),
+            Style::default().fg(theme.fg_dim),
         )];
         for review in &detail.detail.reviews {
             let (icon, color) = match review.state {
