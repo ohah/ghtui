@@ -324,7 +324,7 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
                 KeyCode::Char('j') | KeyCode::Down => Some(Message::PrDiffTreeDown),
                 KeyCode::Char('k') | KeyCode::Up => Some(Message::PrDiffTreeUp),
                 KeyCode::Enter => Some(Message::PrDiffTreeSelect),
-                KeyCode::Char('t') => Some(Message::PrDiffToggleTree),
+                KeyCode::Char('f') => Some(Message::PrDiffToggleTree),
                 KeyCode::Tab => Some(Message::PrDiffTreeFocus), // switch to diff
                 KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
                 KeyCode::Esc => Some(Message::PrDiffTreeFocus), // unfocus tree
@@ -346,7 +346,7 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
                 }
             }
             KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
-            KeyCode::Char('t') => Some(Message::PrDiffToggleTree),
+            KeyCode::Char('f') => Some(Message::PrDiffToggleTree),
             KeyCode::Char('j') | KeyCode::Down if shift => Some(Message::PrDiffSelectDown),
             KeyCode::Char('k') | KeyCode::Up if shift => Some(Message::PrDiffSelectUp),
             KeyCode::Char('J') => Some(Message::PrDiffSelectDown),

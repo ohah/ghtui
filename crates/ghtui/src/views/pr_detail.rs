@@ -565,9 +565,9 @@ fn render_file_tree(
     }
 
     let title = if focused {
-        " Files (t:hide  Tab:diff) "
+        " Files (f:hide  Tab:diff) "
     } else {
-        " Files (t:hide) "
+        " Files (f:hide) "
     };
 
     let list = List::new(items).block(
@@ -612,9 +612,9 @@ fn render_diff_content(
             theme.border_muted
         };
         let title = if detail.show_file_tree {
-            " Files changed (t:tree  Tab:tree) "
+            " Files changed (f:tree  Tab:tree) "
         } else {
-            " Files changed (t:tree  j/k  J/K  Enter) "
+            " Files changed (f:tree  j/k  J/K  Enter) "
         };
 
         let diff_view = diff_view.block(
