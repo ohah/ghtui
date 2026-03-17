@@ -1,5 +1,5 @@
-use crate::types::*;
 use crate::types::common::RepoId;
+use crate::types::*;
 
 #[derive(Debug)]
 pub enum Command {

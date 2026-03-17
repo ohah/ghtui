@@ -1,23 +1,19 @@
-use crate::types::{
-    ActionsFilters, IssueFilters, PrFilters, SearchKind,
-    common::RepoId,
-};
+use crate::types::{ActionsFilters, IssueFilters, PrFilters, SearchKind, common::RepoId};
 
 #[derive(Debug, Clone, PartialEq)]
+#[derive(Default)]
 pub enum PrTab {
+    #[default]
     Conversation,
     Diff,
     Checks,
 }
 
-impl Default for PrTab {
-    fn default() -> Self {
-        Self::Conversation
-    }
-}
 
 #[derive(Debug, Clone, PartialEq)]
+#[derive(Default)]
 pub enum Route {
+    #[default]
     Dashboard,
 
     // Code tab
@@ -119,11 +115,6 @@ pub const TAB_LABELS: &[&str] = &[
     "Settings",
 ];
 
-impl Default for Route {
-    fn default() -> Self {
-        Self::Dashboard
-    }
-}
 
 impl Route {
     pub fn title(&self) -> String {

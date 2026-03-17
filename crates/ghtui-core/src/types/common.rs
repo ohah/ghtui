@@ -31,7 +31,10 @@ impl std::str::FromStr for RepoId {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts: Vec<&str> = s.split('/').collect();
         if parts.len() != 2 {
-            return Err(format!("Invalid repo format: '{}', expected 'owner/name'", s));
+            return Err(format!(
+                "Invalid repo format: '{}', expected 'owner/name'",
+                s
+            ));
         }
         Ok(Self::new(parts[0], parts[1]))
     }
@@ -46,16 +49,13 @@ pub struct Pagination {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum SortOrder {
     Asc,
+    #[default]
     Desc,
 }
 
-impl Default for SortOrder {
-    fn default() -> Self {
-        Self::Desc
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {

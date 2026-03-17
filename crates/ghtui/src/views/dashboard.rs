@@ -17,7 +17,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(5),  // Repo info
+            Constraint::Length(5), // Repo info
             Constraint::Min(0),    // README placeholder
         ])
         .split(area);
@@ -25,20 +25,14 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     // Repo info section (like GitHub's repo header area)
     let info_lines = vec![
         Line::raw(""),
-        Line::from(vec![
-            Span::styled(
-                "  About",
-                Style::default()
-                    .fg(theme.fg)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        ]),
-        Line::from(vec![
-            Span::styled(
-                "  A comprehensive GitHub TUI built with Rust and ratatui",
-                Style::default().fg(theme.fg_dim),
-            ),
-        ]),
+        Line::from(vec![Span::styled(
+            "  About",
+            Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
+        )]),
+        Line::from(vec![Span::styled(
+            "  A comprehensive GitHub TUI built with Rust and ratatui",
+            Style::default().fg(theme.fg_dim),
+        )]),
         Line::raw(""),
     ];
 
@@ -54,71 +48,104 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     // README section
     let readme_lines = vec![
         Line::raw(""),
-        Line::from(vec![
-            Span::styled(
-                "  README.md",
-                Style::default()
-                    .fg(theme.fg)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        ]),
+        Line::from(vec![Span::styled(
+            "  README.md",
+            Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
+        )]),
         Line::raw(""),
         Line::from(vec![
             Span::styled("  # ", Style::default().fg(theme.fg_muted)),
             Span::styled(
                 repo_name,
-                Style::default()
-                    .fg(theme.fg)
-                    .add_modifier(Modifier::BOLD),
+                Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
             ),
         ]),
         Line::raw(""),
-        Line::from(vec![
-            Span::styled(
-                "  A comprehensive GitHub TUI that aims to cover everything",
-                Style::default().fg(theme.fg),
-            ),
-        ]),
-        Line::from(vec![
-            Span::styled(
-                "  you can do on the GitHub web interface.",
-                Style::default().fg(theme.fg),
-            ),
-        ]),
+        Line::from(vec![Span::styled(
+            "  A comprehensive GitHub TUI that aims to cover everything",
+            Style::default().fg(theme.fg),
+        )]),
+        Line::from(vec![Span::styled(
+            "  you can do on the GitHub web interface.",
+            Style::default().fg(theme.fg),
+        )]),
         Line::raw(""),
         Line::from(vec![
             Span::styled("  ## ", Style::default().fg(theme.fg_muted)),
             Span::styled(
                 "Quick Navigation",
-                Style::default()
-                    .fg(theme.fg)
-                    .add_modifier(Modifier::BOLD),
+                Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
             ),
         ]),
         Line::raw(""),
         Line::from(vec![
-            Span::styled("  1 ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "  1 ",
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Code        ", Style::default().fg(theme.fg)),
-            Span::styled("  2 ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "  2 ",
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Issues      ", Style::default().fg(theme.fg)),
-            Span::styled("  3 ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "  3 ",
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Pull requests", Style::default().fg(theme.fg)),
         ]),
         Line::from(vec![
-            Span::styled("  4 ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "  4 ",
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Actions     ", Style::default().fg(theme.fg)),
-            Span::styled("  5 ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "  5 ",
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Notifications", Style::default().fg(theme.fg)),
-            Span::styled("  6 ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "  6 ",
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Search", Style::default().fg(theme.fg)),
         ]),
         Line::raw(""),
         Line::from(vec![
-            Span::styled("  t ", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "  t ",
+                Style::default()
+                    .fg(theme.warning)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Toggle theme   ", Style::default().fg(theme.fg)),
-            Span::styled("  ? ", Style::default().fg(theme.warning).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "  ? ",
+                Style::default()
+                    .fg(theme.warning)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Help   ", Style::default().fg(theme.fg)),
-            Span::styled("  q ", Style::default().fg(theme.danger).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "  q ",
+                Style::default()
+                    .fg(theme.danger)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled("Quit", Style::default().fg(theme.fg)),
         ]),
     ];
@@ -129,10 +156,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
             Block::default()
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(theme.border))
-                .title(Span::styled(
-                    " Code ",
-                    Style::default().fg(theme.fg),
-                )),
+                .title(Span::styled(" Code ", Style::default().fg(theme.fg))),
         )
         .wrap(Wrap { trim: false });
 

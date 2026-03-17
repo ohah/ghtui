@@ -1,7 +1,7 @@
 use anyhow::Result;
 use crossterm::{
-    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
+    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;

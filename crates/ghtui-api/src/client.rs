@@ -2,13 +2,14 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use lru::LruCache;
-use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, USER_AGENT};
 use reqwest::Client;
+use reqwest::header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT};
 
 use crate::error::ApiError;
 use crate::rate_limit::RateLimitState;
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct GithubClient {
     pub(crate) http: Client,
     pub(crate) base_url: String,
@@ -145,7 +146,11 @@ impl GithubClient {
         Ok(body)
     }
 
-    pub(crate) async fn post(&self, path: &str, body: &serde_json::Value) -> Result<String, ApiError> {
+    pub(crate) async fn post(
+        &self,
+        path: &str,
+        body: &serde_json::Value,
+    ) -> Result<String, ApiError> {
         let url = self.url(path);
         let response = self.http.post(&url).json(body).send().await?;
 
@@ -161,7 +166,11 @@ impl GithubClient {
         Ok(text)
     }
 
-    pub(crate) async fn patch(&self, path: &str, body: &serde_json::Value) -> Result<String, ApiError> {
+    pub(crate) async fn patch(
+        &self,
+        path: &str,
+        body: &serde_json::Value,
+    ) -> Result<String, ApiError> {
         let url = self.url(path);
         let response = self.http.patch(&url).json(body).send().await?;
 
@@ -177,7 +186,11 @@ impl GithubClient {
         Ok(text)
     }
 
-    pub(crate) async fn put(&self, path: &str, body: &serde_json::Value) -> Result<String, ApiError> {
+    pub(crate) async fn put(
+        &self,
+        path: &str,
+        body: &serde_json::Value,
+    ) -> Result<String, ApiError> {
         let url = self.url(path);
         let response = self.http.put(&url).json(body).send().await?;
 
@@ -193,6 +206,7 @@ impl GithubClient {
         Ok(text)
     }
 
+    #[allow(dead_code)]
     pub(crate) async fn delete(&self, path: &str) -> Result<(), ApiError> {
         let url = self.url(path);
         let response = self.http.delete(&url).send().await?;

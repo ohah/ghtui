@@ -65,10 +65,7 @@ fn section(title: &str) -> Line<'static> {
 
 fn key_line(key: &str, desc: &str) -> Line<'static> {
     Line::from(vec![
-        Span::styled(
-            format!("  {:<20}", key),
-            Style::default().fg(Color::Yellow),
-        ),
+        Span::styled(format!("  {:<20}", key), Style::default().fg(Color::Yellow)),
         Span::raw(desc.to_string()),
     ])
 }

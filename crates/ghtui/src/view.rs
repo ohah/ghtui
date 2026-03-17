@@ -1,7 +1,7 @@
+use ghtui_core::AppState;
 use ghtui_core::message::ModalKind;
 use ghtui_core::router::{Route, TAB_LABELS};
 use ghtui_core::theme::Theme;
-use ghtui_core::AppState;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
@@ -23,7 +23,7 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
         .constraints([
             Constraint::Length(1), // Repo header
             Constraint::Length(1), // Tab bar
-            Constraint::Min(0),   // Main content
+            Constraint::Min(0),    // Main content
             Constraint::Length(1), // Footer
         ])
         .split(size);
@@ -49,12 +49,48 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
             views::action_detail::render(frame, state, content_area)
         }
         Route::Notifications => views::notifications::render(frame, state, content_area),
-        Route::Projects { .. } => views::placeholder::render(frame, state, content_area, "Projects", "Project boards and planning tools"),
-        Route::Wiki { .. } => views::placeholder::render(frame, state, content_area, "Wiki", "Documentation and wiki pages"),
-        Route::Security { .. } => views::placeholder::render(frame, state, content_area, "Security", "Security advisories, Dependabot alerts, and code scanning"),
-        Route::Insights { .. } => views::placeholder::render(frame, state, content_area, "Insights", "Contributors, traffic, commits, and code frequency"),
-        Route::Settings { .. } => views::placeholder::render(frame, state, content_area, "Settings", "Repository settings and configuration"),
-        Route::Search { .. } => views::placeholder::render(frame, state, content_area, "Search", "Search code, issues, pull requests, and more"),
+        Route::Projects { .. } => views::placeholder::render(
+            frame,
+            state,
+            content_area,
+            "Projects",
+            "Project boards and planning tools",
+        ),
+        Route::Wiki { .. } => views::placeholder::render(
+            frame,
+            state,
+            content_area,
+            "Wiki",
+            "Documentation and wiki pages",
+        ),
+        Route::Security { .. } => views::placeholder::render(
+            frame,
+            state,
+            content_area,
+            "Security",
+            "Security advisories, Dependabot alerts, and code scanning",
+        ),
+        Route::Insights { .. } => views::placeholder::render(
+            frame,
+            state,
+            content_area,
+            "Insights",
+            "Contributors, traffic, commits, and code frequency",
+        ),
+        Route::Settings { .. } => views::placeholder::render(
+            frame,
+            state,
+            content_area,
+            "Settings",
+            "Repository settings and configuration",
+        ),
+        Route::Search { .. } => views::placeholder::render(
+            frame,
+            state,
+            content_area,
+            "Search",
+            "Search code, issues, pull requests, and more",
+        ),
     }
 
     // Footer
@@ -78,9 +114,7 @@ fn render_repo_header(frame: &mut Frame, state: &AppState, theme: &Theme, area: 
         .map(|r| r.full_name())
         .unwrap_or_else(|| "No repository".to_string());
 
-    let (owner, name) = repo_name
-        .split_once('/')
-        .unwrap_or(("", &repo_name));
+    let (owner, name) = repo_name.split_once('/').unwrap_or(("", &repo_name));
 
     let loading_indicator = if !state.loading.is_empty() {
         Span::styled(" ● ", Style::default().fg(theme.warning))
@@ -90,14 +124,8 @@ fn render_repo_header(frame: &mut Frame, state: &AppState, theme: &Theme, area: 
 
     let line = Line::from(vec![
         Span::styled("  ", Style::default()),
-        Span::styled(
-            owner.to_string(),
-            Style::default().fg(theme.accent),
-        ),
-        Span::styled(
-            " / ",
-            Style::default().fg(theme.fg_dim),
-        ),
+        Span::styled(owner.to_string(), Style::default().fg(theme.accent)),
+        Span::styled(" / ", Style::default().fg(theme.fg_dim)),
         Span::styled(
             name.to_string(),
             Style::default()
@@ -107,8 +135,7 @@ fn render_repo_header(frame: &mut Frame, state: &AppState, theme: &Theme, area: 
         loading_indicator,
     ]);
 
-    let paragraph = Paragraph::new(line)
-        .style(Style::default().bg(theme.header_bg));
+    let paragraph = Paragraph::new(line).style(Style::default().bg(theme.header_bg));
     frame.render_widget(paragraph, area);
 }
 
@@ -165,8 +192,7 @@ fn render_global_tabs(frame: &mut Frame, state: &AppState, theme: &Theme, area: 
     }
 
     let line = Line::from(spans);
-    let paragraph = Paragraph::new(line)
-        .style(Style::default().bg(theme.header_bg));
+    let paragraph = Paragraph::new(line).style(Style::default().bg(theme.header_bg));
     frame.render_widget(paragraph, area);
 
     // Draw underline on active tab label
@@ -231,8 +257,7 @@ fn render_footer(frame: &mut Frame, state: &AppState, theme: &Theme, area: Rect)
         ),
     ]);
 
-    let paragraph = Paragraph::new(line)
-        .style(Style::default().bg(theme.footer_bg));
+    let paragraph = Paragraph::new(line).style(Style::default().bg(theme.footer_bg));
     frame.render_widget(paragraph, area);
 }
 

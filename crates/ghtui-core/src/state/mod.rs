@@ -1,7 +1,7 @@
-pub mod pr;
-pub mod issue;
 pub mod actions;
+pub mod issue;
 pub mod notification;
+pub mod pr;
 pub mod search;
 
 use std::collections::{HashSet, VecDeque};
@@ -12,23 +12,20 @@ use crate::router::Route;
 use crate::theme::Theme;
 use crate::types::common::RepoId;
 
-pub use pr::*;
-pub use issue::*;
 pub use actions::*;
+pub use issue::*;
 pub use notification::*;
+pub use pr::*;
 pub use search::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum InputMode {
+    #[default]
     Normal,
     Insert,
 }
 
-impl Default for InputMode {
-    fn default() -> Self {
-        Self::Normal
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct Toast {

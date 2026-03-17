@@ -1,5 +1,5 @@
-use ghtui_core::types::*;
 use ghtui_core::types::common::RepoId;
+use ghtui_core::types::*;
 use serde_json::json;
 
 use crate::client::GithubClient;
@@ -13,10 +13,7 @@ impl GithubClient {
         page: u32,
         per_page: u32,
     ) -> Result<(Vec<Issue>, Pagination), ApiError> {
-        let mut params = vec![
-            format!("page={}", page),
-            format!("per_page={}", per_page),
-        ];
+        let mut params = vec![format!("page={}", page), format!("per_page={}", per_page)];
 
         if let Some(ref state) = filters.state {
             params.push(format!("state={}", state));
@@ -51,7 +48,7 @@ impl GithubClient {
         let issues: Vec<Issue> = all_issues
             .into_iter()
             .filter(|i| i.get("pull_request").is_none())
-            .map(|v| serde_json::from_value(v))
+            .map(serde_json::from_value)
             .collect::<Result<Vec<_>, _>>()?;
 
         let pagination = Pagination {
@@ -64,11 +61,7 @@ impl GithubClient {
         Ok((issues, pagination))
     }
 
-    pub async fn get_issue(
-        &self,
-        repo: &RepoId,
-        number: u64,
-    ) -> Result<Issue, ApiError> {
+    pub async fn get_issue(&self, repo: &RepoId, number: u64) -> Result<Issue, ApiError> {
         let path = format!("/repos/{}/{}/issues/{}", repo.owner, repo.name, number);
         let body = self.get(&path).await?;
         let issue: Issue = serde_json::from_str(&body)?;
@@ -87,8 +80,7 @@ impl GithubClient {
             repo.owner, repo.name, number
         );
         let comments_body = self.get(&comments_path).await?;
-        let comments: Vec<IssueComment> =
-            serde_json::from_str(&comments_body).unwrap_or_default();
+        let comments: Vec<IssueComment> = serde_json::from_str(&comments_body).unwrap_or_default();
 
         Ok(IssueDetail { issue, comments })
     }
@@ -107,28 +99,20 @@ impl GithubClient {
         });
         let response = self.post(&path, &body).await?;
         let issue: serde_json::Value = serde_json::from_str(&response)?;
-        let number = issue["number"].as_u64().ok_or(ApiError::Other(
-            "Missing issue number in response".into(),
-        ))?;
+        let number = issue["number"]
+            .as_u64()
+            .ok_or(ApiError::Other("Missing issue number in response".into()))?;
         Ok(number)
     }
 
-    pub async fn close_issue(
-        &self,
-        repo: &RepoId,
-        number: u64,
-    ) -> Result<(), ApiError> {
+    pub async fn close_issue(&self, repo: &RepoId, number: u64) -> Result<(), ApiError> {
         let path = format!("/repos/{}/{}/issues/{}", repo.owner, repo.name, number);
         let body = json!({ "state": "closed" });
         self.patch(&path, &body).await?;
         Ok(())
     }
 
-    pub async fn reopen_issue(
-        &self,
-        repo: &RepoId,
-        number: u64,
-    ) -> Result<(), ApiError> {
+    pub async fn reopen_issue(&self, repo: &RepoId, number: u64) -> Result<(), ApiError> {
         let path = format!("/repos/{}/{}/issues/{}", repo.owner, repo.name, number);
         let body = json!({ "state": "open" });
         self.patch(&path, &body).await?;

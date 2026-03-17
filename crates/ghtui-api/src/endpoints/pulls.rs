@@ -1,5 +1,5 @@
-use ghtui_core::types::*;
 use ghtui_core::types::common::RepoId;
+use ghtui_core::types::*;
 use serde_json::json;
 
 use crate::client::GithubClient;
@@ -14,10 +14,7 @@ impl GithubClient {
         page: u32,
         per_page: u32,
     ) -> Result<(Vec<PullRequest>, Pagination), ApiError> {
-        let mut params = vec![
-            format!("page={}", page),
-            format!("per_page={}", per_page),
-        ];
+        let mut params = vec![format!("page={}", page), format!("per_page={}", per_page)];
 
         if let Some(ref state) = filters.state {
             // GitHub API uses "open"/"closed" for PRs, "all" for both
@@ -58,11 +55,7 @@ impl GithubClient {
         Ok((prs, pagination))
     }
 
-    pub async fn get_pull(
-        &self,
-        repo: &RepoId,
-        number: u64,
-    ) -> Result<PullRequest, ApiError> {
+    pub async fn get_pull(&self, repo: &RepoId, number: u64) -> Result<PullRequest, ApiError> {
         let path = format!("/repos/{}/{}/pulls/{}", repo.owner, repo.name, number);
         let body = self.get(&path).await?;
         let pr: PullRequest = serde_json::from_str(&body)?;
@@ -95,10 +88,8 @@ impl GithubClient {
             self.get(&review_comments_path),
         );
 
-        let reviews: Vec<ApiReview> =
-            serde_json::from_str(&reviews_body?).unwrap_or_default();
-        let comments: Vec<PrComment> =
-            serde_json::from_str(&comments_body?).unwrap_or_default();
+        let reviews: Vec<ApiReview> = serde_json::from_str(&reviews_body?).unwrap_or_default();
+        let comments: Vec<PrComment> = serde_json::from_str(&comments_body?).unwrap_or_default();
         let review_comments: Vec<ApiReviewComment> =
             serde_json::from_str(&review_comments_body?).unwrap_or_default();
 
@@ -147,10 +138,7 @@ impl GithubClient {
         number: u64,
         method: MergeMethod,
     ) -> Result<(), ApiError> {
-        let path = format!(
-            "/repos/{}/{}/pulls/{}/merge",
-            repo.owner, repo.name, number
-        );
+        let path = format!("/repos/{}/{}/pulls/{}/merge", repo.owner, repo.name, number);
         let body = json!({
             "merge_method": method.as_str(),
         });
@@ -158,33 +146,21 @@ impl GithubClient {
         Ok(())
     }
 
-    pub async fn close_pull(
-        &self,
-        repo: &RepoId,
-        number: u64,
-    ) -> Result<(), ApiError> {
+    pub async fn close_pull(&self, repo: &RepoId, number: u64) -> Result<(), ApiError> {
         let path = format!("/repos/{}/{}/pulls/{}", repo.owner, repo.name, number);
         let body = json!({ "state": "closed" });
         self.patch(&path, &body).await?;
         Ok(())
     }
 
-    pub async fn reopen_pull(
-        &self,
-        repo: &RepoId,
-        number: u64,
-    ) -> Result<(), ApiError> {
+    pub async fn reopen_pull(&self, repo: &RepoId, number: u64) -> Result<(), ApiError> {
         let path = format!("/repos/{}/{}/pulls/{}", repo.owner, repo.name, number);
         let body = json!({ "state": "open" });
         self.patch(&path, &body).await?;
         Ok(())
     }
 
-    pub async fn create_pull(
-        &self,
-        repo: &RepoId,
-        input: &CreatePrInput,
-    ) -> Result<u64, ApiError> {
+    pub async fn create_pull(&self, repo: &RepoId, input: &CreatePrInput) -> Result<u64, ApiError> {
         let path = format!("/repos/{}/{}/pulls", repo.owner, repo.name);
         let body = json!({
             "title": input.title,
@@ -195,9 +171,9 @@ impl GithubClient {
         });
         let response = self.post(&path, &body).await?;
         let pr: serde_json::Value = serde_json::from_str(&response)?;
-        let number = pr["number"].as_u64().ok_or(ApiError::Other(
-            "Missing PR number in response".into(),
-        ))?;
+        let number = pr["number"]
+            .as_u64()
+            .ok_or(ApiError::Other("Missing PR number in response".into()))?;
         Ok(number)
     }
 

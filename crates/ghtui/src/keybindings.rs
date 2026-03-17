@@ -59,7 +59,10 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
     // Tab / Shift-Tab for global tab navigation (except in detail views which use Tab internally)
     let in_detail = matches!(
         &state.route,
-        Route::PrDetail { .. } | Route::IssueDetail { .. } | Route::ActionDetail { .. } | Route::JobLog { .. }
+        Route::PrDetail { .. }
+            | Route::IssueDetail { .. }
+            | Route::ActionDetail { .. }
+            | Route::JobLog { .. }
     );
     if !in_detail {
         match key.code {

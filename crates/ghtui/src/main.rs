@@ -38,7 +38,7 @@ async fn main() -> Result<()> {
     let repo_str = args
         .repo
         .or_else(|| config.default_repo.clone())
-        .or_else(|| Cli::detect_repo());
+        .or_else(Cli::detect_repo);
 
     let repo = repo_str
         .map(|s| s.parse::<RepoId>())

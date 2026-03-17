@@ -113,19 +113,10 @@ impl<'a> DiffView<'a> {
 
             for diff_line in &hunk.lines {
                 let (prefix, style) = match diff_line.kind {
-                    DiffLineKind::Add => (
-                        "+",
-                        Style::default().fg(Color::Green),
-                    ),
-                    DiffLineKind::Remove => (
-                        "-",
-                        Style::default().fg(Color::Red),
-                    ),
+                    DiffLineKind::Add => ("+", Style::default().fg(Color::Green)),
+                    DiffLineKind::Remove => ("-", Style::default().fg(Color::Red)),
                     DiffLineKind::Context => (" ", Style::default()),
-                    DiffLineKind::Header => (
-                        "@",
-                        Style::default().fg(Color::Magenta),
-                    ),
+                    DiffLineKind::Header => ("@", Style::default().fg(Color::Magenta)),
                 };
 
                 let old_ln = diff_line

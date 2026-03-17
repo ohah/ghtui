@@ -87,10 +87,9 @@ pub fn run_status_badge(
                     .bg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ),
-            ghtui_core::types::RunStatus::Queued => Span::styled(
-                " ○ QUEUED ",
-                Style::default().fg(Color::Yellow),
-            ),
+            ghtui_core::types::RunStatus::Queued => {
+                Span::styled(" ○ QUEUED ", Style::default().fg(Color::Yellow))
+            }
             _ => Span::styled(
                 format!(" {} ", status),
                 Style::default().fg(Color::DarkGray),

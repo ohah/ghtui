@@ -17,26 +17,23 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 .as_millis() as usize
                 / 100,
         );
-        let paragraph = Paragraph::new(Line::from(spinner.span()))
-            .block(
-                Block::default()
-                    .title(" Issue Detail ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
+        let paragraph = Paragraph::new(Line::from(spinner.span())).block(
+            Block::default()
+                .title(" Issue Detail ")
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        );
         frame.render_widget(paragraph, area);
         return;
     }
 
     let Some(ref detail_state) = state.issue_detail else {
-        let paragraph = Paragraph::new("No data")
-            .style(theme.text_dim())
-            .block(
-                Block::default()
-                    .title(" Issue Detail ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
+        let paragraph = Paragraph::new("No data").style(theme.text_dim()).block(
+            Block::default()
+                .title(" Issue Detail ")
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        );
         frame.render_widget(paragraph, area);
         return;
     };
@@ -45,10 +42,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3),
-            Constraint::Min(0),
-        ])
+        .constraints([Constraint::Length(3), Constraint::Min(0)])
         .split(area);
 
     let state_color = match issue.state {
@@ -60,22 +54,26 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         Line::from(vec![
             Span::styled(
                 format!(" {} ", issue.state),
-                Style::default().fg(theme.bg).bg(state_color).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme.bg)
+                    .bg(state_color)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 format!(" #{}", issue.number),
                 Style::default().fg(theme.fg_muted),
             ),
         ]),
-        Line::styled(
-            format!(" {}", issue.title),
-            theme.text_bold(),
-        ),
+        Line::styled(format!(" {}", issue.title), theme.text_bold()),
     ];
 
     let title = Paragraph::new(title_lines)
         .style(Style::default().bg(theme.bg))
-        .block(Block::default().borders(Borders::BOTTOM).border_style(theme.border_style()));
+        .block(
+            Block::default()
+                .borders(Borders::BOTTOM)
+                .border_style(theme.border_style()),
+        );
     frame.render_widget(title, chunks[0]);
 
     let mut lines = Vec::new();
@@ -91,7 +89,9 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         lines.push(Line::from(vec![
             Span::styled(
                 format!("@{}", comment.user.login),
-                Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 format!(" · {}", comment.created_at.format("%Y-%m-%d %H:%M")),

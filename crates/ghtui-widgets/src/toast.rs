@@ -25,10 +25,7 @@ impl Widget for ToastWidget<'_> {
         };
 
         let style = Style::default().fg(color);
-        let line = Line::styled(
-            format!(" {} {} ", prefix, self.toast.message),
-            style,
-        );
+        let line = Line::styled(format!(" {} {} ", prefix, self.toast.message), style);
 
         buf.set_line(area.x, area.y, &line, area.width);
     }

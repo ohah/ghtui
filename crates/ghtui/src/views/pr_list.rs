@@ -29,14 +29,12 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     }
 
     let Some(ref list_state) = state.pr_list else {
-        let paragraph = Paragraph::new("No data")
-            .style(theme.text_dim())
-            .block(
-                Block::default()
-                    .title(" Pull Requests ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
+        let paragraph = Paragraph::new("No data").style(theme.text_dim()).block(
+            Block::default()
+                .title(" Pull Requests ")
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        );
         frame.render_widget(paragraph, area);
         return;
     };
@@ -49,18 +47,15 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
             let is_selected = i == list_state.selected;
 
             let state_icon = match pr.state {
-                ghtui_core::types::PrState::Open => Span::styled(
-                    " ● ",
-                    Style::default().fg(theme.success),
-                ),
-                ghtui_core::types::PrState::Closed => Span::styled(
-                    " ● ",
-                    Style::default().fg(theme.danger),
-                ),
-                ghtui_core::types::PrState::Merged => Span::styled(
-                    " ● ",
-                    Style::default().fg(theme.done),
-                ),
+                ghtui_core::types::PrState::Open => {
+                    Span::styled(" ● ", Style::default().fg(theme.success))
+                }
+                ghtui_core::types::PrState::Closed => {
+                    Span::styled(" ● ", Style::default().fg(theme.danger))
+                }
+                ghtui_core::types::PrState::Merged => {
+                    Span::styled(" ● ", Style::default().fg(theme.done))
+                }
             };
 
             let draft = if pr.draft {
@@ -94,10 +89,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         })
         .collect();
 
-    let title = format!(
-        " Pull Requests ({}) ",
-        list_state.items.len()
-    );
+    let title = format!(" Pull Requests ({}) ", list_state.items.len());
 
     let list = List::new(items)
         .block(

@@ -28,13 +28,9 @@ impl From<ApiError> for ghtui_core::GhtuiError {
     fn from(e: ApiError) -> Self {
         match e {
             ApiError::Unauthorized => ghtui_core::GhtuiError::Auth("Unauthorized".into()),
-            ApiError::RateLimit { reset_at, .. } => {
-                ghtui_core::GhtuiError::RateLimit { reset_at }
-            }
+            ApiError::RateLimit { reset_at, .. } => ghtui_core::GhtuiError::RateLimit { reset_at },
             ApiError::NotFound(msg) => ghtui_core::GhtuiError::NotFound(msg),
-            ApiError::GitHub { status, message } => {
-                ghtui_core::GhtuiError::Api { status, message }
-            }
+            ApiError::GitHub { status, message } => ghtui_core::GhtuiError::Api { status, message },
             ApiError::Http(e) => ghtui_core::GhtuiError::Network(e.to_string()),
             ApiError::Json(e) => ghtui_core::GhtuiError::Parse(e.to_string()),
             ApiError::Other(msg) => ghtui_core::GhtuiError::Other(msg),

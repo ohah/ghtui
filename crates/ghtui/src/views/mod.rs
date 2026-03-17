@@ -1,10 +1,10 @@
-pub mod dashboard;
-pub mod pr_list;
-pub mod pr_detail;
-pub mod issue_list;
-pub mod issue_detail;
-pub mod actions_list;
 pub mod action_detail;
+pub mod actions_list;
+pub mod dashboard;
+pub mod help;
+pub mod issue_detail;
+pub mod issue_list;
 pub mod notifications;
 pub mod placeholder;
-pub mod help;
+pub mod pr_detail;
+pub mod pr_list;

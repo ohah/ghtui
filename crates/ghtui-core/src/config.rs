@@ -90,9 +90,7 @@ impl AppConfig {
 
         // 2. Try reading from ~/.config/gh/hosts.yml (XDG path)
         let home = dirs::home_dir()?;
-        let candidates = [
-            home.join(".config").join("gh").join("hosts.yml"),
-        ];
+        let candidates = [home.join(".config").join("gh").join("hosts.yml")];
 
         for hosts_path in &candidates {
             if let Ok(content) = std::fs::read_to_string(hosts_path) {

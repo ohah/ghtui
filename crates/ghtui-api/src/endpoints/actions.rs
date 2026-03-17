@@ -1,5 +1,5 @@
-use ghtui_core::types::*;
 use ghtui_core::types::common::RepoId;
+use ghtui_core::types::*;
 
 use crate::client::GithubClient;
 use crate::error::ApiError;
@@ -12,10 +12,7 @@ impl GithubClient {
         page: u32,
         per_page: u32,
     ) -> Result<(Vec<WorkflowRun>, Pagination), ApiError> {
-        let mut params = vec![
-            format!("page={}", page),
-            format!("per_page={}", per_page),
-        ];
+        let mut params = vec![format!("page={}", page), format!("per_page={}", per_page)];
 
         if let Some(ref status) = filters.status {
             params.push(format!("status={}", status));
@@ -43,10 +40,8 @@ impl GithubClient {
         let body = self.get(&path).await?;
         let response: serde_json::Value = serde_json::from_str(&body)?;
 
-        let runs: Vec<WorkflowRun> = serde_json::from_value(
-            response["workflow_runs"].clone(),
-        )
-        .unwrap_or_default();
+        let runs: Vec<WorkflowRun> =
+            serde_json::from_value(response["workflow_runs"].clone()).unwrap_or_default();
 
         let total = response["total_count"].as_u64().map(|c| c as u32);
 
@@ -74,8 +69,7 @@ impl GithubClient {
             repo.owner, repo.name, run_id
         );
 
-        let (run_body, jobs_body) =
-            tokio::join!(self.get(&run_path), self.get(&jobs_path));
+        let (run_body, jobs_body) = tokio::join!(self.get(&run_path), self.get(&jobs_path));
 
         let run: WorkflowRun = serde_json::from_str(&run_body?)?;
         let jobs_response: serde_json::Value = serde_json::from_str(&jobs_body?)?;
@@ -85,11 +79,7 @@ impl GithubClient {
         Ok(WorkflowRunDetail { run, jobs })
     }
 
-    pub async fn get_job_log(
-        &self,
-        repo: &RepoId,
-        job_id: u64,
-    ) -> Result<Vec<LogLine>, ApiError> {
+    pub async fn get_job_log(&self, repo: &RepoId, job_id: u64) -> Result<Vec<LogLine>, ApiError> {
         let path = format!(
             "/repos/{}/{}/actions/jobs/{}/logs",
             repo.owner, repo.name, job_id
@@ -122,10 +112,7 @@ impl GithubClient {
             .map(|line| {
                 // GitHub log format: "2024-01-01T00:00:00.000Z content"
                 let (timestamp, content) = if line.len() > 24 && line.chars().nth(4) == Some('-') {
-                    (
-                        Some(line[..23].to_string()),
-                        line[24..].to_string(),
-                    )
+                    (Some(line[..23].to_string()), line[24..].to_string())
                 } else {
                     (None, line.to_string())
                 };
@@ -136,11 +123,7 @@ impl GithubClient {
         Ok(lines)
     }
 
-    pub async fn cancel_run(
-        &self,
-        repo: &RepoId,
-        run_id: u64,
-    ) -> Result<(), ApiError> {
+    pub async fn cancel_run(&self, repo: &RepoId, run_id: u64) -> Result<(), ApiError> {
         let path = format!(
             "/repos/{}/{}/actions/runs/{}/cancel",
             repo.owner, repo.name, run_id
@@ -149,11 +132,7 @@ impl GithubClient {
         Ok(())
     }
 
-    pub async fn rerun_run(
-        &self,
-        repo: &RepoId,
-        run_id: u64,
-    ) -> Result<(), ApiError> {
+    pub async fn rerun_run(&self, repo: &RepoId, run_id: u64) -> Result<(), ApiError> {
         let path = format!(
             "/repos/{}/{}/actions/runs/{}/rerun",
             repo.owner, repo.name, run_id

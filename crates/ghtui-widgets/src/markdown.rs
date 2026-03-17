@@ -15,13 +15,15 @@ pub fn render_markdown(text: &str) -> Vec<Line<'static>> {
             Event::Start(tag) => match tag {
                 Tag::Heading { level, .. } => {
                     let style = match level {
-                        pulldown_cmark::HeadingLevel::H1 => {
-                            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
-                        }
-                        pulldown_cmark::HeadingLevel::H2 => {
-                            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
-                        }
-                        _ => Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+                        pulldown_cmark::HeadingLevel::H1 => Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                        pulldown_cmark::HeadingLevel::H2 => Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD),
+                        _ => Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD),
                     };
                     style_stack.push(style);
                 }
@@ -91,10 +93,7 @@ pub fn render_markdown(text: &str) -> Vec<Line<'static>> {
                 if in_code_block {
                     let style = Style::default().fg(Color::White).bg(Color::DarkGray);
                     for code_line in text.lines() {
-                        current_spans.push(Span::styled(
-                            format!(" {} ", code_line),
-                            style,
-                        ));
+                        current_spans.push(Span::styled(format!(" {} ", code_line), style));
                         flush_line(&mut lines, &mut current_spans);
                     }
                 } else {

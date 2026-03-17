@@ -92,7 +92,7 @@ fn test_pr_filters_default() {
 
 #[test]
 fn test_run_status_display() {
-    use ghtui_core::types::{RunStatus, RunConclusion};
+    use ghtui_core::types::{RunConclusion, RunStatus};
     assert_eq!(format!("{}", RunStatus::InProgress), "in_progress");
     assert_eq!(format!("{}", RunConclusion::Success), "success");
     assert_eq!(format!("{}", RunConclusion::Failure), "failure");

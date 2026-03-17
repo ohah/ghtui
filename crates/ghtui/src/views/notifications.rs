@@ -29,14 +29,12 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     }
 
     let Some(ref notif_state) = state.notifications else {
-        let paragraph = Paragraph::new("No data")
-            .style(theme.text_dim())
-            .block(
-                Block::default()
-                    .title(" Notifications ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
+        let paragraph = Paragraph::new("No data").style(theme.text_dim()).block(
+            Block::default()
+                .title(" Notifications ")
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        );
         frame.render_widget(paragraph, area);
         return;
     };

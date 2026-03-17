@@ -29,14 +29,12 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     }
 
     let Some(ref list_state) = state.issue_list else {
-        let paragraph = Paragraph::new("No data")
-            .style(theme.text_dim())
-            .block(
-                Block::default()
-                    .title(" Issues ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
+        let paragraph = Paragraph::new("No data").style(theme.text_dim()).block(
+            Block::default()
+                .title(" Issues ")
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        );
         frame.render_widget(paragraph, area);
         return;
     };
@@ -49,14 +47,12 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
             let is_selected = i == list_state.selected;
 
             let state_icon = match issue.state {
-                ghtui_core::types::IssueState::Open => Span::styled(
-                    " ● ",
-                    Style::default().fg(theme.success),
-                ),
-                ghtui_core::types::IssueState::Closed => Span::styled(
-                    " ● ",
-                    Style::default().fg(theme.done),
-                ),
+                ghtui_core::types::IssueState::Open => {
+                    Span::styled(" ● ", Style::default().fg(theme.success))
+                }
+                ghtui_core::types::IssueState::Closed => {
+                    Span::styled(" ● ", Style::default().fg(theme.done))
+                }
             };
 
             let title_style = if is_selected {
@@ -68,12 +64,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
             let labels: Vec<Span> = issue
                 .labels
                 .iter()
-                .map(|l| {
-                    Span::styled(
-                        format!(" {} ", l.name),
-                        Style::default().fg(theme.accent),
-                    )
-                })
+                .map(|l| Span::styled(format!(" {} ", l.name), Style::default().fg(theme.accent)))
                 .collect();
 
             let mut spans = vec![

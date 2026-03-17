@@ -243,23 +243,21 @@ fn test_actions_list_selection() {
 fn test_notification_list_selection() {
     use chrono::Utc;
 
-    let notifs = vec![
-        Notification {
-            id: "1".to_string(),
-            unread: true,
-            reason: "review_requested".to_string(),
-            updated_at: Utc::now(),
-            subject: NotificationSubject {
-                title: "Fix bug".to_string(),
-                subject_type: "PullRequest".to_string(),
-                url: None,
-                latest_comment_url: None,
-            },
-            repository: NotificationRepo {
-                full_name: "owner/repo".to_string(),
-            },
+    let notifs = vec![Notification {
+        id: "1".to_string(),
+        unread: true,
+        reason: "review_requested".to_string(),
+        updated_at: Utc::now(),
+        subject: NotificationSubject {
+            title: "Fix bug".to_string(),
+            subject_type: "PullRequest".to_string(),
+            url: None,
+            latest_comment_url: None,
         },
-    ];
+        repository: NotificationRepo {
+            full_name: "owner/repo".to_string(),
+        },
+    }];
 
     let mut list = NotificationListState::new(notifs);
     assert_eq!(list.selected, 0);

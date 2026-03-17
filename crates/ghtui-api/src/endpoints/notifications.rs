@@ -28,10 +28,7 @@ impl GithubClient {
         Ok(notifications)
     }
 
-    pub async fn mark_notification_read(
-        &self,
-        thread_id: &str,
-    ) -> Result<(), ApiError> {
+    pub async fn mark_notification_read(&self, thread_id: &str) -> Result<(), ApiError> {
         let path = format!("/notifications/threads/{}", thread_id);
         let url = self.url(&path);
         let response = self.http.patch(&url).send().await?;

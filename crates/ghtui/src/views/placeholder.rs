@@ -10,28 +10,20 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, title: &str, desc
 
     let lines = vec![
         Line::raw(""),
-        Line::from(vec![
-            Span::styled(
-                format!("  {} ", title),
-                Style::default()
-                    .fg(theme.fg)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        ]),
+        Line::from(vec![Span::styled(
+            format!("  {} ", title),
+            Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
+        )]),
         Line::raw(""),
-        Line::from(vec![
-            Span::styled(
-                format!("  {}", description),
-                Style::default().fg(theme.fg_dim),
-            ),
-        ]),
+        Line::from(vec![Span::styled(
+            format!("  {}", description),
+            Style::default().fg(theme.fg_dim),
+        )]),
         Line::raw(""),
-        Line::from(vec![
-            Span::styled(
-                "  Coming soon — this tab is under development.",
-                Style::default().fg(theme.fg_muted),
-            ),
-        ]),
+        Line::from(vec![Span::styled(
+            "  Coming soon — this tab is under development.",
+            Style::default().fg(theme.fg_muted),
+        )]),
     ];
 
     let paragraph = Paragraph::new(lines)

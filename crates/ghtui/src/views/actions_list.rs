@@ -29,14 +29,12 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     }
 
     let Some(ref list_state) = state.actions_list else {
-        let paragraph = Paragraph::new("No data")
-            .style(theme.text_dim())
-            .block(
-                Block::default()
-                    .title(" Actions ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
+        let paragraph = Paragraph::new("No data").style(theme.text_dim()).block(
+            Block::default()
+                .title(" Actions ")
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        );
         frame.render_widget(paragraph, area);
         return;
     };
@@ -84,14 +82,8 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                     Style::default().fg(theme.fg_muted),
                 ),
                 Span::raw(" "),
-                Span::styled(
-                    format!("({})", branch),
-                    Style::default().fg(theme.accent),
-                ),
-                Span::styled(
-                    format!(" {}", run.event),
-                    Style::default().fg(theme.fg_dim),
-                ),
+                Span::styled(format!("({})", branch), Style::default().fg(theme.accent)),
+                Span::styled(format!(" {}", run.event), Style::default().fg(theme.fg_dim)),
             ]);
 
             ListItem::new(line)

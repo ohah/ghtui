@@ -99,15 +99,19 @@ fn test_loading_state() {
 
 #[test]
 fn test_pr_list_state_selection() {
-    use ghtui_core::types::*;
     use chrono::Utc;
+    use ghtui_core::types::*;
 
     let prs = vec![
         PullRequest {
             number: 1,
             title: "First PR".to_string(),
             state: PrState::Open,
-            user: common::User { login: "user1".into(), avatar_url: "".into(), name: None },
+            user: common::User {
+                login: "user1".into(),
+                avatar_url: "".into(),
+                name: None,
+            },
             body: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
@@ -131,7 +135,11 @@ fn test_pr_list_state_selection() {
             number: 2,
             title: "Second PR".to_string(),
             state: PrState::Open,
-            user: common::User { login: "user2".into(), avatar_url: "".into(), name: None },
+            user: common::User {
+                login: "user2".into(),
+                avatar_url: "".into(),
+                name: None,
+            },
             body: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),

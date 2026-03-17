@@ -81,11 +81,7 @@ struct DiffFileBuilder {
 impl DiffFileBuilder {
     fn from_header(line: &str) -> Self {
         // "diff --git a/path b/path"
-        let filename = line
-            .split(" b/")
-            .nth(1)
-            .unwrap_or("unknown")
-            .to_string();
+        let filename = line.split(" b/").nth(1).unwrap_or("unknown").to_string();
 
         Self {
             filename,

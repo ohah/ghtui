@@ -1,7 +1,7 @@
 use anyhow::Result;
 use ghtui_api::GithubClient;
-use ghtui_core::{AppConfig, AppState, Command, Message};
 use ghtui_core::types::common::RepoId;
+use ghtui_core::{AppConfig, AppState, Command, Message};
 use tokio::sync::mpsc;
 
 use crate::command_executor;

@@ -16,26 +16,23 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 .as_millis() as usize
                 / 100,
         );
-        let paragraph = Paragraph::new(Line::from(spinner.span()))
-            .block(
-                Block::default()
-                    .title(" Run Detail ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
+        let paragraph = Paragraph::new(Line::from(spinner.span())).block(
+            Block::default()
+                .title(" Run Detail ")
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        );
         frame.render_widget(paragraph, area);
         return;
     }
 
     let Some(ref detail) = state.action_detail else {
-        let paragraph = Paragraph::new("No data")
-            .style(theme.text_dim())
-            .block(
-                Block::default()
-                    .title(" Run Detail ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
+        let paragraph = Paragraph::new("No data").style(theme.text_dim()).block(
+            Block::default()
+                .title(" Run Detail ")
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        );
         frame.render_widget(paragraph, area);
         return;
     };
@@ -60,10 +57,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     let header_lines = vec![
         Line::from(vec![
             Span::styled(" ● ", Style::default().fg(status_color)),
-            Span::styled(
-                run.name.as_deref().unwrap_or("Unknown"),
-                theme.text_bold(),
-            ),
+            Span::styled(run.name.as_deref().unwrap_or("Unknown"), theme.text_bold()),
             Span::styled(
                 format!(" #{}", run.run_number),
                 Style::default().fg(theme.fg_muted),
@@ -83,7 +77,11 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
     let header = Paragraph::new(header_lines)
         .style(Style::default().bg(theme.bg))
-        .block(Block::default().borders(Borders::BOTTOM).border_style(theme.border_style()));
+        .block(
+            Block::default()
+                .borders(Borders::BOTTOM)
+                .border_style(theme.border_style()),
+        );
     frame.render_widget(header, chunks[0]);
 
     // Jobs
@@ -101,7 +99,10 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 }
                 _ => Span::styled(" ● ", Style::default().fg(theme.warning)),
             };
-            ListItem::new(Line::from(vec![icon, Span::styled(&job.name, theme.text())]))
+            ListItem::new(Line::from(vec![
+                icon,
+                Span::styled(&job.name, theme.text()),
+            ]))
         })
         .collect();
 

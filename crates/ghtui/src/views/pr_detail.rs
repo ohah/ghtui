@@ -17,26 +17,23 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 .as_millis() as usize
                 / 100,
         );
-        let paragraph = Paragraph::new(Line::from(spinner.span()))
-            .block(
-                Block::default()
-                    .title(" PR Detail ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
+        let paragraph = Paragraph::new(Line::from(spinner.span())).block(
+            Block::default()
+                .title(" PR Detail ")
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        );
         frame.render_widget(paragraph, area);
         return;
     }
 
     let Some(ref detail_state) = state.pr_detail else {
-        let paragraph = Paragraph::new("No data")
-            .style(theme.text_dim())
-            .block(
-                Block::default()
-                    .title(" PR Detail ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
+        let paragraph = Paragraph::new("No data").style(theme.text_dim()).block(
+            Block::default()
+                .title(" PR Detail ")
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        );
         frame.render_widget(paragraph, area);
         return;
     };
@@ -63,17 +60,17 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         Line::from(vec![
             Span::styled(
                 format!(" {} ", pr.state),
-                Style::default().fg(theme.bg).bg(state_color).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme.bg)
+                    .bg(state_color)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 format!(" #{}", pr.number),
                 Style::default().fg(theme.fg_muted),
             ),
         ]),
-        Line::styled(
-            format!(" {}", pr.title),
-            theme.text_bold(),
-        ),
+        Line::styled(format!(" {}", pr.title), theme.text_bold()),
         Line::from(vec![
             Span::styled(
                 format!(" @{}", pr.user.login),
@@ -88,7 +85,11 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
     let title = Paragraph::new(title_lines)
         .style(Style::default().bg(theme.bg))
-        .block(Block::default().borders(Borders::BOTTOM).border_style(theme.border_style()));
+        .block(
+            Block::default()
+                .borders(Borders::BOTTOM)
+                .border_style(theme.border_style()),
+        );
     frame.render_widget(title, chunks[0]);
 
     // Tab bar
@@ -125,7 +126,9 @@ fn render_conversation(
         lines.push(Line::from(vec![
             Span::styled(
                 format!("@{}", comment.user.login),
-                Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 format!(" · {}", comment.created_at.format("%Y-%m-%d %H:%M")),
@@ -146,11 +149,15 @@ fn render_conversation(
         lines.push(Line::from(vec![
             Span::styled(
                 format!("@{}", review.user.login),
-                Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 format!(" {}", review.state),
-                Style::default().fg(state_color).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(state_color)
+                    .add_modifier(Modifier::BOLD),
             ),
         ]));
         if let Some(ref body) = review.body {
@@ -187,15 +194,16 @@ fn render_diff_tab(
     let theme = &state.theme;
 
     if let Some(ref files) = detail.diff {
-        let mut diff_state = ghtui_widgets::DiffViewState::default();
-        diff_state.show_all_files = true;
-        let diff_view = ghtui_widgets::DiffView::new(files)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style())
-                    .title(" Diff "),
-            );
+        let mut diff_state = ghtui_widgets::DiffViewState {
+            show_all_files: true,
+            ..Default::default()
+        };
+        let diff_view = ghtui_widgets::DiffView::new(files).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(theme.border_style())
+                .title(" Diff "),
+        );
         frame.render_stateful_widget(diff_view, area, &mut diff_state);
     } else {
         let spinner = ghtui_widgets::Spinner::new(0);
@@ -236,12 +244,11 @@ fn render_checks(
             .collect()
     };
 
-    let paragraph = Paragraph::new(lines)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(theme.border_style())
-                .title(" Checks "),
-        );
+    let paragraph = Paragraph::new(lines).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(theme.border_style())
+            .title(" Checks "),
+    );
     frame.render_widget(paragraph, area);
 }
