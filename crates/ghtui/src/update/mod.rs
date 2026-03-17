@@ -103,8 +103,19 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.push_toast(format!("Issue #{} created!", number), ToastLevel::Success);
             refresh_current_view(state)
         }
+        Message::IssueUpdated(number) => {
+            state.push_toast(format!("Issue #{} updated", number), ToastLevel::Success);
+            refresh_current_view(state)
+        }
         Message::CommentAdded => {
             state.push_toast("Comment added".to_string(), ToastLevel::Success);
+            state.input_buffer.clear();
+            state.input_mode = InputMode::Normal;
+            state.modal = None;
+            refresh_current_view(state)
+        }
+        Message::CommentUpdated => {
+            state.push_toast("Comment updated".to_string(), ToastLevel::Success);
             state.input_buffer.clear();
             state.input_mode = InputMode::Normal;
             state.modal = None;
@@ -478,6 +489,48 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::ModalOpen(kind) => {
             state.input_buffer.clear();
+            // Pre-fill input for edit/reply modals
+            match &kind {
+                ghtui_core::ModalKind::EditIssue => {
+                    if let Some(ref detail) = state.issue_detail {
+                        match detail.selected_comment {
+                            None => {
+                                // Editing the issue itself: title\nbody
+                                let issue = &detail.detail.issue;
+                                state.input_buffer = format!(
+                                    "{}\n{}",
+                                    issue.title,
+                                    issue.body.as_deref().unwrap_or("")
+                                );
+                            }
+                            Some(idx) => {
+                                // Editing a comment
+                                if let Some(comment) = detail.detail.comments.get(idx) {
+                                    state.input_buffer = comment.body.clone();
+                                }
+                            }
+                        }
+                    }
+                }
+                ghtui_core::ModalKind::AddComment => {
+                    // If a comment is selected, quote it for reply
+                    if let Some(ref detail) = state.issue_detail {
+                        if let Some(idx) = detail.selected_comment {
+                            if let Some(comment) = detail.detail.comments.get(idx) {
+                                let quoted: String = comment
+                                    .body
+                                    .lines()
+                                    .map(|l| format!("> {}", l))
+                                    .collect::<Vec<_>>()
+                                    .join("\n");
+                                state.input_buffer =
+                                    format!("> @{}\n{}\n\n", comment.user.login, quoted);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
             state.modal = Some(kind);
             state.input_mode = InputMode::Insert;
             vec![]
@@ -497,6 +550,72 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                                 vec![Command::AddComment(repo.clone(), *number, body)]
                             }
                             _ => vec![],
+                        }
+                    } else {
+                        vec![]
+                    }
+                }
+                Some(ghtui_core::ModalKind::EditIssue) => {
+                    if let Some(ref repo) = state.current_repo {
+                        if let Some(ref detail) = state.issue_detail {
+                            match detail.selected_comment {
+                                None => {
+                                    // Edit issue title/body
+                                    let input = state.input_buffer.clone();
+                                    let mut lines = input.splitn(2, '\n');
+                                    let title = lines.next().unwrap_or("").trim().to_string();
+                                    let body = lines.next().map(|b| b.trim().to_string());
+                                    let number = detail.detail.issue.number;
+                                    let title_opt =
+                                        if title.is_empty() { None } else { Some(title) };
+                                    vec![Command::UpdateIssue(
+                                        repo.clone(),
+                                        number,
+                                        title_opt,
+                                        body,
+                                    )]
+                                }
+                                Some(idx) => {
+                                    // Edit comment
+                                    if let Some(comment) = detail.detail.comments.get(idx) {
+                                        let body = state.input_buffer.clone();
+                                        if body.trim().is_empty() {
+                                            vec![]
+                                        } else {
+                                            let number = detail.detail.issue.number;
+                                            vec![Command::UpdateComment(
+                                                repo.clone(),
+                                                number,
+                                                comment.id,
+                                                body,
+                                            )]
+                                        }
+                                    } else {
+                                        vec![]
+                                    }
+                                }
+                            }
+                        } else {
+                            vec![]
+                        }
+                    } else {
+                        vec![]
+                    }
+                }
+                Some(ghtui_core::ModalKind::EditComment(comment_id)) => {
+                    let body = state.input_buffer.clone();
+                    if body.trim().is_empty() {
+                        vec![]
+                    } else if let Some(ref repo) = state.current_repo {
+                        if let Some(ref detail) = state.issue_detail {
+                            vec![Command::UpdateComment(
+                                repo.clone(),
+                                detail.detail.issue.number,
+                                comment_id,
+                                body,
+                            )]
+                        } else {
+                            vec![]
                         }
                     } else {
                         vec![]
@@ -794,6 +913,15 @@ fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Command> {
                     list.select_prev();
                 } else if delta > 0 {
                     list.select_next();
+                }
+            }
+        }
+        Route::IssueDetail { .. } => {
+            if let Some(ref mut detail) = state.issue_detail {
+                if delta == usize::MAX {
+                    detail.select_prev_comment();
+                } else if delta > 0 && delta != 0 {
+                    detail.select_next_comment();
                 }
             }
         }

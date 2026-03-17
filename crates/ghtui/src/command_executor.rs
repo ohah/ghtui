@@ -78,9 +78,24 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Ok(number) => Message::IssueCreated(number),
             Err(e) => Message::Error(e.into()),
         },
+        Command::UpdateIssue(repo, number, title, body) => {
+            match client
+                .update_issue(&repo, number, title.as_deref(), body.as_deref())
+                .await
+            {
+                Ok(()) => Message::IssueUpdated(number),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
         Command::AddComment(repo, number, body) => {
             match client.add_issue_comment(&repo, number, &body).await {
                 Ok(()) => Message::CommentAdded,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::UpdateComment(repo, _issue_number, comment_id, body) => {
+            match client.update_comment(&repo, comment_id, &body).await {
+                Ok(()) => Message::CommentUpdated,
                 Err(e) => Message::Error(e.into()),
             }
         }

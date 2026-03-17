@@ -72,15 +72,39 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
         match modal {
             ModalKind::Help => views::help::render(frame, size),
             ModalKind::AccountSwitcher => views::account_switcher::render(frame, state, size),
-            ModalKind::AddComment => {
-                views::input_modal::render(frame, state, size, "Add Comment", "Enter your comment:")
-            }
+            ModalKind::AddComment => views::input_modal::render(
+                frame,
+                state,
+                size,
+                "Add Comment",
+                "Enter your comment (markdown supported):",
+            ),
             ModalKind::CreateIssue => views::input_modal::render(
                 frame,
                 state,
                 size,
                 "Create Issue",
-                "First line = Title, rest = Body",
+                "First line = Title, rest = Body (markdown)",
+            ),
+            ModalKind::EditIssue => {
+                let hint = if state
+                    .issue_detail
+                    .as_ref()
+                    .and_then(|d| d.selected_comment)
+                    .is_some()
+                {
+                    "Edit comment (markdown supported):"
+                } else {
+                    "First line = Title, rest = Body (markdown)"
+                };
+                views::input_modal::render(frame, state, size, "Edit", hint)
+            }
+            ModalKind::EditComment(_) => views::input_modal::render(
+                frame,
+                state,
+                size,
+                "Edit Comment",
+                "Edit comment (markdown supported):",
             ),
             _ => {}
         }

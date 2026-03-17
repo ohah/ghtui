@@ -39,9 +39,11 @@
 - [ ] 정렬 UI (newest, oldest, most commented)
 - [ ] 이슈 검색
 - [x] 이슈 생성 UI (모달 폼 — `c`키, Ctrl+Enter 제출)
-- [ ] 이슈 제목/본문 편집
+- [x] 이슈 제목/본문 편집 (`e`키 — 이슈 본문 선택 시)
 - [x] 코멘트 추가 UI (모달 — `c`키 in detail)
-- [ ] 코멘트 편집/삭제
+- [x] 코멘트 편집 (`e`키 — 코멘트 선택 시)
+- [x] 인용 답글 (`r`키 — 코멘트 선택 시 quote reply)
+- [ ] 코멘트 삭제
 - [ ] 라벨 추가/제거
 - [ ] Assignee 추가/제거
 - [ ] Milestone 설정

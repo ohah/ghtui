@@ -127,7 +127,18 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
     // Body + Comments
     let mut lines: Vec<Line<'static>> = Vec::new();
+    let selected_comment = detail_state.selected_comment;
 
+    // Issue body (selected when selected_comment is None)
+    let body_selected = selected_comment.is_none();
+    if body_selected {
+        lines.push(Line::styled(
+            "▸ Issue Body  (e:Edit)".to_string(),
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD),
+        ));
+    }
     if let Some(ref body) = issue.body {
         if !body.is_empty() {
             lines.push(Line::raw(""));
@@ -140,17 +151,31 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     let comment_count = detail_state.detail.comments.len();
     lines.push(Line::raw(""));
     lines.push(Line::styled(
-        format!("  Comments ({})", comment_count),
+        format!(
+            "  Comments ({})  j/k:Navigate  c:New  r:Reply  e:Edit",
+            comment_count
+        ),
         Style::default()
             .fg(theme.accent)
             .add_modifier(Modifier::BOLD),
     ));
 
-    for comment in &detail_state.detail.comments {
+    for (i, comment) in detail_state.detail.comments.iter().enumerate() {
+        let is_selected = selected_comment == Some(i);
+        let marker = if is_selected { "▸ " } else { "  " };
+
         lines.push(Line::raw(""));
-        lines.push(Line::from(vec![
+        let mut header_spans = vec![
             Span::styled(
-                format!("  @{}", comment.user.login),
+                marker.to_string(),
+                if is_selected {
+                    Style::default().fg(theme.accent)
+                } else {
+                    Style::default()
+                },
+            ),
+            Span::styled(
+                format!("@{}", comment.user.login),
                 Style::default()
                     .fg(theme.accent)
                     .add_modifier(Modifier::BOLD),
@@ -159,7 +184,14 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 format!(" · {}", comment.created_at.format("%Y-%m-%d %H:%M")),
                 Style::default().fg(theme.fg_muted),
             ),
-        ]));
+        ];
+        if is_selected {
+            header_spans.push(Span::styled(
+                "  (e:Edit  r:Reply)".to_string(),
+                Style::default().fg(theme.fg_dim),
+            ));
+        }
+        lines.push(Line::from(header_spans));
         lines.extend(render_markdown(&comment.body));
         lines.push(Line::styled("─".repeat(40), theme.border_style()));
     }

@@ -57,6 +57,9 @@ pub struct IssueDetailState {
     pub detail: IssueDetail,
     pub scroll: usize,
     pub comment_input: String,
+    pub selected_comment: Option<usize>, // None = issue body, Some(i) = comment index
+    pub inline_editing: bool,
+    pub inline_input: String,
 }
 
 impl IssueDetailState {
@@ -65,6 +68,33 @@ impl IssueDetailState {
             detail,
             scroll: 0,
             comment_input: String::new(),
+            selected_comment: None,
+            inline_editing: false,
+            inline_input: String::new(),
+        }
+    }
+
+    pub fn select_next_comment(&mut self) {
+        let max = self.detail.comments.len();
+        match self.selected_comment {
+            None => {
+                if max > 0 {
+                    self.selected_comment = Some(0);
+                }
+            }
+            Some(i) => {
+                if i < max.saturating_sub(1) {
+                    self.selected_comment = Some(i + 1);
+                }
+            }
+        }
+    }
+
+    pub fn select_prev_comment(&mut self) {
+        match self.selected_comment {
+            None => {}
+            Some(0) => self.selected_comment = None,
+            Some(i) => self.selected_comment = Some(i - 1),
         }
     }
 }

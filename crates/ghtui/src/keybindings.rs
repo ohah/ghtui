@@ -187,9 +187,11 @@ fn handle_issue_list_keys(key: KeyEvent) -> Option<Message> {
 
 fn handle_issue_detail_keys(key: KeyEvent) -> Option<Message> {
     match key.code {
-        KeyCode::Char('c') => Some(Message::ModalOpen(ModalKind::AddComment)),
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ScrollDown),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ScrollUp),
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)), // next comment
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)), // prev comment
+        KeyCode::Char('c') => Some(Message::ModalOpen(ModalKind::AddComment)), // new comment
+        KeyCode::Char('e') => Some(Message::ModalOpen(ModalKind::EditIssue)), // edit issue or comment
+        KeyCode::Char('r') => Some(Message::ModalOpen(ModalKind::AddComment)), // reply (quote)
         KeyCode::PageDown => Some(Message::ScrollDown),
         KeyCode::PageUp => Some(Message::ScrollUp),
         _ => None,
