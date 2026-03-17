@@ -104,3 +104,93 @@ fn test_search_kind() {
     assert_ne!(SearchKind::Repos, SearchKind::Issues);
     assert_ne!(SearchKind::Issues, SearchKind::Code);
 }
+
+// -- ActionsFilters tests --
+
+#[test]
+fn test_actions_filters_default() {
+    use ghtui_core::types::ActionsFilters;
+    let filters = ActionsFilters::default();
+    assert!(filters.status.is_none());
+    assert!(filters.branch.is_none());
+    assert!(filters.event.is_none());
+    assert!(filters.actor.is_none());
+    assert!(filters.workflow_id.is_none());
+    assert!(!filters.has_active_filters());
+}
+
+#[test]
+fn test_actions_filters_cycle_status() {
+    use ghtui_core::types::ActionsFilters;
+    let mut filters = ActionsFilters::default();
+
+    assert_eq!(filters.status_display(), "All");
+
+    filters.cycle_status();
+    assert_eq!(filters.status.as_deref(), Some("completed"));
+    assert_eq!(filters.status_display(), "Completed");
+
+    filters.cycle_status();
+    assert_eq!(filters.status.as_deref(), Some("in_progress"));
+    assert_eq!(filters.status_display(), "In progress");
+
+    filters.cycle_status();
+    assert_eq!(filters.status.as_deref(), Some("queued"));
+    assert_eq!(filters.status_display(), "Queued");
+
+    filters.cycle_status();
+    assert_eq!(filters.status.as_deref(), Some("failure"));
+    assert_eq!(filters.status_display(), "Failure");
+
+    filters.cycle_status();
+    assert_eq!(filters.status.as_deref(), Some("success"));
+    assert_eq!(filters.status_display(), "Success");
+
+    // Cycle back to None
+    filters.cycle_status();
+    assert!(filters.status.is_none());
+    assert_eq!(filters.status_display(), "All");
+}
+
+#[test]
+fn test_actions_filters_cycle_event() {
+    use ghtui_core::types::ActionsFilters;
+    let mut filters = ActionsFilters::default();
+
+    assert_eq!(filters.event_display(), "All events");
+
+    filters.cycle_event();
+    assert_eq!(filters.event.as_deref(), Some("push"));
+    assert_eq!(filters.event_display(), "push");
+
+    filters.cycle_event();
+    assert_eq!(filters.event.as_deref(), Some("pull_request"));
+
+    filters.cycle_event();
+    assert_eq!(filters.event.as_deref(), Some("schedule"));
+
+    filters.cycle_event();
+    assert_eq!(filters.event.as_deref(), Some("workflow_dispatch"));
+
+    // Cycle back to None
+    filters.cycle_event();
+    assert!(filters.event.is_none());
+}
+
+#[test]
+fn test_actions_filters_has_active() {
+    use ghtui_core::types::ActionsFilters;
+    let mut filters = ActionsFilters::default();
+    assert!(!filters.has_active_filters());
+
+    filters.status = Some("completed".to_string());
+    assert!(filters.has_active_filters());
+
+    filters.status = None;
+    filters.branch = Some("main".to_string());
+    assert!(filters.has_active_filters());
+
+    filters.branch = None;
+    filters.workflow_id = Some(123);
+    assert!(filters.has_active_filters());
+}

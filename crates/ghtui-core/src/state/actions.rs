@@ -1,10 +1,14 @@
-use crate::types::{LogLine, Pagination, WorkflowRun, WorkflowRunDetail};
+use crate::types::{ActionsFilters, LogLine, Pagination, Workflow, WorkflowRun, WorkflowRunDetail};
 
 #[derive(Debug)]
 pub struct ActionsListState {
     pub items: Vec<WorkflowRun>,
     pub pagination: Pagination,
     pub selected: usize,
+    pub filters: ActionsFilters,
+    pub search_mode: bool,
+    pub search_query: String,
+    pub workflows: Vec<Workflow>,
 }
 
 impl ActionsListState {
@@ -13,6 +17,26 @@ impl ActionsListState {
             items,
             pagination,
             selected: 0,
+            filters: ActionsFilters::default(),
+            search_mode: false,
+            search_query: String::new(),
+            workflows: Vec::new(),
+        }
+    }
+
+    pub fn with_filters(
+        items: Vec<WorkflowRun>,
+        pagination: Pagination,
+        filters: ActionsFilters,
+    ) -> Self {
+        Self {
+            items,
+            pagination,
+            selected: 0,
+            filters,
+            search_mode: false,
+            search_query: String::new(),
+            workflows: Vec::new(),
         }
     }
 
@@ -28,6 +52,18 @@ impl ActionsListState {
 
     pub fn select_prev(&mut self) {
         self.selected = self.selected.saturating_sub(1);
+    }
+
+    pub fn cycle_status(&mut self) {
+        self.filters.cycle_status();
+    }
+
+    pub fn cycle_event(&mut self) {
+        self.filters.cycle_event();
+    }
+
+    pub fn select_workflow(&mut self, workflow_id: Option<u64>) {
+        self.filters.workflow_id = workflow_id;
     }
 }
 

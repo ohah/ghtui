@@ -340,3 +340,97 @@ fn test_account_switcher_modal_empty_accounts() {
     // account_selected should stay at 0, no panic
     assert_eq!(state.account_selected, 0);
 }
+
+// -- Actions list state tests --
+
+#[test]
+fn test_actions_list_with_filters() {
+    use chrono::Utc;
+    use ghtui_core::types::*;
+
+    let runs = vec![WorkflowRun {
+        id: 1,
+        name: Some("CI".to_string()),
+        head_branch: Some("main".to_string()),
+        head_sha: "abc".to_string(),
+        status: Some(RunStatus::Completed),
+        conclusion: Some(RunConclusion::Success),
+        workflow_id: 1,
+        run_number: 100,
+        event: "push".to_string(),
+        created_at: Utc::now(),
+        updated_at: Utc::now(),
+        actor: None,
+        html_url: "".to_string(),
+    }];
+
+    let filters = ActionsFilters {
+        status: Some("completed".to_string()),
+        ..Default::default()
+    };
+
+    let list = ActionsListState::with_filters(runs, Pagination::default(), filters.clone());
+    assert_eq!(list.items.len(), 1);
+    assert_eq!(list.filters.status, filters.status);
+    assert_eq!(list.selected, 0);
+}
+
+#[test]
+fn test_actions_list_cycle_status() {
+    use ghtui_core::types::*;
+
+    let mut list = ActionsListState::new(vec![], Pagination::default());
+    assert!(list.filters.status.is_none());
+
+    list.cycle_status();
+    assert_eq!(list.filters.status.as_deref(), Some("completed"));
+
+    list.cycle_status();
+    assert_eq!(list.filters.status.as_deref(), Some("in_progress"));
+}
+
+#[test]
+fn test_actions_list_cycle_event() {
+    use ghtui_core::types::*;
+
+    let mut list = ActionsListState::new(vec![], Pagination::default());
+    assert!(list.filters.event.is_none());
+
+    list.cycle_event();
+    assert_eq!(list.filters.event.as_deref(), Some("push"));
+
+    list.cycle_event();
+    assert_eq!(list.filters.event.as_deref(), Some("pull_request"));
+}
+
+#[test]
+fn test_actions_list_select_workflow() {
+    use ghtui_core::types::*;
+
+    let mut list = ActionsListState::new(vec![], Pagination::default());
+    assert!(list.filters.workflow_id.is_none());
+
+    list.select_workflow(Some(42));
+    assert_eq!(list.filters.workflow_id, Some(42));
+
+    list.select_workflow(None);
+    assert!(list.filters.workflow_id.is_none());
+}
+
+#[test]
+fn test_actions_list_search_mode() {
+    use ghtui_core::types::*;
+
+    let mut list = ActionsListState::new(vec![], Pagination::default());
+    assert!(!list.search_mode);
+    assert!(list.search_query.is_empty());
+
+    list.search_mode = true;
+    list.search_query = "main".to_string();
+    assert!(list.search_mode);
+    assert_eq!(list.search_query, "main");
+
+    list.search_mode = false;
+    list.search_query.clear();
+    assert!(!list.search_mode);
+}

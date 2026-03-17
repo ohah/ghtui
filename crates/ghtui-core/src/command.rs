@@ -63,6 +63,7 @@ pub enum Command {
     FetchJobLog(RepoId, u64, u64),
     CancelRun(RepoId, u64),
     RerunRun(RepoId, u64),
+    FetchWorkflows(RepoId),
 
     // Notifications
     FetchNotifications(NotificationFilters),

@@ -183,11 +183,23 @@ pub enum Message {
     IssueEditCancel,
 
     // Actions
-    RunsLoaded(Vec<WorkflowRun>, Pagination),
+    RunsLoaded(Vec<WorkflowRun>, Pagination, ActionsFilters),
     RunDetailLoaded(Box<WorkflowRunDetail>),
     JobLogLoaded(u64, Vec<LogLine>),
     RunCancelled(u64),
     RunRerun(u64),
+    WorkflowsLoaded(Vec<Workflow>),
+    ActionsToggleStatus,
+    ActionsCycleEvent,
+    ActionsNextPage,
+    ActionsPrevPage,
+    ActionsSearchStart,
+    ActionsSearchInput(String),
+    ActionsSearchSubmit,
+    ActionsSearchCancel,
+    ActionsFilterClear,
+    ActionsSelectWorkflow(Option<u64>),
+    ActionsOpenInBrowser,
 
     // Notifications
     NotificationsLoaded(Vec<Notification>),
