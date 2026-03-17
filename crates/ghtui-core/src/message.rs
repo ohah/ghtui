@@ -90,6 +90,9 @@ pub enum Message {
     PrDiffTreeUp,           // Move up in file tree
     PrDiffTreeDown,         // Move down in file tree
     PrDiffTreeSelect,       // Select file in tree → jump to diff
+    PrReviewerToggle,       // Open reviewer picker
+    PrReviewerApply,        // Apply reviewer changes
+    PrReviewerCancel,       // Cancel reviewer picker
     PrApprove,              // Approve PR
     PrRequestChanges,       // Request changes on PR
     PrActionBarFocus,       // Toggle focus on action bar

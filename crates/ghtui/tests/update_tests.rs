@@ -186,6 +186,7 @@ fn test_pr_detail_tab_switching() {
         review_comments: vec![],
         checks: vec![],
         commits: vec![],
+        timeline: vec![],
     };
 
     let mut detail_state = PrDetailState::new(detail);

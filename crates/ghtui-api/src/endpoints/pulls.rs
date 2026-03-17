@@ -94,6 +94,11 @@ impl GithubClient {
             repo.owner, repo.name, number
         );
 
+        let timeline_path = format!(
+            "/repos/{}/{}/issues/{}/timeline?per_page=50",
+            repo.owner, repo.name, number
+        );
+
         let (
             reviews_body,
             comments_body,
@@ -101,6 +106,7 @@ impl GithubClient {
             checks_body,
             status_body,
             commits_body,
+            timeline_body,
         ) = tokio::join!(
             self.get(&reviews_path),
             self.get(&comments_path),
@@ -108,6 +114,7 @@ impl GithubClient {
             self.get(&checks_path),
             self.get(&status_path),
             self.get(&commits_path),
+            self.get(&timeline_path),
         );
 
         let reviews: Vec<ApiReview> = serde_json::from_str(&reviews_body?).unwrap_or_default();
@@ -175,6 +182,12 @@ impl GithubClient {
             }
         }
 
+        // Parse timeline
+        let timeline = match timeline_body {
+            Ok(body) => serde_json::from_str(&body).unwrap_or_default(),
+            Err(_) => Vec::new(),
+        };
+
         Ok(PullRequestDetail {
             pr,
             reviews: reviews.into_iter().map(|r| r.into()).collect(),
@@ -182,6 +195,7 @@ impl GithubClient {
             review_comments: review_comments.into_iter().map(|c| c.into()).collect(),
             checks,
             commits,
+            timeline,
         })
     }
 
@@ -372,6 +386,21 @@ impl GithubClient {
             repo.owner, repo.name, number
         );
         let body = json!({ "body": body_text });
+        self.post(&path, &body).await?;
+        Ok(())
+    }
+
+    pub async fn request_reviewers(
+        &self,
+        repo: &RepoId,
+        number: u64,
+        reviewers: &[String],
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/pulls/{}/requested_reviewers",
+            repo.owner, repo.name, number
+        );
+        let body = json!({ "reviewers": reviewers });
         self.post(&path, &body).await?;
         Ok(())
     }

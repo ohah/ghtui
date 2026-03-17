@@ -106,6 +106,23 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
                 "Edit Comment",
                 "Edit comment (markdown supported):",
             ),
+            ModalKind::CreatePr => views::input_modal::render(
+                frame,
+                state,
+                size,
+                "Create Pull Request",
+                "Line 1 = Title, Line 2 = Base branch (default: main), Rest = Body",
+            ),
+            ModalKind::MergePr => views::input_modal::render(
+                frame,
+                state,
+                size,
+                "Merge PR",
+                "merge/squash/rebase (default: rebase)",
+            ),
+            ModalKind::Confirm { title, message } => {
+                views::input_modal::render(frame, state, size, title, message)
+            }
             _ => {}
         }
     }
