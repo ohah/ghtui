@@ -28,3 +28,5 @@
 - remote에 push되지 않은 커밋이 있으면 push 후 PR을 생성하세요.
 - PR 제목에 이모지를 사용하지 마세요.
 - 한국어로 소통하되, PR 제목과 본문은 영어로 작성하세요.
+- PR 생성 시 반드시 적절한 라벨을 붙이세요 (예: feature, bugfix, ci, docs, refactor 등). 없으면 먼저 생성하세요.
+- PR 생성 시 반드시 assignee를 지정하세요 (기본: 본인).

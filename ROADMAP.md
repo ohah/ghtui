@@ -12,7 +12,7 @@
 | 4 | Actions | ✅ | actions_list, action_detail | 워크플로우 목록, 잡 목록, 로그, 취소/재실행 |
 | 5 | Projects | - | placeholder | 미구현 |
 | 6 | Wiki | - | placeholder | 미구현 |
-| 7 | Security | - | placeholder | 미구현 |
+| 7 | Security | ✅ | security.rs | Dependabot, Code Scanning, Secret Scanning (read-only) |
 | 8 | Insights | - | placeholder | 미구현 |
 | 9 | Settings | ✅ | settings.rs | 일반설정, 브랜치 보호, Collaborators (read-only) |
 
@@ -118,11 +118,11 @@
 
 ## Phase 6 — Security 탭
 
-- [ ] Dependabot alerts API 연동
-- [ ] 취약점 목록 (severity별 필터)
+- [x] Dependabot alerts API 연동
+- [x] 취약점 목록 (severity별 필터)
 - [ ] 취약점 상세 (영향 받는 패키지, 권고사항)
-- [ ] Code scanning alerts
-- [ ] Secret scanning alerts
+- [x] Code scanning alerts
+- [x] Secret scanning alerts
 - [ ] Security advisories
 
 ## Phase 7 — Insights 탭
