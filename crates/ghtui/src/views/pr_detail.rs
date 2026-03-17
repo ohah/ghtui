@@ -860,7 +860,9 @@ fn render_commits(
         )]));
         lines.push(Line::raw(""));
 
-        for commit in commits {
+        for (i, commit) in commits.iter().enumerate() {
+            let is_selected = i == detail.commit_selected;
+            let marker = if is_selected { "▸ " } else { "  " };
             let short_sha = if commit.sha.len() >= 7 {
                 &commit.sha[..7]
             } else {
@@ -871,12 +873,24 @@ fn render_commits(
                 .map(|d| d.format("%Y-%m-%d").to_string())
                 .unwrap_or_default();
 
+            let msg_style = if is_selected {
+                Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme.fg)
+            };
+
             lines.push(Line::from(vec![
                 Span::styled(
-                    format!("  {} ", short_sha),
-                    Style::default().fg(theme.accent),
+                    format!("{}{} ", marker, short_sha),
+                    if is_selected {
+                        Style::default()
+                            .fg(theme.accent)
+                            .add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(theme.accent)
+                    },
                 ),
-                Span::styled(commit.message.clone(), Style::default().fg(theme.fg)),
+                Span::styled(commit.message.clone(), msg_style),
             ]));
             lines.push(Line::from(vec![
                 Span::styled(
@@ -889,12 +903,24 @@ fn render_commits(
         }
     }
 
-    let paragraph = Paragraph::new(lines).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .border_style(theme.border_style())
-            .title(" Commits "),
-    );
+    // Scroll to keep selected commit visible
+    let content_height = area.height.saturating_sub(2) as usize;
+    // Each commit takes 3 lines, plus 2 header lines
+    let selected_line = 2 + detail.commit_selected * 3;
+    let commit_scroll = if selected_line >= content_height {
+        selected_line - content_height + 3
+    } else {
+        0
+    };
+
+    let paragraph = Paragraph::new(lines)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(theme.border_style())
+                .title(" Commits (j/k:navigate) "),
+        )
+        .scroll((commit_scroll as u16, 0));
     frame.render_widget(paragraph, area);
 }
 

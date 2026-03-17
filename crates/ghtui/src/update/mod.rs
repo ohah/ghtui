@@ -2906,10 +2906,37 @@ fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Command> {
                     } else if delta > 0 {
                         picker.cursor = (picker.cursor + 1).min(max);
                     }
-                } else if delta == usize::MAX {
-                    detail.focus_prev();
-                } else if delta > 0 {
-                    detail.focus_next();
+                } else {
+                    match detail.tab {
+                        0 => {
+                            // Conversation tab: focus navigation + auto-scroll
+                            if delta == usize::MAX {
+                                detail.focus_prev();
+                                detail.scroll = detail.scroll.saturating_sub(3);
+                            } else if delta > 0 {
+                                detail.focus_next();
+                                detail.scroll += 3;
+                            }
+                        }
+                        1 => {
+                            // Commits tab: navigate commit list
+                            let max = detail.detail.commits.len().saturating_sub(1);
+                            if delta == usize::MAX {
+                                detail.commit_selected = detail.commit_selected.saturating_sub(1);
+                            } else if delta > 0 {
+                                detail.commit_selected = (detail.commit_selected + 1).min(max);
+                            }
+                        }
+                        2 => {
+                            // Checks tab: scroll
+                            if delta == usize::MAX {
+                                detail.scroll = detail.scroll.saturating_sub(1);
+                            } else if delta > 0 {
+                                detail.scroll += 1;
+                            }
+                        }
+                        _ => {}
+                    }
                 }
             }
         }
