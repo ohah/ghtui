@@ -592,6 +592,35 @@ impl<'a> DiffView<'a> {
                                 line_ids.push(DiffLineId::Summary);
                             }
 
+                            // Action buttons row
+                            lines.push(box_mid(
+                                vec![
+                                    Span::styled(
+                                        " [Ctrl+Enter] Submit ",
+                                        Style::default()
+                                            .fg(theme.bg)
+                                            .bg(theme.success)
+                                            .add_modifier(Modifier::BOLD),
+                                    ),
+                                    Span::styled("  ", Style::default()),
+                                    Span::styled(
+                                        " [Ctrl+S] Suggestion ",
+                                        Style::default()
+                                            .fg(theme.bg)
+                                            .bg(theme.info)
+                                            .add_modifier(Modifier::BOLD),
+                                    ),
+                                    Span::styled("  ", Style::default()),
+                                    Span::styled(
+                                        " [Esc] Cancel ",
+                                        Style::default().fg(theme.fg).bg(theme.bg_subtle),
+                                    ),
+                                ],
+                                accent_style,
+                                width,
+                            ));
+                            line_ids.push(DiffLineId::Summary);
+
                             lines.push(box_btm(accent_style, width));
                             line_ids.push(DiffLineId::Summary);
                         }
