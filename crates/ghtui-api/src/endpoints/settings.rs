@@ -1,0 +1,88 @@
+use ghtui_core::types::common::RepoId;
+use ghtui_core::types::settings::{BranchProtection, Collaborator, Repository};
+
+use crate::client::GithubClient;
+use crate::error::ApiError;
+
+impl GithubClient {
+    pub async fn get_repo(&self, repo: &RepoId) -> Result<Repository, ApiError> {
+        let path = format!("/repos/{}/{}", repo.owner, repo.name);
+        let body = self.get(&path).await?;
+        let repository: Repository = serde_json::from_str(&body)?;
+        Ok(repository)
+    }
+
+    pub async fn list_branch_protections(
+        &self,
+        repo: &RepoId,
+    ) -> Result<Vec<BranchProtection>, ApiError> {
+        let path = format!(
+            "/repos/{}/{}/branches?protected=true",
+            repo.owner, repo.name
+        );
+        let body = self.get(&path).await?;
+
+        // GitHub returns branches, we extract protection rules
+        let branches: Vec<serde_json::Value> = serde_json::from_str(&body)?;
+        let mut protections = Vec::new();
+
+        for branch in branches {
+            if branch.get("protected").and_then(|v| v.as_bool()) == Some(true) {
+                let name = branch
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or_default()
+                    .to_string();
+
+                // Try to get detailed protection rules
+                let detail_path = format!(
+                    "/repos/{}/{}/branches/{}/protection",
+                    repo.owner, repo.name, name
+                );
+                let protection = match self.get(&detail_path).await {
+                    Ok(detail_body) => {
+                        let detail: serde_json::Value =
+                            serde_json::from_str(&detail_body).unwrap_or_default();
+
+                        let required_status_checks = detail
+                            .get("required_status_checks")
+                            .and_then(|v| serde_json::from_value(v.clone()).ok());
+                        let enforce_admins = detail
+                            .get("enforce_admins")
+                            .and_then(|v| serde_json::from_value(v.clone()).ok());
+                        let required_pull_request_reviews = detail
+                            .get("required_pull_request_reviews")
+                            .and_then(|v| serde_json::from_value(v.clone()).ok());
+
+                        BranchProtection {
+                            pattern: name,
+                            required_status_checks,
+                            enforce_admins,
+                            required_pull_request_reviews,
+                        }
+                    }
+                    Err(_) => BranchProtection {
+                        pattern: name,
+                        required_status_checks: None,
+                        enforce_admins: None,
+                        required_pull_request_reviews: None,
+                    },
+                };
+
+                protections.push(protection);
+            }
+        }
+
+        Ok(protections)
+    }
+
+    pub async fn list_collaborators(&self, repo: &RepoId) -> Result<Vec<Collaborator>, ApiError> {
+        let path = format!(
+            "/repos/{}/{}/collaborators?per_page=30",
+            repo.owner, repo.name
+        );
+        let body = self.get(&path).await?;
+        let collaborators: Vec<Collaborator> = serde_json::from_str(&body)?;
+        Ok(collaborators)
+    }
+}

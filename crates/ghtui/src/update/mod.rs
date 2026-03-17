@@ -32,6 +32,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.action_detail = None;
             state.notifications = None;
             state.search = None;
+            state.settings = None;
             // Refresh current view
             refresh_current_view(state)
         }
@@ -157,6 +158,37 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
 
+        // Settings
+        Message::SettingsRepoLoaded(repo) => {
+            state.loading.remove("settings");
+            state.settings = Some(SettingsState::new(*repo));
+            // Also fetch branch protections and collaborators
+            if let Some(ref repo_id) = state.current_repo {
+                state.loading.insert("branch_protections".to_string());
+                state.loading.insert("collaborators".to_string());
+                vec![
+                    Command::FetchBranchProtections(repo_id.clone()),
+                    Command::FetchCollaborators(repo_id.clone()),
+                ]
+            } else {
+                vec![]
+            }
+        }
+        Message::SettingsBranchProtectionsLoaded(protections) => {
+            state.loading.remove("branch_protections");
+            if let Some(ref mut settings) = state.settings {
+                settings.branch_protections = protections;
+            }
+            vec![]
+        }
+        Message::SettingsCollaboratorsLoaded(collaborators) => {
+            state.loading.remove("collaborators");
+            if let Some(ref mut settings) = state.settings {
+                settings.collaborators = collaborators;
+            }
+            vec![]
+        }
+
         // UI
         Message::InputChanged(text) => {
             if text == "\x08" {
@@ -183,7 +215,16 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::TabChanged(delta) => {
-            if let Some(ref mut detail) = state.pr_detail {
+            if matches!(state.route, Route::Settings { .. }) {
+                if let Some(ref mut settings) = state.settings {
+                    let max = settings.tab_count().saturating_sub(1);
+                    if delta == usize::MAX {
+                        settings.tab = settings.tab.saturating_sub(1);
+                    } else {
+                        settings.tab = (settings.tab + delta).min(max);
+                    }
+                }
+            } else if let Some(ref mut detail) = state.pr_detail {
                 if delta == usize::MAX {
                     detail.tab = detail.tab.saturating_sub(1);
                 } else {
@@ -308,7 +349,10 @@ fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command> {
         Route::Wiki { .. } => vec![],
         Route::Security { .. } => vec![],
         Route::Insights { .. } => vec![],
-        Route::Settings { .. } => vec![],
+        Route::Settings { repo } => {
+            state.loading.insert("settings".to_string());
+            vec![Command::FetchRepoSettings(repo.clone())]
+        }
         Route::Dashboard => vec![],
     };
 
@@ -419,6 +463,15 @@ fn handle_list_select(state: &mut AppState, delta: usize) {
                     list.select_prev();
                 } else if delta > 0 {
                     list.select_next();
+                }
+            }
+        }
+        Route::Settings { .. } => {
+            if let Some(ref mut settings) = state.settings {
+                if delta == usize::MAX {
+                    settings.scroll = settings.scroll.saturating_sub(1);
+                } else if delta > 0 {
+                    settings.scroll += 1;
                 }
             }
         }

@@ -42,6 +42,11 @@ pub enum Command {
     // Search
     Search(String, SearchKind, u32),
 
+    // Settings
+    FetchRepoSettings(RepoId),
+    FetchBranchProtections(RepoId),
+    FetchCollaborators(RepoId),
+
     // Utility
     OpenInBrowser(String),
     SetClipboard(String),

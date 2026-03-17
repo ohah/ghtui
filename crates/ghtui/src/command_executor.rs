@@ -127,6 +127,22 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Err(e) => Message::Error(e.into()),
         },
 
+        // Settings
+        Command::FetchRepoSettings(repo) => match client.get_repo(&repo).await {
+            Ok(repository) => Message::SettingsRepoLoaded(Box::new(repository)),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::FetchBranchProtections(repo) => {
+            match client.list_branch_protections(&repo).await {
+                Ok(protections) => Message::SettingsBranchProtectionsLoaded(protections),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::FetchCollaborators(repo) => match client.list_collaborators(&repo).await {
+            Ok(collaborators) => Message::SettingsCollaboratorsLoaded(collaborators),
+            Err(e) => Message::Error(e.into()),
+        },
+
         // Utility
         Command::OpenInBrowser(url) => {
             let _ = open::that(&url);

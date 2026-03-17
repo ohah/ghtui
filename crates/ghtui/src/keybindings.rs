@@ -64,6 +64,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
             | Route::IssueDetail { .. }
             | Route::ActionDetail { .. }
             | Route::JobLog { .. }
+            | Route::Settings { .. }
     );
     if !in_detail {
         match key.code {
@@ -88,6 +89,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
     match &state.route {
         Route::PrDetail { .. } => handle_pr_detail_keys(key),
         Route::IssueDetail { .. } => handle_issue_detail_keys(key),
+        Route::Settings { .. } => handle_settings_keys(key),
         _ => handle_list_keys(key),
     }
 }
@@ -120,6 +122,16 @@ fn handle_list_keys(key: KeyEvent) -> Option<Message> {
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
         KeyCode::Enter => Some(Message::ListSelect(0)),
         KeyCode::Char('r') => Some(Message::Tick), // refresh
+        _ => None,
+    }
+}
+
+fn handle_settings_keys(key: KeyEvent) -> Option<Message> {
+    match key.code {
+        KeyCode::Tab => Some(Message::TabChanged(1)),
+        KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
         _ => None,
     }
 }
