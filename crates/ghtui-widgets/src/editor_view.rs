@@ -53,7 +53,7 @@ impl<'a> EditorView<'a> {
             theme: EditorTheme::default(),
             show_line_numbers: true,
             show_status_bar: true,
-            status_hint: "Ctrl+Enter: Submit  Esc: Cancel",
+            status_hint: "Ctrl+S: Submit  Esc: Cancel",
         }
     }
 
@@ -237,7 +237,7 @@ impl Widget for InlineEditorView<'_> {
 
         lines.push(Line::raw(""));
         lines.push(Line::from(vec![Span::styled(
-            "  Ctrl+Enter: Submit  Esc: Cancel",
+            "  Ctrl+S: Submit  Esc: Cancel",
             Style::default().fg(self.theme.status_fg),
         )]));
 
