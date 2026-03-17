@@ -275,23 +275,63 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::TabChanged(delta) => {
-            if matches!(state.route, Route::Settings { .. }) {
+            let overflow = if matches!(state.route, Route::Settings { .. }) {
                 if let Some(ref mut settings) = state.settings {
-                    let count = settings.tab_count();
-                    settings.tab = wrap_tab(settings.tab, delta, count);
+                    match try_move_subtab(settings.tab, delta, settings.tab_count()) {
+                        Some(new_tab) => {
+                            settings.tab = new_tab;
+                            false
+                        }
+                        None => true,
+                    }
+                } else {
+                    false
                 }
             } else if matches!(state.route, Route::Insights { .. }) {
                 if let Some(ref mut ins) = state.insights {
-                    let count = ins.tab_count();
-                    ins.tab = wrap_tab(ins.tab, delta, count);
+                    match try_move_subtab(ins.tab, delta, ins.tab_count()) {
+                        Some(new_tab) => {
+                            ins.tab = new_tab;
+                            false
+                        }
+                        None => true,
+                    }
+                } else {
+                    false
                 }
             } else if matches!(state.route, Route::Security { .. }) {
                 if let Some(ref mut sec) = state.security {
-                    let count = sec.tab_count();
-                    sec.tab = wrap_tab(sec.tab, delta, count);
+                    match try_move_subtab(sec.tab, delta, sec.tab_count()) {
+                        Some(new_tab) => {
+                            sec.tab = new_tab;
+                            false
+                        }
+                        None => true,
+                    }
+                } else {
+                    false
                 }
             } else if let Some(ref mut detail) = state.pr_detail {
-                detail.tab = wrap_tab(detail.tab, delta, 3);
+                match try_move_subtab(detail.tab, delta, 3) {
+                    Some(new_tab) => {
+                        detail.tab = new_tab;
+                        false
+                    }
+                    None => true,
+                }
+            } else {
+                false
+            };
+
+            if overflow {
+                // Sub-tab overflowed: move to next/prev global tab
+                let total = ghtui_core::router::TAB_LABELS.len();
+                if delta == usize::MAX {
+                    state.active_tab = (state.active_tab + total - 1) % total;
+                } else {
+                    state.active_tab = (state.active_tab + 1) % total;
+                }
+                return navigate_to_tab(state);
             }
             vec![]
         }
@@ -483,17 +523,26 @@ fn navigate_to_tab(state: &mut AppState) -> Vec<Command> {
     handle_navigate(state, route)
 }
 
-/// Wrap sub-tab index: prev from 0 goes to last, next from last goes to 0.
-fn wrap_tab(current: usize, delta: usize, count: usize) -> usize {
+/// Try to move sub-tab. Returns None if overflow (should go to global tab).
+fn try_move_subtab(current: usize, delta: usize, count: usize) -> Option<usize> {
     if count == 0 {
-        return 0;
+        return None;
     }
     if delta == usize::MAX {
         // Previous
-        if current == 0 { count - 1 } else { current - 1 }
+        if current == 0 {
+            None // overflow: go to previous global tab
+        } else {
+            Some(current - 1)
+        }
     } else {
         // Next
-        (current + delta) % count
+        let next = current + delta;
+        if next >= count {
+            None // overflow: go to next global tab
+        } else {
+            Some(next)
+        }
     }
 }
 
