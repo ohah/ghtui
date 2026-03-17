@@ -271,8 +271,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 }
                 return vec![];
             }
-            handle_list_select(state, delta);
-            vec![]
+            handle_list_select(state, delta)
         }
         Message::TabChanged(delta) => {
             let overflow = if matches!(state.route, Route::Settings { .. }) {
@@ -546,12 +545,11 @@ fn try_move_subtab(current: usize, delta: usize, count: usize) -> Option<usize> 
     }
 }
 
-fn handle_list_select(state: &mut AppState, delta: usize) {
+fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Command> {
     match &state.route {
         Route::PrList { .. } => {
             if let Some(ref mut list) = state.pr_list {
                 if delta == 0 {
-                    // Open selected
                     if let Some(pr) = list.selected_pr() {
                         let repo = state.current_repo.clone().unwrap();
                         let number = pr.number;
@@ -560,7 +558,7 @@ fn handle_list_select(state: &mut AppState, delta: usize) {
                             number,
                             tab: ghtui_core::PrTab::Conversation,
                         };
-                        state.navigate(route);
+                        return handle_navigate(state, route);
                     }
                 } else if delta == usize::MAX {
                     list.select_prev();
@@ -576,7 +574,7 @@ fn handle_list_select(state: &mut AppState, delta: usize) {
                         let repo = state.current_repo.clone().unwrap();
                         let number = issue.number;
                         let route = Route::IssueDetail { repo, number };
-                        state.navigate(route);
+                        return handle_navigate(state, route);
                     }
                 } else if delta == usize::MAX {
                     list.select_prev();
@@ -592,7 +590,7 @@ fn handle_list_select(state: &mut AppState, delta: usize) {
                         let repo = state.current_repo.clone().unwrap();
                         let run_id = run.id;
                         let route = Route::ActionDetail { repo, run_id };
-                        state.navigate(route);
+                        return handle_navigate(state, route);
                     }
                 } else if delta == usize::MAX {
                     list.select_prev();
@@ -630,6 +628,7 @@ fn handle_list_select(state: &mut AppState, delta: usize) {
         }
         _ => {}
     }
+    vec![]
 }
 
 fn refresh_current_view(state: &mut AppState) -> Vec<Command> {
