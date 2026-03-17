@@ -145,6 +145,7 @@ pub struct PrDetailState {
     pub label_picker: Option<LabelPickerState>,
     pub assignee_picker: Option<AssigneePickerState>,
     pub milestone_picker: Option<MilestonePickerState>,
+    pub viewed_files: HashSet<String>,
 }
 
 impl PrDetailState {
@@ -172,6 +173,7 @@ impl PrDetailState {
             label_picker: None,
             assignee_picker: None,
             milestone_picker: None,
+            viewed_files: HashSet::new(),
         }
     }
 

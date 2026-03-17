@@ -411,6 +411,26 @@ fn render_conversation(
         lines.push(Line::from(spans));
     }
 
+    // --- Linked Issues section ---
+    {
+        let linked_issues = parse_linked_issues(pr.body.as_deref().unwrap_or(""));
+        if !linked_issues.is_empty() {
+            let mut spans = vec![Span::styled(
+                "  Linked Issues: ",
+                Style::default().fg(theme.fg_dim),
+            )];
+            for issue_ref in &linked_issues {
+                spans.push(Span::styled(
+                    format!("{} ", issue_ref),
+                    Style::default()
+                        .fg(theme.accent)
+                        .add_modifier(Modifier::BOLD),
+                ));
+            }
+            lines.push(Line::from(spans));
+        }
+    }
+
     lines.push(Line::styled("─".repeat(50), theme.border_style()));
 
     // --- Body section ---
@@ -713,6 +733,9 @@ fn render_file_tree(
             Style::default().fg(theme.fg_dim)
         };
 
+        let viewed = detail.viewed_files.contains(&file.filename);
+        let viewed_indicator = if viewed { " \u{2713}" } else { "" };
+
         items.push(ListItem::new(Line::from(vec![
             Span::styled(
                 format!(" {}", fold_icon),
@@ -730,6 +753,10 @@ fn render_file_tree(
             Span::styled(
                 format!(" -{}", file.deletions),
                 Style::default().fg(theme.diff_remove_fg),
+            ),
+            Span::styled(
+                viewed_indicator.to_string(),
+                Style::default().fg(theme.success),
             ),
         ])));
     }
@@ -1083,4 +1110,34 @@ fn render_assignee_picker(
             .style(Style::default().bg(Color::Black)),
     );
     frame.render_widget(list, popup_area);
+}
+
+/// Parse PR body for closing issue references (Closes #N, Fixes #N, Resolves #N).
+fn parse_linked_issues(body: &str) -> Vec<String> {
+    let keywords = [
+        "close", "closes", "closed", "fix", "fixes", "fixed", "resolve", "resolves", "resolved",
+    ];
+    let lower = body.to_lowercase();
+    let mut results: Vec<String> = Vec::new();
+
+    for keyword in &keywords {
+        let pattern = format!("{} #", keyword);
+        let mut search_from = 0;
+        while let Some(pos) = lower[search_from..].find(&pattern) {
+            let abs_pos = search_from + pos + pattern.len();
+            // Extract the number after #
+            let num_str: String = body[abs_pos..]
+                .chars()
+                .take_while(|c| c.is_ascii_digit())
+                .collect();
+            if !num_str.is_empty() {
+                let issue_ref = format!("#{}", num_str);
+                if !results.contains(&issue_ref) {
+                    results.push(issue_ref);
+                }
+            }
+            search_from = abs_pos;
+        }
+    }
+    results
 }

@@ -64,6 +64,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 new_state.file_tree_focused = old.file_tree_focused;
                 new_state.file_tree_selected = old.file_tree_selected;
                 new_state.focus = old.focus;
+                new_state.viewed_files = old.viewed_files;
             }
             state.pr_detail = Some(new_state);
             // Fetch diff after detail is loaded (avoids race condition)
@@ -556,6 +557,59 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     let number = detail.detail.pr.number;
                     let new_draft = !detail.detail.pr.draft;
                     return vec![Command::SetPrDraft(repo.clone(), number, new_draft)];
+                }
+            }
+            vec![]
+        }
+        // PR auto-merge toggle
+        Message::PrAutoMergeToggle => {
+            if let Some(ref detail) = state.pr_detail {
+                if let Some(ref repo) = state.current_repo {
+                    let number = detail.detail.pr.number;
+                    let enable = !detail.detail.pr.auto_merge;
+                    return vec![Command::SetAutoMerge(repo.clone(), number, enable)];
+                }
+            }
+            vec![]
+        }
+        // PR diff mark viewed (local only)
+        Message::PrDiffMarkViewed => {
+            if let Some(ref mut detail) = state.pr_detail {
+                // Determine which file to mark based on context
+                let filename = if detail.tab == 3 && detail.file_tree_focused {
+                    // In file tree: use selected file
+                    detail
+                        .diff
+                        .as_ref()
+                        .and_then(|files| files.get(detail.file_tree_selected))
+                        .map(|f| f.filename.clone())
+                } else if detail.tab == 3 {
+                    // In diff view: find file at cursor
+                    detail.diff.as_ref().and_then(|files| {
+                        let mut line = 0usize;
+                        for (i, file) in files.iter().enumerate() {
+                            let collapsed = detail.diff_collapsed.contains(&i);
+                            let file_lines = if collapsed {
+                                1
+                            } else {
+                                1 + file.hunks.iter().map(|h| 1 + h.lines.len()).sum::<usize>()
+                            };
+                            if detail.diff_cursor < line + file_lines {
+                                return Some(file.filename.clone());
+                            }
+                            line += file_lines;
+                        }
+                        None
+                    })
+                } else {
+                    None
+                };
+                if let Some(name) = filename {
+                    if detail.viewed_files.contains(&name) {
+                        detail.viewed_files.remove(&name);
+                    } else {
+                        detail.viewed_files.insert(name);
+                    }
                 }
             }
             vec![]
@@ -2393,7 +2447,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         let head = state
                             .pr_list
                             .as_ref()
-                            .and_then(|_| None) // no branch info in list
+                            .and(None) // no branch info in list
                             .unwrap_or_else(|| "HEAD".to_string());
                         let base = if base.is_empty() {
                             "main".to_string()

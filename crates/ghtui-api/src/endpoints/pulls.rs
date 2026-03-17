@@ -418,6 +418,36 @@ impl GithubClient {
         self.post(&path, &body).await?;
         Ok(())
     }
+    pub async fn enable_auto_merge(&self, repo: &RepoId, number: u64) -> Result<(), ApiError> {
+        // Get PR node_id
+        let pr_path = format!("/repos/{}/{}/pulls/{}", repo.owner, repo.name, number);
+        let pr_body = self.get(&pr_path).await?;
+        let pr_json: serde_json::Value = serde_json::from_str(&pr_body)?;
+        let node_id = pr_json["node_id"]
+            .as_str()
+            .ok_or_else(|| ApiError::Other("Missing node_id".into()))?
+            .to_string();
+
+        let query = "mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: REBASE}) { pullRequest { autoMergeRequest { enabledAt } } } }";
+        self.graphql(query, json!({"id": node_id})).await?;
+        Ok(())
+    }
+
+    pub async fn disable_auto_merge(&self, repo: &RepoId, number: u64) -> Result<(), ApiError> {
+        // Get PR node_id
+        let pr_path = format!("/repos/{}/{}/pulls/{}", repo.owner, repo.name, number);
+        let pr_body = self.get(&pr_path).await?;
+        let pr_json: serde_json::Value = serde_json::from_str(&pr_body)?;
+        let node_id = pr_json["node_id"]
+            .as_str()
+            .ok_or_else(|| ApiError::Other("Missing node_id".into()))?
+            .to_string();
+
+        let query = "mutation($id: ID!) { disablePullRequestAutoMerge(input: {pullRequestId: $id}) { pullRequest { autoMergeRequest { enabledAt } } } }";
+        self.graphql(query, json!({"id": node_id})).await?;
+        Ok(())
+    }
+
     pub async fn set_draft(&self, repo: &RepoId, number: u64, draft: bool) -> Result<(), ApiError> {
         // Get PR node_id
         let pr_path = format!("/repos/{}/{}/pulls/{}", repo.owner, repo.name, number);

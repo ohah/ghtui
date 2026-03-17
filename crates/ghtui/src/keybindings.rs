@@ -351,6 +351,7 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
                 KeyCode::Char('k') | KeyCode::Up => Some(Message::PrDiffTreeUp),
                 KeyCode::Enter => Some(Message::PrDiffTreeSelect),
                 KeyCode::Char('f') => Some(Message::PrDiffToggleTree),
+                KeyCode::Char('V') => Some(Message::PrDiffMarkViewed),
                 KeyCode::Tab => Some(Message::PrDiffTreeFocus), // switch to diff
                 KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
                 KeyCode::Esc => Some(Message::PrDiffTreeFocus), // unfocus tree
@@ -382,6 +383,7 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             KeyCode::Enter => Some(Message::PrDiffToggleCollapse),
             KeyCode::Char('l') | KeyCode::Right => Some(Message::PrDiffExpand),
             KeyCode::Char('h') | KeyCode::Left => Some(Message::PrDiffCollapse),
+            KeyCode::Char('V') => Some(Message::PrDiffMarkViewed),
             KeyCode::Esc => Some(Message::PrDiffClearSelection),
             KeyCode::PageDown => Some(Message::ScrollDown),
             KeyCode::PageUp => Some(Message::ScrollUp),
@@ -425,6 +427,7 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         KeyCode::Char('A') => Some(Message::PrApprove),
         KeyCode::Char('R') => Some(Message::PrRequestChanges),
         KeyCode::Char('D') => Some(Message::PrDraftToggle),
+        KeyCode::Char('G') => Some(Message::PrAutoMergeToggle),
         KeyCode::Char('M') => Some(Message::PrMilestoneToggle),
         KeyCode::Char('b') => Some(Message::PrChangeBase),
         KeyCode::Char('o') => Some(Message::PrOpenInBrowser),
