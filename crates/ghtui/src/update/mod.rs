@@ -94,7 +94,13 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::IssuePinnedNumbersLoaded(numbers) => {
             if let Some(ref mut list) = state.issue_list {
-                list.pinned_numbers = numbers;
+                list.pinned_numbers = numbers.clone();
+                // Sort: pinned issues first, then original order
+                list.items.sort_by(|a, b| {
+                    let a_pinned = numbers.contains(&a.number);
+                    let b_pinned = numbers.contains(&b.number);
+                    b_pinned.cmp(&a_pinned) // true (pinned) comes first
+                });
             }
             vec![]
         }
