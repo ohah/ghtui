@@ -81,7 +81,15 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 Style::default().fg(theme.fg_muted)
             },
         ),
-        Span::styled("  (s:toggle  /:search)", Style::default().fg(theme.fg_dim)),
+        Span::styled("  │ ", Style::default().fg(theme.fg_dim)),
+        Span::styled(
+            format!("Sort: {}", list_state.sort_display()),
+            Style::default().fg(theme.fg_muted),
+        ),
+        Span::styled(
+            "  (s:state  o:sort  /:search)",
+            Style::default().fg(theme.fg_dim),
+        ),
     ]);
 
     // If in search mode, show search bar instead of filter

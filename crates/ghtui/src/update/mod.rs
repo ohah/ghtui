@@ -139,6 +139,34 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 vec![]
             }
         }
+        Message::IssueSortCycle => {
+            if let Some(ref repo) = state.current_repo {
+                let filters = if let Some(ref mut list) = state.issue_list {
+                    list.cycle_sort();
+                    list.filters.clone()
+                } else {
+                    IssueFilters::default()
+                };
+                state.loading.insert("issue_list".to_string());
+                vec![Command::FetchIssueList(repo.clone(), filters, 1)]
+            } else {
+                vec![]
+            }
+        }
+        Message::IssueLockToggle => {
+            if let Some(ref detail) = state.issue_detail {
+                if let Some(ref repo) = state.current_repo {
+                    let number = detail.detail.issue.number;
+                    let locked = detail.detail.issue.locked;
+                    return if locked {
+                        vec![Command::UnlockIssue(repo.clone(), number)]
+                    } else {
+                        vec![Command::LockIssue(repo.clone(), number)]
+                    };
+                }
+            }
+            vec![]
+        }
         Message::IssueNextPage => {
             if let (Some(repo), Some(list)) = (&state.current_repo, &state.issue_list) {
                 if list.pagination.has_next {

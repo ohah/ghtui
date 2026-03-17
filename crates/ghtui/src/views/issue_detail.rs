@@ -137,6 +137,11 @@ fn render_header(
             format!("  {}", issue.created_at.format("%Y-%m-%d")),
             Style::default().fg(theme.fg_dim),
         ),
+        if issue.locked {
+            Span::styled("  🔒 Locked", Style::default().fg(theme.warning))
+        } else {
+            Span::raw("")
+        },
     ])];
 
     // Title: inline editable or normal

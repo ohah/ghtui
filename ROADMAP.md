@@ -35,8 +35,8 @@
 현재 되는 것: 목록(open/closed 토글), 상세(메타정보+스크롤), 닫기/열기, 이슈 생성, 제목/본문 편집, 코멘트 CRUD, 인용 답글, 페이지네이션
 
 - [x] 필터 UI (open/closed 토글 — `s`키)
-- [ ] 필터 UI (author, label, milestone, assignee)
-- [ ] 정렬 UI (newest, oldest, most commented)
+- [ ] 필터 UI (author, label, milestone, assignee — 추후 확장)
+- [x] 정렬 UI (`o`키로 Newest/Updated/Comments 순환)
 - [x] 이슈 검색 (`/`키 → 검색어 입력 → Enter)
 - [x] 이슈 생성 UI (모달 폼 — `c`키, Ctrl+Enter 제출)
 - [x] 이슈 제목 편집 (`T`키 — 헤더 인라인 편집, Enter 제출)
@@ -53,11 +53,11 @@
 - [x] Milestone 설정 (`m`키 → 마일스톤 피커)
 - [x] 리액션 (`+`/`-`키로 👍👎 빠른 추가, 이슈/코멘트 모두)
 - [x] 타임라인 이벤트 (labeled, assigned, closed, renamed 등 표시)
-- [ ] 교차 참조 (linked PRs)
-- [ ] 이슈 잠금
-- [ ] 이슈 핀
-- [ ] 이슈 이전 (transfer)
-- [ ] 이슈 템플릿
+- [x] 교차 참조 (타임라인에서 cross-referenced 이벤트 표시)
+- [x] 이슈 잠금/해제 (`L`키 — Shift+L)
+- [ ] 이슈 핀 (GitHub API 미지원 — admin only, REST 없음)
+- [ ] 이슈 이전 (GitHub API 제한 — org 레포 간 전용)
+- [ ] 이슈 템플릿 (생성 시 템플릿 선택 — 추후)
 - [x] 페이지네이션 UI (n/p 키로 다음/이전)
 - [x] 이슈 상세 메타정보 (labels, assignees, milestone)
 - [x] 이슈 상세 스크롤 (j/k, PageUp/Down, 마우스)

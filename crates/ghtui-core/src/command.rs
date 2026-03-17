@@ -26,6 +26,8 @@ pub enum Command {
     CloseIssue(RepoId, u64),
     ReopenIssue(RepoId, u64),
     CreateIssue(RepoId, CreateIssueInput),
+    LockIssue(RepoId, u64),
+    UnlockIssue(RepoId, u64),
     UpdateIssue(RepoId, u64, Option<String>, Option<String>), // repo, number, title, body
     SetIssueLabels(RepoId, u64, Vec<String>),
     SetIssueAssignees(RepoId, u64, Vec<String>),

@@ -353,4 +353,17 @@ impl GithubClient {
             Err(e) => Err(e),
         }
     }
+
+    pub async fn lock_issue(&self, repo: &RepoId, number: u64) -> Result<(), ApiError> {
+        let path = format!("/repos/{}/{}/issues/{}/lock", repo.owner, repo.name, number);
+        let body = json!({ "lock_reason": "resolved" });
+        self.put(&path, &body).await?;
+        Ok(())
+    }
+
+    pub async fn unlock_issue(&self, repo: &RepoId, number: u64) -> Result<(), ApiError> {
+        let path = format!("/repos/{}/{}/issues/{}/lock", repo.owner, repo.name, number);
+        self.delete(&path).await?;
+        Ok(())
+    }
 }
