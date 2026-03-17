@@ -37,7 +37,8 @@ pub enum Message {
     IssueNextPage,
     IssuePrevPage,
     IssueSearchStart,
-    IssueLockToggle, // Lock/unlock issue
+    IssueLockToggle,
+    IssuePinToggle,
     IssueSearchInput(String),
     IssueSearchSubmit,
     IssueSearchCancel,

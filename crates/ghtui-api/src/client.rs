@@ -80,6 +80,33 @@ impl GithubClient {
         format!("{}{}", self.base_url, path)
     }
 
+    /// Execute a GraphQL query/mutation.
+    pub(crate) async fn graphql(
+        &self,
+        query: &str,
+        variables: serde_json::Value,
+    ) -> Result<serde_json::Value, ApiError> {
+        let body = serde_json::json!({
+            "query": query,
+            "variables": variables,
+        });
+        let response_text = self.post("/graphql", &body).await?;
+        let result: serde_json::Value = serde_json::from_str(&response_text)?;
+
+        // Check for GraphQL errors
+        if let Some(errors) = result.get("errors") {
+            if let Some(first) = errors.as_array().and_then(|a| a.first()) {
+                let message = first
+                    .get("message")
+                    .and_then(|m| m.as_str())
+                    .unwrap_or("GraphQL error");
+                return Err(ApiError::Other(message.to_string()));
+            }
+        }
+
+        Ok(result)
+    }
+
     pub(crate) async fn get(&self, path: &str) -> Result<String, ApiError> {
         self.get_with_ttl(path, 30).await
     }
