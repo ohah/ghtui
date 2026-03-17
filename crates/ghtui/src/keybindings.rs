@@ -75,21 +75,28 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
     }
 
     // Esc behavior: in detail views go back, in list views do nothing
+    // (but IssueDetail handles Esc in its own handler when editing)
     if key.code == KeyCode::Esc {
-        return match &state.route {
-            Route::PrDetail { .. }
-            | Route::IssueDetail { .. }
-            | Route::ActionDetail { .. }
-            | Route::JobLog { .. } => Some(Message::Back),
-            _ => None,
-        };
+        // If editing inline in IssueDetail, let the route handler deal with it
+        let issue_editing = state.issue_detail.as_ref().is_some_and(|d| d.is_editing());
+        if matches!(state.route, Route::IssueDetail { .. }) && issue_editing {
+            // Fall through to route-specific handler
+        } else {
+            return match &state.route {
+                Route::PrDetail { .. }
+                | Route::IssueDetail { .. }
+                | Route::ActionDetail { .. }
+                | Route::JobLog { .. } => Some(Message::Back),
+                _ => None,
+            };
+        }
     }
 
     // Route-specific keys
     match &state.route {
         Route::PrDetail { .. } => handle_pr_detail_keys(key),
         Route::IssueList { .. } => handle_issue_list_keys(key),
-        Route::IssueDetail { .. } => handle_issue_detail_keys(key),
+        Route::IssueDetail { .. } => handle_issue_detail_keys(key, state),
         Route::ActionDetail { .. } | Route::JobLog { .. } => handle_action_detail_keys(key),
         Route::Security { .. } => handle_settings_keys(key),
         Route::Insights { .. } => handle_settings_keys(key),
@@ -185,13 +192,33 @@ fn handle_issue_list_keys(key: KeyEvent) -> Option<Message> {
     }
 }
 
-fn handle_issue_detail_keys(key: KeyEvent) -> Option<Message> {
+fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let is_editing = state.issue_detail.as_ref().is_some_and(|d| d.is_editing());
+
+    if is_editing {
+        // Inline editing mode
+        return match key.code {
+            KeyCode::Esc => Some(Message::IssueEditCancel),
+            KeyCode::Enter => {
+                if key.modifiers.contains(KeyModifiers::CONTROL) {
+                    Some(Message::IssueEditSubmit)
+                } else {
+                    Some(Message::IssueEditInput("\n".to_string()))
+                }
+            }
+            KeyCode::Char(c) => Some(Message::IssueEditInput(c.to_string())),
+            KeyCode::Backspace => Some(Message::IssueEditInput("\x08".to_string())),
+            _ => None,
+        };
+    }
+
+    // Normal navigation mode
     match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)), // next comment
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)), // prev comment
-        KeyCode::Char('c') => Some(Message::ModalOpen(ModalKind::AddComment)), // new comment
-        KeyCode::Char('e') => Some(Message::ModalOpen(ModalKind::EditIssue)), // edit issue or comment
-        KeyCode::Char('r') => Some(Message::ModalOpen(ModalKind::AddComment)), // reply (quote)
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Char('c') => Some(Message::IssueStartComment),
+        KeyCode::Char('e') => Some(Message::IssueStartEdit),
+        KeyCode::Char('r') => Some(Message::IssueStartReply),
         KeyCode::PageDown => Some(Message::ScrollDown),
         KeyCode::PageUp => Some(Message::ScrollUp),
         _ => None,

@@ -52,14 +52,26 @@ impl IssueListState {
     }
 }
 
+/// What is being edited inline
+#[derive(Debug, Clone, PartialEq)]
+pub enum InlineEditTarget {
+    /// Editing issue title + body (first line = title, rest = body)
+    IssueBody,
+    /// Editing a specific comment by index
+    Comment(usize),
+    /// Writing a new comment (always at bottom)
+    NewComment,
+    /// Quote-replying to a comment
+    QuoteReply(usize),
+}
+
 #[derive(Debug)]
 pub struct IssueDetailState {
     pub detail: IssueDetail,
     pub scroll: usize,
-    pub comment_input: String,
     pub selected_comment: Option<usize>, // None = issue body, Some(i) = comment index
-    pub inline_editing: bool,
-    pub inline_input: String,
+    pub edit_target: Option<InlineEditTarget>,
+    pub edit_buffer: String,
 }
 
 impl IssueDetailState {
@@ -67,11 +79,50 @@ impl IssueDetailState {
         Self {
             detail,
             scroll: 0,
-            comment_input: String::new(),
             selected_comment: None,
-            inline_editing: false,
-            inline_input: String::new(),
+            edit_target: None,
+            edit_buffer: String::new(),
         }
+    }
+
+    pub fn is_editing(&self) -> bool {
+        self.edit_target.is_some()
+    }
+
+    pub fn start_edit_issue(&mut self) {
+        let issue = &self.detail.issue;
+        self.edit_buffer = format!("{}\n{}", issue.title, issue.body.as_deref().unwrap_or(""));
+        self.edit_target = Some(InlineEditTarget::IssueBody);
+    }
+
+    pub fn start_edit_comment(&mut self, index: usize) {
+        if let Some(comment) = self.detail.comments.get(index) {
+            self.edit_buffer = comment.body.clone();
+            self.edit_target = Some(InlineEditTarget::Comment(index));
+        }
+    }
+
+    pub fn start_new_comment(&mut self) {
+        self.edit_buffer.clear();
+        self.edit_target = Some(InlineEditTarget::NewComment);
+    }
+
+    pub fn start_quote_reply(&mut self, index: usize) {
+        if let Some(comment) = self.detail.comments.get(index) {
+            let quoted: String = comment
+                .body
+                .lines()
+                .map(|l| format!("> {}", l))
+                .collect::<Vec<_>>()
+                .join("\n");
+            self.edit_buffer = format!("> @{}\n{}\n\n", comment.user.login, quoted);
+            self.edit_target = Some(InlineEditTarget::QuoteReply(index));
+        }
+    }
+
+    pub fn cancel_edit(&mut self) {
+        self.edit_target = None;
+        self.edit_buffer.clear();
     }
 
     pub fn select_next_comment(&mut self) {
