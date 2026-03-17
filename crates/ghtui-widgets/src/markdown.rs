@@ -1,29 +1,38 @@
-use pulldown_cmark::{Event, Parser, Tag, TagEnd};
+use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 
-// Bright, readable colors for dark backgrounds
-const TEXT_COLOR: Color = Color::Rgb(230, 237, 243); // #e6edf3 - bright white
-const HEADING_H1: Color = Color::Rgb(88, 166, 255); // #58a6ff - bright blue
-const HEADING_H2: Color = Color::Rgb(63, 185, 80); // #3fb950 - bright green
-const HEADING_H3: Color = Color::Rgb(210, 153, 34); // #d29922 - bright yellow
-const LINK_COLOR: Color = Color::Rgb(88, 166, 255); // #58a6ff - bright blue
-const CODE_FG: Color = Color::Rgb(230, 237, 243); // #e6edf3 - bright
-const CODE_BG: Color = Color::Rgb(40, 45, 52); // #282d34 - subtle dark
-const INLINE_CODE_FG: Color = Color::Rgb(210, 153, 34); // #d29922 - yellow
-const INLINE_CODE_BG: Color = Color::Rgb(40, 45, 52); // #282d34
-const BLOCKQUOTE_COLOR: Color = Color::Rgb(125, 133, 144); // #7d8590 - dim but visible
-const BLOCKQUOTE_BAR: Color = Color::Rgb(48, 54, 61); // #30363d - border color
-const LIST_BULLET: Color = Color::Rgb(125, 133, 144); // #7d8590
-const RULE_COLOR: Color = Color::Rgb(48, 54, 61); // #30363d
+const TEXT_COLOR: Color = Color::Rgb(230, 237, 243);
+const HEADING_H1: Color = Color::Rgb(88, 166, 255);
+const HEADING_H2: Color = Color::Rgb(63, 185, 80);
+const HEADING_H3: Color = Color::Rgb(210, 153, 34);
+const LINK_COLOR: Color = Color::Rgb(88, 166, 255);
+const CODE_FG: Color = Color::Rgb(230, 237, 243);
+const CODE_BG: Color = Color::Rgb(40, 45, 52);
+const INLINE_CODE_FG: Color = Color::Rgb(210, 153, 34);
+const INLINE_CODE_BG: Color = Color::Rgb(40, 45, 52);
+const BLOCKQUOTE_COLOR: Color = Color::Rgb(125, 133, 144);
+const BLOCKQUOTE_BAR: Color = Color::Rgb(48, 54, 61);
+const LIST_BULLET: Color = Color::Rgb(125, 133, 144);
+const RULE_COLOR: Color = Color::Rgb(48, 54, 61);
+const TABLE_BORDER: Color = Color::Rgb(48, 54, 61);
+const STRIKETHROUGH_COLOR: Color = Color::Rgb(125, 133, 144);
 
 pub fn render_markdown(text: &str) -> Vec<Line<'static>> {
-    let parser = Parser::new(text);
+    let opts = Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TASKLISTS;
+    let parser = Parser::new_ext(text, opts);
     let mut lines: Vec<Line<'static>> = Vec::new();
     let mut current_spans: Vec<Span<'static>> = Vec::new();
     let mut style_stack: Vec<Style> = vec![Style::default().fg(TEXT_COLOR)];
     let mut in_code_block = false;
     let mut list_depth: usize = 0;
+    let mut link_url: Option<String> = None;
+
+    // Table state
+    let mut in_table = false;
+    let mut table_row: Vec<String> = Vec::new();
+    let mut table_rows: Vec<Vec<String>> = Vec::new();
+    let mut is_header_row = false;
 
     for event in parser {
         match event {
@@ -50,6 +59,12 @@ pub fn render_markdown(text: &str) -> Vec<Line<'static>> {
                         .add_modifier(Modifier::BOLD);
                     style_stack.push(style);
                 }
+                Tag::Strikethrough => {
+                    let style = Style::default()
+                        .fg(STRIKETHROUGH_COLOR)
+                        .add_modifier(Modifier::CROSSED_OUT);
+                    style_stack.push(style);
+                }
                 Tag::CodeBlock(_) => {
                     in_code_block = true;
                     flush_line(&mut lines, &mut current_spans);
@@ -69,7 +84,7 @@ pub fn render_markdown(text: &str) -> Vec<Line<'static>> {
                         .fg(LINK_COLOR)
                         .add_modifier(Modifier::UNDERLINED);
                     style_stack.push(style);
-                    let _ = dest_url;
+                    link_url = Some(dest_url.to_string());
                 }
                 Tag::BlockQuote(_) => {
                     let style = Style::default().fg(BLOCKQUOTE_COLOR);
@@ -77,7 +92,6 @@ pub fn render_markdown(text: &str) -> Vec<Line<'static>> {
                     current_spans.push(Span::styled("│ ", Style::default().fg(BLOCKQUOTE_BAR)));
                 }
                 Tag::Image { dest_url, .. } => {
-                    // Render image as link
                     current_spans.push(Span::styled(
                         format!("[image: {}]", dest_url),
                         Style::default()
@@ -85,6 +99,20 @@ pub fn render_markdown(text: &str) -> Vec<Line<'static>> {
                             .add_modifier(Modifier::UNDERLINED),
                     ));
                 }
+                Tag::Table(_) => {
+                    in_table = true;
+                    table_rows.clear();
+                    flush_line(&mut lines, &mut current_spans);
+                }
+                Tag::TableHead => {
+                    // table_header started
+                    is_header_row = true;
+                    table_row.clear();
+                }
+                Tag::TableRow => {
+                    table_row.clear();
+                }
+                Tag::TableCell => {}
                 _ => {}
             },
             Event::End(tag_end) => match tag_end {
@@ -93,7 +121,26 @@ pub fn render_markdown(text: &str) -> Vec<Line<'static>> {
                     flush_line(&mut lines, &mut current_spans);
                     lines.push(Line::raw(""));
                 }
-                TagEnd::Emphasis | TagEnd::Strong | TagEnd::Link | TagEnd::BlockQuote(_) => {
+                TagEnd::Emphasis | TagEnd::Strong | TagEnd::Strikethrough => {
+                    style_stack.pop();
+                }
+                TagEnd::Link => {
+                    style_stack.pop();
+                    if let Some(url) = link_url.take() {
+                        // Show URL if different from link text
+                        let last_text: String = current_spans
+                            .last()
+                            .map(|s| s.content.to_string())
+                            .unwrap_or_default();
+                        if !url.is_empty() && url != last_text {
+                            current_spans.push(Span::styled(
+                                format!(" ({})", url),
+                                Style::default().fg(Color::Rgb(125, 133, 144)),
+                            ));
+                        }
+                    }
+                }
+                TagEnd::BlockQuote(_) => {
                     style_stack.pop();
                 }
                 TagEnd::Paragraph => {
@@ -114,10 +161,31 @@ pub fn render_markdown(text: &str) -> Vec<Line<'static>> {
                     flush_line(&mut lines, &mut current_spans);
                 }
                 TagEnd::Image => {}
+                TagEnd::Table => {
+                    in_table = false;
+                    render_table(&table_rows, &mut lines);
+                    table_rows.clear();
+                    lines.push(Line::raw(""));
+                }
+                TagEnd::TableHead => {
+                    // table_header ended
+                    table_rows.push(table_row.clone());
+                    table_row.clear();
+                }
+                TagEnd::TableRow => {
+                    if !is_header_row {
+                        table_rows.push(table_row.clone());
+                    }
+                    is_header_row = false;
+                    table_row.clear();
+                }
+                TagEnd::TableCell => {}
                 _ => {}
             },
             Event::Text(text) => {
-                if in_code_block {
+                if in_table {
+                    table_row.push(text.to_string());
+                } else if in_code_block {
                     let style = Style::default().fg(CODE_FG).bg(CODE_BG);
                     for code_line in text.lines() {
                         current_spans.push(Span::styled(format!(" {} ", code_line), style));
@@ -129,8 +197,12 @@ pub fn render_markdown(text: &str) -> Vec<Line<'static>> {
                 }
             }
             Event::Code(code) => {
-                let style = Style::default().fg(INLINE_CODE_FG).bg(INLINE_CODE_BG);
-                current_spans.push(Span::styled(format!("`{}`", code), style));
+                if in_table {
+                    table_row.push(format!("`{}`", code));
+                } else {
+                    let style = Style::default().fg(INLINE_CODE_FG).bg(INLINE_CODE_BG);
+                    current_spans.push(Span::styled(format!("`{}`", code), style));
+                }
             }
             Event::SoftBreak => {
                 current_spans.push(Span::raw(" "));
@@ -146,16 +218,89 @@ pub fn render_markdown(text: &str) -> Vec<Line<'static>> {
                 ));
                 lines.push(Line::raw(""));
             }
+            Event::TaskListMarker(checked) => {
+                let marker = if checked { "☑ " } else { "☐ " };
+                let color = if checked { HEADING_H2 } else { LIST_BULLET };
+                // Replace the last bullet
+                if let Some(last) = current_spans.last_mut() {
+                    if last.content.ends_with("• ") {
+                        *last = Span::styled(
+                            last.content.replace("• ", marker),
+                            Style::default().fg(color),
+                        );
+                    }
+                }
+            }
             _ => {}
         }
     }
 
-    // Flush remaining
     if !current_spans.is_empty() {
         flush_line(&mut lines, &mut current_spans);
     }
 
     lines
+}
+
+fn render_table(rows: &[Vec<String>], lines: &mut Vec<Line<'static>>) {
+    if rows.is_empty() {
+        return;
+    }
+
+    // Calculate column widths
+    let col_count = rows.iter().map(|r| r.len()).max().unwrap_or(0);
+    let mut widths = vec![0usize; col_count];
+    for row in rows {
+        for (i, cell) in row.iter().enumerate() {
+            if i < col_count {
+                widths[i] = widths[i].max(cell.chars().count());
+            }
+        }
+    }
+
+    let border_style = Style::default().fg(TABLE_BORDER);
+    let header_style = Style::default()
+        .fg(Color::Rgb(255, 255, 255))
+        .add_modifier(Modifier::BOLD);
+    let cell_style = Style::default().fg(TEXT_COLOR);
+
+    // Top border
+    let top: String = widths
+        .iter()
+        .map(|w| "─".repeat(w + 2))
+        .collect::<Vec<_>>()
+        .join("┬");
+    lines.push(Line::styled(format!("  ┌{}┐", top), border_style));
+
+    for (ri, row) in rows.iter().enumerate() {
+        let mut spans = vec![Span::styled("  │", border_style)];
+        for (ci, width) in widths.iter().enumerate() {
+            let cell = row.get(ci).map(|s| s.as_str()).unwrap_or("");
+            let padded = format!(" {:<width$} ", cell, width = width);
+            let style = if ri == 0 { header_style } else { cell_style };
+            spans.push(Span::styled(padded, style));
+            spans.push(Span::styled("│", border_style));
+        }
+        lines.push(Line::from(spans));
+
+        // Separator after header
+        if ri == 0 {
+            let sep: String = widths
+                .iter()
+                .map(|w| "─".repeat(w + 2))
+                .collect::<Vec<_>>()
+                .join("┼");
+            lines.push(Line::styled(format!("  ├{}┤", sep), border_style));
+        }
+    }
+
+    // Bottom border
+    let btm: String = widths
+        .iter()
+        .map(|w| "─".repeat(w + 2))
+        .collect::<Vec<_>>()
+        .join("┴");
+    lines.push(Line::styled(format!("  └{}┘", btm), border_style));
 }
 
 fn current_style(stack: &[Style]) -> Style {
@@ -205,6 +350,30 @@ mod tests {
     #[test]
     fn test_render_image_as_link() {
         let lines = render_markdown("![alt](https://example.com/img.png)");
+        assert!(!lines.is_empty());
+    }
+
+    #[test]
+    fn test_render_table() {
+        let lines = render_markdown("| A | B |\n|---|---|\n| 1 | 2 |");
+        assert!(lines.len() >= 3);
+    }
+
+    #[test]
+    fn test_render_strikethrough() {
+        let lines = render_markdown("~~deleted~~");
+        assert!(!lines.is_empty());
+    }
+
+    #[test]
+    fn test_render_task_list() {
+        let lines = render_markdown("- [x] done\n- [ ] todo");
+        assert!(lines.len() >= 2);
+    }
+
+    #[test]
+    fn test_render_link_with_url() {
+        let lines = render_markdown("[GitHub](https://github.com)");
         assert!(!lines.is_empty());
     }
 }
