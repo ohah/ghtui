@@ -233,3 +233,13 @@ impl Theme {
         Style::default().fg(self.border)
     }
 }
+
+// Test function for review testing
+#[cfg(test)]
+mod test_review {
+    #[test]
+    fn test_theme_dark() {
+        let theme = super::Theme::dark();
+        assert_eq!(theme.mode, super::ThemeMode::Dark);
+    }
+}
