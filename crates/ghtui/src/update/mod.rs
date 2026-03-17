@@ -50,7 +50,22 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::PrDetailLoaded(detail) => {
             state.loading.remove("pr_detail");
-            state.pr_detail = Some(PrDetailState::new(*detail));
+            // Preserve UI state (tab, scroll, focus) if refreshing
+            let old = state.pr_detail.take();
+            let mut new_state = PrDetailState::new(*detail);
+            if let Some(old) = old {
+                new_state.tab = old.tab;
+                new_state.scroll = old.scroll;
+                new_state.diff_scroll = old.diff_scroll;
+                new_state.diff_cursor = old.diff_cursor;
+                new_state.diff_collapsed = old.diff_collapsed;
+                new_state.diff = old.diff; // keep existing diff until re-fetched
+                new_state.show_file_tree = old.show_file_tree;
+                new_state.file_tree_focused = old.file_tree_focused;
+                new_state.file_tree_selected = old.file_tree_selected;
+                new_state.focus = old.focus;
+            }
+            state.pr_detail = Some(new_state);
             // Fetch diff after detail is loaded (avoids race condition)
             if let Some(ref repo) = state.current_repo {
                 if let Route::PrDetail { number, .. } = &state.route {
@@ -963,7 +978,13 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::IssueDetailLoaded(detail) => {
             state.loading.remove("issue_detail");
-            state.issue_detail = Some(IssueDetailState::new(*detail));
+            let old = state.issue_detail.take();
+            let mut new_state = IssueDetailState::new(*detail);
+            if let Some(old) = old {
+                new_state.scroll = old.scroll;
+                new_state.focus = old.focus;
+            }
+            state.issue_detail = Some(new_state);
             vec![]
         }
         Message::IssueClosed(number) => {
