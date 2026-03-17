@@ -310,46 +310,55 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                             let title = detail.editor_text().trim().to_string();
                             let number = detail.detail.issue.number;
                             if title.is_empty() {
-                                vec![]
-                            } else {
-                                vec![Command::UpdateIssue(
-                                    repo.clone(),
-                                    number,
-                                    Some(title),
-                                    None,
-                                )]
+                                state.push_toast(
+                                    "Title cannot be empty".to_string(),
+                                    ToastLevel::Warning,
+                                );
+                                return vec![];
                             }
+                            vec![Command::UpdateIssue(
+                                repo.clone(),
+                                number,
+                                Some(title),
+                                None,
+                            )]
                         }
                         Some(InlineEditTarget::IssueBody) => {
-                            let body = detail.editor_text().clone();
+                            let body = detail.editor_text();
                             let number = detail.detail.issue.number;
                             vec![Command::UpdateIssue(repo.clone(), number, None, Some(body))]
                         }
                         Some(InlineEditTarget::Comment(idx)) => {
                             if let Some(comment) = detail.detail.comments.get(*idx) {
-                                let body = detail.editor_text().clone();
+                                let body = detail.editor_text();
                                 if body.trim().is_empty() {
-                                    vec![]
-                                } else {
-                                    vec![Command::UpdateComment(
-                                        repo.clone(),
-                                        detail.detail.issue.number,
-                                        comment.id,
-                                        body,
-                                    )]
+                                    state.push_toast(
+                                        "Comment cannot be empty".to_string(),
+                                        ToastLevel::Warning,
+                                    );
+                                    return vec![];
                                 }
+                                vec![Command::UpdateComment(
+                                    repo.clone(),
+                                    detail.detail.issue.number,
+                                    comment.id,
+                                    body,
+                                )]
                             } else {
                                 vec![]
                             }
                         }
                         Some(InlineEditTarget::NewComment | InlineEditTarget::QuoteReply(_)) => {
-                            let body = detail.editor_text().clone();
+                            let body = detail.editor_text();
                             if body.trim().is_empty() {
-                                vec![]
-                            } else {
-                                let number = detail.detail.issue.number;
-                                vec![Command::AddComment(repo.clone(), number, body)]
+                                state.push_toast(
+                                    "Comment cannot be empty".to_string(),
+                                    ToastLevel::Warning,
+                                );
+                                return vec![];
                             }
+                            let number = detail.detail.issue.number;
+                            vec![Command::AddComment(repo.clone(), number, body)]
                         }
                         None => vec![],
                     };
@@ -745,8 +754,11 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 Some(ghtui_core::ModalKind::AddComment) => {
                     let body = state.input_buffer.clone();
                     if body.trim().is_empty() {
-                        vec![]
-                    } else if let Some(ref repo) = state.current_repo {
+                        state
+                            .push_toast("Comment cannot be empty".to_string(), ToastLevel::Warning);
+                        return vec![];
+                    }
+                    if let Some(ref repo) = state.current_repo {
                         match &state.route {
                             Route::IssueDetail { number, .. } => {
                                 vec![Command::AddComment(repo.clone(), *number, body)]
@@ -785,8 +797,13 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                                     if let Some(comment) = detail.detail.comments.get(idx) {
                                         let body = state.input_buffer.clone();
                                         if body.trim().is_empty() {
-                                            vec![]
-                                        } else {
+                                            state.push_toast(
+                                                "Comment cannot be empty".to_string(),
+                                                ToastLevel::Warning,
+                                            );
+                                            return vec![];
+                                        }
+                                        {
                                             let number = detail.detail.issue.number;
                                             vec![Command::UpdateComment(
                                                 repo.clone(),
@@ -810,8 +827,11 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 Some(ghtui_core::ModalKind::EditComment(comment_id)) => {
                     let body = state.input_buffer.clone();
                     if body.trim().is_empty() {
-                        vec![]
-                    } else if let Some(ref repo) = state.current_repo {
+                        state
+                            .push_toast("Comment cannot be empty".to_string(), ToastLevel::Warning);
+                        return vec![];
+                    }
+                    if let Some(ref repo) = state.current_repo {
                         if let Some(ref detail) = state.issue_detail {
                             vec![Command::UpdateComment(
                                 repo.clone(),
