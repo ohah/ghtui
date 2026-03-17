@@ -76,8 +76,18 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     // === Header ===
     render_header(frame, detail_state, theme, chunks[0], is_title_editing);
 
-    // === Tab bar ===
-    let tabs = ["Conversation", "Commits", "Checks", "Files changed"];
+    // === Tab bar with counts ===
+    let commit_count = detail_state.detail.commits.len();
+    let check_count = detail_state.detail.checks.len();
+    let file_count = detail_state.diff.as_ref().map(|f| f.len()).unwrap_or(0);
+    let tab_commits = format!("Commits ({})", commit_count);
+    let tab_checks = if check_count > 0 {
+        format!("Checks ({})", check_count)
+    } else {
+        "Checks".to_string()
+    };
+    let tab_files = format!("Files changed ({})", file_count);
+    let tabs: Vec<&str> = vec!["Conversation", &tab_commits, &tab_checks, &tab_files];
     let tab_bar = TabBar::new(&tabs, detail_state.tab);
     frame.render_widget(tab_bar, chunks[1]);
 
@@ -451,6 +461,133 @@ fn render_diff_tab(
     detail: &ghtui_core::state::PrDetailState,
     area: Rect,
 ) {
+    if detail.show_file_tree {
+        // Split: file tree (left) + diff (right)
+        let tree_width = 35u16.min(area.width / 3);
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Length(tree_width), Constraint::Min(0)])
+            .split(area);
+
+        render_file_tree(frame, state, detail, chunks[0]);
+        render_diff_content(frame, state, detail, chunks[1]);
+    } else {
+        render_diff_content(frame, state, detail, area);
+    }
+}
+
+fn render_file_tree(
+    frame: &mut Frame,
+    state: &AppState,
+    detail: &ghtui_core::state::PrDetailState,
+    area: Rect,
+) {
+    let theme = &state.theme;
+    let focused = detail.file_tree_focused;
+
+    let border_color = if focused { theme.accent } else { theme.border };
+
+    let Some(ref files) = detail.diff else {
+        let paragraph = Paragraph::new("Loading...").block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(border_color))
+                .title(" Files "),
+        );
+        frame.render_widget(paragraph, area);
+        return;
+    };
+
+    let total_adds: u32 = files.iter().map(|f| f.additions).sum();
+    let total_dels: u32 = files.iter().map(|f| f.deletions).sum();
+
+    let mut items: Vec<ListItem> = Vec::new();
+
+    // Summary header
+    items.push(ListItem::new(Line::from(vec![
+        Span::styled(
+            format!(" {} files ", files.len()),
+            Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            format!("+{}", total_adds),
+            Style::default().fg(theme.diff_add_fg),
+        ),
+        Span::styled(" ", Style::default()),
+        Span::styled(
+            format!("-{}", total_dels),
+            Style::default().fg(theme.diff_remove_fg),
+        ),
+    ])));
+
+    for (i, file) in files.iter().enumerate() {
+        let is_selected = i == detail.file_tree_selected;
+        let collapsed = detail.diff_collapsed.contains(&i);
+        let fold_icon = if collapsed { "▸" } else { "▾" };
+
+        let status_icon = match file.status {
+            ghtui_core::types::DiffFileStatus::Added => ("A", theme.diff_add_fg),
+            ghtui_core::types::DiffFileStatus::Removed => ("D", theme.diff_remove_fg),
+            ghtui_core::types::DiffFileStatus::Modified => ("M", theme.warning),
+            ghtui_core::types::DiffFileStatus::Renamed => ("R", theme.info),
+        };
+
+        // Show just filename (last component of path)
+        let short_name = file.filename.rsplit('/').next().unwrap_or(&file.filename);
+
+        let name_style = if is_selected && focused {
+            theme.selected()
+        } else if is_selected {
+            Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(theme.fg_dim)
+        };
+
+        items.push(ListItem::new(Line::from(vec![
+            Span::styled(
+                format!(" {}", fold_icon),
+                Style::default().fg(theme.fg_muted),
+            ),
+            Span::styled(
+                format!("{} ", status_icon.0),
+                Style::default().fg(status_icon.1),
+            ),
+            Span::styled(short_name.to_string(), name_style),
+            Span::styled(
+                format!(" +{}", file.additions),
+                Style::default().fg(theme.diff_add_fg),
+            ),
+            Span::styled(
+                format!(" -{}", file.deletions),
+                Style::default().fg(theme.diff_remove_fg),
+            ),
+        ])));
+    }
+
+    let title = if focused {
+        " Files (t:hide  Tab:diff) "
+    } else {
+        " Files (t:hide) "
+    };
+
+    let list = List::new(items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(border_color))
+            .title(title),
+    );
+
+    let mut list_state = ratatui::widgets::ListState::default();
+    list_state.select(Some(detail.file_tree_selected + 1)); // +1 for summary header
+    frame.render_stateful_widget(list, area, &mut list_state);
+}
+
+fn render_diff_content(
+    frame: &mut Frame,
+    state: &AppState,
+    detail: &ghtui_core::state::PrDetailState,
+    area: Rect,
+) {
     let theme = &state.theme;
 
     if let Some(ref files) = detail.diff {
@@ -467,11 +604,24 @@ fn render_diff_tab(
         if let Some((ref path, line)) = detail.diff_comment_target {
             diff_view = diff_view.comment_editor(path, line, &detail.diff_comment_editor);
         }
+
+        let focused = !detail.file_tree_focused || !detail.show_file_tree;
+        let border_color = if focused {
+            theme.border
+        } else {
+            theme.border_muted
+        };
+        let title = if detail.show_file_tree {
+            " Files changed (t:tree  Tab:tree) "
+        } else {
+            " Files changed (t:tree  j/k  J/K  Enter) "
+        };
+
         let diff_view = diff_view.block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(theme.border_style())
-                .title(" Diff (j/k:move  J/K:select  h/l:fold  Enter:toggle) "),
+                .border_style(Style::default().fg(border_color))
+                .title(title),
         );
         frame.render_stateful_widget(diff_view, area, &mut diff_state);
     } else {
@@ -481,7 +631,7 @@ fn render_diff_tab(
                 Block::default()
                     .borders(Borders::ALL)
                     .border_style(theme.border_style())
-                    .title(" Diff "),
+                    .title(" Files changed "),
             );
         frame.render_widget(paragraph, area);
     }
