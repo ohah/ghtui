@@ -44,9 +44,12 @@
 - [x] 코멘트 추가 (`c`키 — 하단 패널)
 - [x] 코멘트 편집 (`e`키 — 코멘트 선택 시 하단 패널)
 - [x] 인용 답글 (`r`키 — 코멘트 선택 시 quote reply)
-- [ ] 코멘트 삭제
+- [x] 코멘트 삭제 (`d`키 — 코멘트 포커스 시)
 - [x] 라벨 추가/제거 (`l`키 → 라벨 피커 → Space:토글 → s:적용)
-- [ ] Assignee 추가/제거
+- [x] Assignee 추가/제거 (`a`키 → 어사인 피커)
+- [x] 이슈 닫기/열기 (`x`키)
+- [x] 브라우저에서 열기 (`o`키)
+- [x] 섹션 포커스 (j/k로 Title→Labels→Assignees→Body→Comments 이동)
 - [ ] Milestone 설정
 - [ ] 리액션 (👍 등)
 - [ ] 타임라인 이벤트 (assigned, labeled 등)

@@ -247,42 +247,60 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         };
     }
 
-    // Label picker mode
-    let label_picking = state
-        .issue_detail
-        .as_ref()
-        .is_some_and(|d| d.label_picker.is_some());
+    // Picker mode (label or assignee)
+    let has_picker = state.issue_detail.as_ref().is_some_and(|d| d.has_picker());
 
-    if label_picking {
+    if has_picker {
+        let is_label = state
+            .issue_detail
+            .as_ref()
+            .is_some_and(|d| d.label_picker.is_some());
         return match key.code {
-            KeyCode::Esc => Some(Message::IssueLabelCancel),
+            KeyCode::Esc => {
+                if is_label {
+                    Some(Message::IssueLabelCancel)
+                } else {
+                    Some(Message::IssueAssigneeCancel)
+                }
+            }
             KeyCode::Enter | KeyCode::Char(' ') => {
-                // Toggle selected label
                 if let Some(ref detail) = state.issue_detail {
-                    detail
-                        .label_picker
-                        .as_ref()
-                        .map(|picker| Message::IssueLabelSelect(picker.cursor))
+                    if let Some(ref picker) = detail.label_picker {
+                        Some(Message::IssueLabelSelect(picker.cursor))
+                    } else if let Some(ref picker) = detail.assignee_picker {
+                        Some(Message::IssueAssigneeSelect(picker.cursor))
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
             }
             KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
             KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-            KeyCode::Char('s') => Some(Message::IssueLabelApply), // save
+            KeyCode::Char('s') => {
+                if is_label {
+                    Some(Message::IssueLabelApply)
+                } else {
+                    Some(Message::IssueAssigneeApply)
+                }
+            }
             _ => None,
         };
     }
 
-    // Normal navigation mode
+    // Normal section navigation mode
     match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)), // focus next section
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)), // focus prev
+        KeyCode::Char('e') => Some(Message::IssueStartEditBody),            // edit focused item
         KeyCode::Char('c') => Some(Message::IssueStartComment),
-        KeyCode::Char('T') => Some(Message::IssueStartEditTitle),
-        KeyCode::Char('e') => Some(Message::IssueStartEditBody),
         KeyCode::Char('r') => Some(Message::IssueStartReply),
-        KeyCode::Char('l') => Some(Message::IssueLabelToggle), // open label picker
+        KeyCode::Char('l') => Some(Message::IssueLabelToggle),
+        KeyCode::Char('a') => Some(Message::IssueAssigneeToggle),
+        KeyCode::Char('d') => Some(Message::IssueDeleteComment),
+        KeyCode::Char('x') => Some(Message::IssueToggleState), // close/reopen
+        KeyCode::Char('o') => Some(Message::IssueOpenInBrowser),
         KeyCode::PageDown => Some(Message::ScrollDown),
         KeyCode::PageUp => Some(Message::ScrollUp),
         _ => None,

@@ -1,7 +1,6 @@
 use crate::editor::TextEditor;
-use crate::types::{Issue, IssueDetail, IssueFilters, IssueState, Pagination};
-
 use crate::types::common::Label;
+use crate::types::{Issue, IssueDetail, IssueFilters, IssueState, Pagination};
 
 #[derive(Debug)]
 pub struct IssueListState {
@@ -18,7 +17,15 @@ pub struct IssueListState {
 #[derive(Debug)]
 pub struct LabelPickerState {
     pub available: Vec<Label>,
-    pub selected_names: Vec<String>, // currently toggled labels
+    pub selected_names: Vec<String>,
+    pub cursor: usize,
+}
+
+/// Assignee picker state
+#[derive(Debug)]
+pub struct AssigneePickerState {
+    pub available: Vec<String>, // login names
+    pub selected_names: Vec<String>,
     pub cursor: usize,
 }
 
@@ -69,18 +76,37 @@ impl IssueListState {
     }
 }
 
+/// Focus sections in issue detail view
+#[derive(Debug, Clone, PartialEq)]
+pub enum IssueSection {
+    Title,
+    Labels,
+    Assignees,
+    Milestone,
+    Body,
+    Comment(usize),
+}
+
+impl IssueSection {
+    pub fn action_hint(&self) -> &'static str {
+        match self {
+            IssueSection::Title => "e:Edit  o:Open in browser",
+            IssueSection::Labels => "l:Edit labels",
+            IssueSection::Assignees => "a:Edit assignees",
+            IssueSection::Milestone => "",
+            IssueSection::Body => "e:Edit body",
+            IssueSection::Comment(_) => "e:Edit  r:Reply  d:Delete",
+        }
+    }
+}
+
 /// What is being edited inline
 #[derive(Debug, Clone, PartialEq)]
 pub enum InlineEditTarget {
-    /// Editing issue title (inline in header)
     IssueTitle,
-    /// Editing issue body (fullscreen editor)
     IssueBody,
-    /// Editing a specific comment by index (bottom panel)
     Comment(usize),
-    /// Writing a new comment (bottom panel)
     NewComment,
-    /// Quote-replying to a comment (bottom panel)
     QuoteReply(usize),
 }
 
@@ -88,10 +114,11 @@ pub enum InlineEditTarget {
 pub struct IssueDetailState {
     pub detail: IssueDetail,
     pub scroll: usize,
-    pub selected_comment: Option<usize>,
+    pub focus: IssueSection,
     pub edit_target: Option<InlineEditTarget>,
     pub editor: TextEditor,
     pub label_picker: Option<LabelPickerState>,
+    pub assignee_picker: Option<AssigneePickerState>,
 }
 
 impl IssueDetailState {
@@ -99,15 +126,52 @@ impl IssueDetailState {
         Self {
             detail,
             scroll: 0,
-            selected_comment: None,
+            focus: IssueSection::Title,
             edit_target: None,
             editor: TextEditor::new(),
             label_picker: None,
+            assignee_picker: None,
         }
     }
 
     pub fn is_editing(&self) -> bool {
         self.edit_target.is_some()
+    }
+
+    pub fn has_picker(&self) -> bool {
+        self.label_picker.is_some() || self.assignee_picker.is_some()
+    }
+
+    /// All navigable sections in order
+    fn sections(&self) -> Vec<IssueSection> {
+        let mut sections = vec![
+            IssueSection::Title,
+            IssueSection::Labels,
+            IssueSection::Assignees,
+            IssueSection::Body,
+        ];
+        for i in 0..self.detail.comments.len() {
+            sections.push(IssueSection::Comment(i));
+        }
+        sections
+    }
+
+    pub fn focus_next(&mut self) {
+        let sections = self.sections();
+        if let Some(idx) = sections.iter().position(|s| s == &self.focus) {
+            if idx < sections.len() - 1 {
+                self.focus = sections[idx + 1].clone();
+            }
+        }
+    }
+
+    pub fn focus_prev(&mut self) {
+        let sections = self.sections();
+        if let Some(idx) = sections.iter().position(|s| s == &self.focus) {
+            if idx > 0 {
+                self.focus = sections[idx - 1].clone();
+            }
+        }
     }
 
     pub fn start_edit_title(&mut self) {
@@ -155,27 +219,11 @@ impl IssueDetailState {
         self.editor.content()
     }
 
-    pub fn select_next_comment(&mut self) {
-        let max = self.detail.comments.len();
-        match self.selected_comment {
-            None => {
-                if max > 0 {
-                    self.selected_comment = Some(0);
-                }
-            }
-            Some(i) => {
-                if i < max.saturating_sub(1) {
-                    self.selected_comment = Some(i + 1);
-                }
-            }
-        }
-    }
-
-    pub fn select_prev_comment(&mut self) {
-        match self.selected_comment {
-            None => {}
-            Some(0) => self.selected_comment = None,
-            Some(i) => self.selected_comment = Some(i - 1),
+    // Legacy compat
+    pub fn selected_comment(&self) -> Option<usize> {
+        match &self.focus {
+            IssueSection::Comment(i) => Some(*i),
+            _ => None,
         }
     }
 }

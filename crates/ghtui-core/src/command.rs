@@ -27,10 +27,13 @@ pub enum Command {
     ReopenIssue(RepoId, u64),
     CreateIssue(RepoId, CreateIssueInput),
     UpdateIssue(RepoId, u64, Option<String>, Option<String>), // repo, number, title, body
-    SetIssueLabels(RepoId, u64, Vec<String>),                 // repo, number, labels
+    SetIssueLabels(RepoId, u64, Vec<String>),
+    SetIssueAssignees(RepoId, u64, Vec<String>),
     FetchRepoLabels(RepoId),
+    FetchCollaboratorsForPicker(RepoId),
+    DeleteComment(RepoId, u64), // comment_id
     AddComment(RepoId, u64, String),
-    UpdateComment(RepoId, u64, u64, String), // repo, issue_number, comment_id, body
+    UpdateComment(RepoId, u64, u64, String),
 
     // Actions
     FetchRuns(RepoId, ActionsFilters, u32),
