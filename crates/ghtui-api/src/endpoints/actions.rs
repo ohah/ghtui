@@ -1,3 +1,4 @@
+use base64::Engine;
 use ghtui_core::types::common::RepoId;
 use ghtui_core::types::*;
 
@@ -187,6 +188,7 @@ impl GithubClient {
         Ok(artifacts)
     }
 
+    /// Get artifact download URL. Uses a no-redirect request to capture the S3 URL.
     pub async fn download_artifact(
         &self,
         repo: &RepoId,
@@ -197,7 +199,19 @@ impl GithubClient {
             repo.owner, repo.name, artifact_id
         );
         let url = self.url(&path);
-        let response = self.http.get(&url).send().await?;
+
+        // Build a one-off client that does NOT follow redirects
+        let no_redirect = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .map_err(ApiError::Http)?;
+
+        let response = no_redirect
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", self.token))
+            .header("Accept", "application/vnd.github+json")
+            .send()
+            .await?;
 
         if response.status().is_redirection() {
             let redirect_url = response
@@ -207,9 +221,6 @@ impl GithubClient {
                 .ok_or(ApiError::Other("No redirect URL for artifact".into()))?
                 .to_string();
             Ok(redirect_url)
-        } else if response.status().is_success() {
-            // Direct download - return URL itself
-            Ok(url)
         } else {
             let status = response.status().as_u16();
             let body = response.text().await?;
@@ -252,8 +263,6 @@ impl GithubClient {
         let body = self.get(&path).await?;
         let response: serde_json::Value = serde_json::from_str(&body)?;
         let content = response["content"].as_str().unwrap_or("").replace('\n', "");
-        // Base64 decode
-        use base64::Engine;
         let decoded = base64::engine::general_purpose::STANDARD
             .decode(&content)
             .map_err(|e| ApiError::Other(format!("Base64 decode error: {}", e)))?;
@@ -280,17 +289,8 @@ impl GithubClient {
         run_id: u64,
         environment_ids: &[u64],
     ) -> Result<(), ApiError> {
-        let path = format!(
-            "/repos/{}/{}/actions/runs/{}/pending_deployments",
-            repo.owner, repo.name, run_id
-        );
-        let body = serde_json::json!({
-            "environment_ids": environment_ids,
-            "state": "approved",
-            "comment": "",
-        });
-        self.post(&path, &body).await?;
-        Ok(())
+        self.respond_to_deployment(repo, run_id, environment_ids, "approved")
+            .await
     }
 
     pub async fn reject_deployment(
@@ -299,13 +299,24 @@ impl GithubClient {
         run_id: u64,
         environment_ids: &[u64],
     ) -> Result<(), ApiError> {
+        self.respond_to_deployment(repo, run_id, environment_ids, "rejected")
+            .await
+    }
+
+    async fn respond_to_deployment(
+        &self,
+        repo: &RepoId,
+        run_id: u64,
+        environment_ids: &[u64],
+        state: &str,
+    ) -> Result<(), ApiError> {
         let path = format!(
             "/repos/{}/{}/actions/runs/{}/pending_deployments",
             repo.owner, repo.name, run_id
         );
         let body = serde_json::json!({
             "environment_ids": environment_ids,
-            "state": "rejected",
+            "state": state,
             "comment": "",
         });
         self.post(&path, &body).await?;
