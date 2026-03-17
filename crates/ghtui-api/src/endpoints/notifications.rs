@@ -50,4 +50,16 @@ impl GithubClient {
         self.put("/notifications", &body).await?;
         Ok(())
     }
+
+    pub async fn unsubscribe_thread(&self, thread_id: &str) -> Result<(), ApiError> {
+        let path = format!("/notifications/threads/{}/subscription", thread_id);
+        self.delete(&path).await?;
+        Ok(())
+    }
+
+    pub async fn mark_thread_done(&self, thread_id: &str) -> Result<(), ApiError> {
+        let path = format!("/notifications/threads/{}", thread_id);
+        self.delete(&path).await?;
+        Ok(())
+    }
 }

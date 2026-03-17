@@ -2274,6 +2274,104 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::NotificationNavigate => {
+            if let Some(ref notifs) = state.notifications {
+                if let Some(notif) = notifs.selected_notification() {
+                    let number = notif.extract_number();
+                    let repo_parts = notif.repo_parts();
+                    let subject_type = notif.subject.subject_type.clone();
+                    if let (Some(number), Some((owner, name))) = (number, repo_parts) {
+                        let repo = ghtui_core::types::common::RepoId::new(owner, name);
+                        return match subject_type.as_str() {
+                            "PullRequest" => {
+                                let route = Route::PrDetail {
+                                    repo,
+                                    number,
+                                    tab: ghtui_core::PrTab::Conversation,
+                                };
+                                handle_navigate(state, route)
+                            }
+                            "Issue" => {
+                                let route = Route::IssueDetail { repo, number };
+                                handle_navigate(state, route)
+                            }
+                            _ => vec![],
+                        };
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::NotificationMarkRead => {
+            if let Some(ref notifs) = state.notifications {
+                if let Some(notif) = notifs.selected_notification() {
+                    let id = notif.id.clone();
+                    return vec![Command::MarkNotificationRead(id)];
+                }
+            }
+            vec![]
+        }
+        Message::NotificationMarkAllRead => vec![Command::MarkAllNotificationsRead],
+        Message::NotificationAllMarkedRead => {
+            state.push_toast(
+                "All notifications marked read".to_string(),
+                ToastLevel::Success,
+            );
+            if let Some(ref mut notifs) = state.notifications {
+                notifs.items.clear();
+                notifs.selected = 0;
+            }
+            vec![]
+        }
+        Message::NotificationUnsubscribe => {
+            if let Some(ref notifs) = state.notifications {
+                if let Some(notif) = notifs.selected_notification() {
+                    let id = notif.id.clone();
+                    return vec![Command::UnsubscribeThread(id)];
+                }
+            }
+            vec![]
+        }
+        Message::NotificationUnsubscribed(id) => {
+            state.push_toast("Unsubscribed".to_string(), ToastLevel::Info);
+            if let Some(ref mut notifs) = state.notifications {
+                notifs.items.retain(|n| n.id != id);
+            }
+            vec![]
+        }
+        Message::NotificationDone => {
+            if let Some(ref notifs) = state.notifications {
+                if let Some(notif) = notifs.selected_notification() {
+                    let id = notif.id.clone();
+                    return vec![Command::MarkThreadDone(id)];
+                }
+            }
+            vec![]
+        }
+        Message::NotificationDoneResult(id) => {
+            if let Some(ref mut notifs) = state.notifications {
+                notifs.items.retain(|n| n.id != id);
+            }
+            vec![]
+        }
+        Message::NotificationCycleReason => {
+            if let Some(ref mut notifs) = state.notifications {
+                notifs.cycle_reason();
+            }
+            vec![]
+        }
+        Message::NotificationCycleType => {
+            if let Some(ref mut notifs) = state.notifications {
+                notifs.cycle_type();
+            }
+            vec![]
+        }
+        Message::NotificationToggleGrouped => {
+            if let Some(ref mut notifs) = state.notifications {
+                notifs.toggle_grouped();
+            }
+            vec![]
+        }
 
         // Insights
         Message::ContributorStatsLoaded(stats) => {

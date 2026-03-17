@@ -260,7 +260,7 @@ fn render_footer(frame: &mut Frame, state: &AppState, theme: &Theme, area: Rect)
         }
         Route::PrDetail { .. } => "Tab:Switch c:Comment m:Merge Esc:Back",
         Route::IssueDetail { .. } => "c:Comment Esc:Back",
-        Route::Notifications => "j/k:Navigate Enter:Open",
+        Route::Notifications => "Enter:Open m:Read M:ReadAll d:Done u:Unsub s/e:Filter g:Group",
         _ => "1-6:Tabs t:Theme ?:Help q:Quit",
     };
 

@@ -372,6 +372,18 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Ok(()) => Message::NotificationMarkedRead(id),
             Err(e) => Message::Error(e.into()),
         },
+        Command::MarkAllNotificationsRead => match client.mark_all_notifications_read().await {
+            Ok(()) => Message::NotificationAllMarkedRead,
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::UnsubscribeThread(id) => match client.unsubscribe_thread(&id).await {
+            Ok(()) => Message::NotificationUnsubscribed(id),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::MarkThreadDone(id) => match client.mark_thread_done(&id).await {
+            Ok(()) => Message::NotificationDoneResult(id),
+            Err(e) => Message::Error(e.into()),
+        },
 
         // Search
         Command::Search(query, kind, page) => match client.search(&query, kind, page).await {
