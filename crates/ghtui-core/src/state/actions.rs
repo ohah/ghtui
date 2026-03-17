@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::types::{ActionsFilters, LogLine, Pagination, Workflow, WorkflowRun, WorkflowRunDetail};
 
 #[derive(Debug)]
@@ -67,6 +69,14 @@ impl ActionsListState {
     }
 }
 
+/// Focus area within the action detail view.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActionDetailFocus {
+    Jobs,
+    Steps,
+    Log,
+}
+
 #[derive(Debug)]
 pub struct ActionDetailState {
     pub detail: WorkflowRunDetail,
@@ -74,6 +84,14 @@ pub struct ActionDetailState {
     pub log: Option<Vec<LogLine>>,
     pub log_scroll: usize,
     pub auto_scroll: bool,
+    /// Which steps are collapsed (by step number). Expanded by default.
+    pub collapsed_steps: HashSet<u32>,
+    /// Current focus area
+    pub focus: ActionDetailFocus,
+    /// Action bar: focused?
+    pub action_bar_focused: bool,
+    /// Action bar: selected action index
+    pub action_bar_selected: usize,
 }
 
 impl ActionDetailState {
@@ -84,6 +102,55 @@ impl ActionDetailState {
             log: None,
             log_scroll: 0,
             auto_scroll: true,
+            collapsed_steps: HashSet::new(),
+            focus: ActionDetailFocus::Jobs,
+            action_bar_focused: false,
+            action_bar_selected: 0,
         }
+    }
+
+    /// Toggle collapse state of a step
+    pub fn toggle_step(&mut self, step_number: u32) {
+        if !self.collapsed_steps.remove(&step_number) {
+            self.collapsed_steps.insert(step_number);
+        }
+    }
+
+    /// Check if a step is collapsed
+    pub fn is_step_collapsed(&self, step_number: u32) -> bool {
+        self.collapsed_steps.contains(&step_number)
+    }
+
+    /// Get available action bar items based on run state
+    pub fn action_bar_items(&self) -> Vec<&'static str> {
+        let mut items = Vec::new();
+        let run = &self.detail.run;
+
+        match run.status {
+            Some(crate::types::RunStatus::InProgress)
+            | Some(crate::types::RunStatus::Queued)
+            | Some(crate::types::RunStatus::Waiting) => {
+                items.push("Cancel");
+            }
+            _ => {}
+        }
+
+        match run.conclusion {
+            Some(crate::types::RunConclusion::Failure)
+            | Some(crate::types::RunConclusion::Cancelled) => {
+                items.push("Re-run");
+                items.push("Re-run failed");
+            }
+            Some(crate::types::RunConclusion::Success) => {
+                items.push("Re-run");
+            }
+            _ => {
+                items.push("Re-run");
+            }
+        }
+
+        items.push("Delete");
+        items.push("Open in browser");
+        items
     }
 }

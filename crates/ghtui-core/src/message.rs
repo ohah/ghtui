@@ -200,6 +200,17 @@ pub enum Message {
     ActionsFilterClear,
     ActionsSelectWorkflow(Option<u64>),
     ActionsOpenInBrowser,
+    // Action detail
+    ActionDetailToggleStep(u32), // toggle step fold by step number
+    ActionDetailFocusJobs,
+    ActionDetailFocusLog,
+    ActionDetailActionBarFocus,
+    ActionDetailActionBarLeft,
+    ActionDetailActionBarRight,
+    ActionDetailActionBarSelect,
+    ActionDetailOpenInBrowser,
+    RunRerunFailed(u64),
+    RunDeleted(u64),
 
     // Notifications
     NotificationsLoaded(Vec<Notification>),

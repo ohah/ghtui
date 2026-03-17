@@ -303,6 +303,16 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Ok(()) => Message::RunRerun(run_id),
             Err(e) => Message::Error(e.into()),
         },
+        Command::RerunFailedJobs(repo, run_id) => {
+            match client.rerun_failed_jobs(&repo, run_id).await {
+                Ok(()) => Message::RunRerunFailed(run_id),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::DeleteRun(repo, run_id) => match client.delete_run(&repo, run_id).await {
+            Ok(()) => Message::RunDeleted(run_id),
+            Err(e) => Message::Error(e.into()),
+        },
         Command::FetchWorkflows(repo) => match client.list_workflows(&repo).await {
             Ok(workflows) => Message::WorkflowsLoaded(workflows),
             Err(e) => Message::Error(e.into()),

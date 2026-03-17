@@ -2109,6 +2109,82 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::ActionDetailToggleStep(step_number) => {
+            if let Some(ref mut detail) = state.action_detail {
+                detail.toggle_step(step_number);
+            }
+            vec![]
+        }
+        Message::ActionDetailFocusJobs => {
+            if let Some(ref mut detail) = state.action_detail {
+                detail.focus = ActionDetailFocus::Jobs;
+            }
+            vec![]
+        }
+        Message::ActionDetailFocusLog => {
+            if let Some(ref mut detail) = state.action_detail {
+                detail.focus = ActionDetailFocus::Log;
+            }
+            vec![]
+        }
+        Message::ActionDetailActionBarFocus => {
+            if let Some(ref mut detail) = state.action_detail {
+                detail.action_bar_focused = !detail.action_bar_focused;
+            }
+            vec![]
+        }
+        Message::ActionDetailActionBarLeft => {
+            if let Some(ref mut detail) = state.action_detail {
+                detail.action_bar_selected = detail.action_bar_selected.saturating_sub(1);
+            }
+            vec![]
+        }
+        Message::ActionDetailActionBarRight => {
+            if let Some(ref mut detail) = state.action_detail {
+                let max = detail.action_bar_items().len().saturating_sub(1);
+                detail.action_bar_selected = (detail.action_bar_selected + 1).min(max);
+            }
+            vec![]
+        }
+        Message::ActionDetailActionBarSelect => {
+            if let (Some(detail), Some(repo)) = (&state.action_detail, &state.current_repo) {
+                let items = detail.action_bar_items();
+                let run_id = detail.detail.run.id;
+                let action = items.get(detail.action_bar_selected).copied();
+                match action {
+                    Some("Cancel") => return vec![Command::CancelRun(repo.clone(), run_id)],
+                    Some("Re-run") => return vec![Command::RerunRun(repo.clone(), run_id)],
+                    Some("Re-run failed") => {
+                        return vec![Command::RerunFailedJobs(repo.clone(), run_id)];
+                    }
+                    Some("Delete") => return vec![Command::DeleteRun(repo.clone(), run_id)],
+                    Some("Open in browser") => {
+                        return vec![Command::OpenInBrowser(detail.detail.run.html_url.clone())];
+                    }
+                    _ => {}
+                }
+            }
+            vec![]
+        }
+        Message::ActionDetailOpenInBrowser => {
+            if let Some(ref detail) = state.action_detail {
+                return vec![Command::OpenInBrowser(detail.detail.run.html_url.clone())];
+            }
+            vec![]
+        }
+        Message::RunRerunFailed(run_id) => {
+            state.push_toast(
+                format!("Failed jobs of run #{} restarted", run_id),
+                ToastLevel::Success,
+            );
+            refresh_current_view(state)
+        }
+        Message::RunDeleted(run_id) => {
+            state.push_toast(format!("Run #{} deleted", run_id), ToastLevel::Info);
+            // Go back to list after delete
+            state.go_back();
+            refresh_current_view(state)
+        }
 
         // Notifications
         Message::NotificationsLoaded(notifications) => {

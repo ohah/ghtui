@@ -152,4 +152,22 @@ impl GithubClient {
         self.post(&path, &serde_json::json!({})).await?;
         Ok(())
     }
+
+    pub async fn rerun_failed_jobs(&self, repo: &RepoId, run_id: u64) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/actions/runs/{}/rerun-failed-jobs",
+            repo.owner, repo.name, run_id
+        );
+        self.post(&path, &serde_json::json!({})).await?;
+        Ok(())
+    }
+
+    pub async fn delete_run(&self, repo: &RepoId, run_id: u64) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/actions/runs/{}",
+            repo.owner, repo.name, run_id
+        );
+        self.delete(&path).await?;
+        Ok(())
+    }
 }
