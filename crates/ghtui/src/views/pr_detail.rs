@@ -454,6 +454,16 @@ fn render_conversation(
             lines.extend(render_markdown(body));
         }
     }
+    // PR body reactions
+    if let Some(ref reactions) = pr.reactions {
+        let summary = reactions.summary();
+        if !summary.is_empty() {
+            lines.push(Line::styled(
+                format!("  {} (+/- to react)", summary),
+                Style::default().fg(theme.fg_dim),
+            ));
+        }
+    }
     lines.push(Line::raw(""));
     lines.push(Line::styled("─".repeat(50), theme.border_style()));
 

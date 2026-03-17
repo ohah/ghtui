@@ -133,6 +133,7 @@ fn test_pr_list_state_selection() {
             comments: None,
             review_comments: None,
             auto_merge: false,
+            reactions: None,
         },
         PullRequest {
             number: 2,
@@ -163,6 +164,7 @@ fn test_pr_list_state_selection() {
             comments: None,
             review_comments: None,
             auto_merge: false,
+            reactions: None,
         },
     ];
 
