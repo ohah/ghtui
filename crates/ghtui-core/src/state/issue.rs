@@ -55,13 +55,15 @@ impl IssueListState {
 /// What is being edited inline
 #[derive(Debug, Clone, PartialEq)]
 pub enum InlineEditTarget {
-    /// Editing issue title + body (first line = title, rest = body)
+    /// Editing issue title (inline in header)
+    IssueTitle,
+    /// Editing issue body (fullscreen editor)
     IssueBody,
-    /// Editing a specific comment by index
+    /// Editing a specific comment by index (bottom panel)
     Comment(usize),
-    /// Writing a new comment (always at bottom)
+    /// Writing a new comment (bottom panel)
     NewComment,
-    /// Quote-replying to a comment
+    /// Quote-replying to a comment (bottom panel)
     QuoteReply(usize),
 }
 
@@ -89,9 +91,13 @@ impl IssueDetailState {
         self.edit_target.is_some()
     }
 
-    pub fn start_edit_issue(&mut self) {
-        let issue = &self.detail.issue;
-        self.edit_buffer = format!("{}\n{}", issue.title, issue.body.as_deref().unwrap_or(""));
+    pub fn start_edit_title(&mut self) {
+        self.edit_buffer = self.detail.issue.title.clone();
+        self.edit_target = Some(InlineEditTarget::IssueTitle);
+    }
+
+    pub fn start_edit_body(&mut self) {
+        self.edit_buffer = self.detail.issue.body.as_deref().unwrap_or("").to_string();
         self.edit_target = Some(InlineEditTarget::IssueBody);
     }
 

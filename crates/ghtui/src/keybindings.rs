@@ -2,6 +2,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ghtui_core::message::ModalKind;
 use ghtui_core::router::Route;
 use ghtui_core::state::InputMode;
+use ghtui_core::state::issue::InlineEditTarget;
 use ghtui_core::{AppState, Message};
 
 pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<Message> {
@@ -197,10 +198,16 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
 
     if is_editing {
         // Inline editing mode
+        let is_title_edit = state
+            .issue_detail
+            .as_ref()
+            .is_some_and(|d| matches!(d.edit_target, Some(InlineEditTarget::IssueTitle)));
+
         return match key.code {
             KeyCode::Esc => Some(Message::IssueEditCancel),
             KeyCode::Enter => {
-                if key.modifiers.contains(KeyModifiers::CONTROL) {
+                if key.modifiers.contains(KeyModifiers::CONTROL) || is_title_edit {
+                    // Ctrl+Enter submits (or plain Enter for title)
                     Some(Message::IssueEditSubmit)
                 } else {
                     Some(Message::IssueEditInput("\n".to_string()))
@@ -217,7 +224,8 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
         KeyCode::Char('c') => Some(Message::IssueStartComment),
-        KeyCode::Char('e') => Some(Message::IssueStartEdit),
+        KeyCode::Char('T') => Some(Message::IssueStartEditTitle), // Shift+T: edit title
+        KeyCode::Char('e') => Some(Message::IssueStartEditBody),  // e: edit body or comment
         KeyCode::Char('r') => Some(Message::IssueStartReply),
         KeyCode::PageDown => Some(Message::ScrollDown),
         KeyCode::PageUp => Some(Message::ScrollUp),

@@ -169,10 +169,16 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
 
         // Inline editing
-        Message::IssueStartEdit => {
+        Message::IssueStartEditTitle => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.start_edit_title();
+            }
+            vec![]
+        }
+        Message::IssueStartEditBody => {
             if let Some(ref mut detail) = state.issue_detail {
                 match detail.selected_comment {
-                    None => detail.start_edit_issue(),
+                    None => detail.start_edit_body(),
                     Some(idx) => detail.start_edit_comment(idx),
                 }
             }
@@ -208,14 +214,24 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             if let Some(ref detail) = state.issue_detail {
                 if let Some(ref repo) = state.current_repo {
                     let cmds = match &detail.edit_target {
-                        Some(InlineEditTarget::IssueBody) => {
-                            let input = detail.edit_buffer.clone();
-                            let mut parts = input.splitn(2, '\n');
-                            let title = parts.next().unwrap_or("").trim().to_string();
-                            let body = parts.next().map(|b| b.trim().to_string());
+                        Some(InlineEditTarget::IssueTitle) => {
+                            let title = detail.edit_buffer.trim().to_string();
                             let number = detail.detail.issue.number;
-                            let title_opt = if title.is_empty() { None } else { Some(title) };
-                            vec![Command::UpdateIssue(repo.clone(), number, title_opt, body)]
+                            if title.is_empty() {
+                                vec![]
+                            } else {
+                                vec![Command::UpdateIssue(
+                                    repo.clone(),
+                                    number,
+                                    Some(title),
+                                    None,
+                                )]
+                            }
+                        }
+                        Some(InlineEditTarget::IssueBody) => {
+                            let body = detail.edit_buffer.clone();
+                            let number = detail.detail.issue.number;
+                            vec![Command::UpdateIssue(repo.clone(), number, None, Some(body))]
                         }
                         Some(InlineEditTarget::Comment(idx)) => {
                             if let Some(comment) = detail.detail.comments.get(*idx) {

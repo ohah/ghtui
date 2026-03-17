@@ -39,59 +39,117 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     };
 
-    let issue = &detail_state.detail.issue;
-    let is_editing = detail_state.is_editing();
+    let edit_target = &detail_state.edit_target;
 
-    // Layout: header + body/comments + (optional) editor at bottom
-    let constraints = if is_editing {
-        vec![
-            Constraint::Length(5),
-            Constraint::Min(8),
-            Constraint::Length(10),
-        ]
-    } else {
-        vec![
-            Constraint::Length(5),
-            Constraint::Min(0),
-            Constraint::Length(0),
-        ]
-    };
+    // Body editing → fullscreen editor
+    if matches!(edit_target, Some(InlineEditTarget::IssueBody)) {
+        render_fullscreen_editor(frame, detail_state, theme, area, " Edit Body (markdown) ");
+        return;
+    }
+
+    // Determine layout based on editing state
+    let is_comment_editing = matches!(
+        edit_target,
+        Some(
+            InlineEditTarget::Comment(_)
+                | InlineEditTarget::NewComment
+                | InlineEditTarget::QuoteReply(_)
+        )
+    );
+    let is_title_editing = matches!(edit_target, Some(InlineEditTarget::IssueTitle));
+
+    let header_height = if is_title_editing { 6 } else { 5 };
+    let editor_height: u16 = if is_comment_editing { 10 } else { 0 };
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(constraints)
+        .constraints([
+            Constraint::Length(header_height),
+            Constraint::Min(0),
+            Constraint::Length(editor_height),
+        ])
         .split(area);
 
     // === Header ===
+    render_header(frame, detail_state, theme, chunks[0], is_title_editing);
+
+    // === Body + Comments ===
+    render_body_comments(frame, state, theme, chunks[1]);
+
+    // === Bottom editor for comments ===
+    if is_comment_editing {
+        let title = match edit_target {
+            Some(InlineEditTarget::Comment(_)) => " Edit Comment ",
+            Some(InlineEditTarget::NewComment) => " New Comment ",
+            Some(InlineEditTarget::QuoteReply(_)) => " Reply ",
+            _ => "",
+        };
+        render_bottom_editor(frame, detail_state, theme, chunks[2], title);
+    }
+}
+
+fn render_header(
+    frame: &mut Frame,
+    detail_state: &ghtui_core::state::IssueDetailState,
+    theme: &ghtui_core::theme::Theme,
+    area: Rect,
+    is_title_editing: bool,
+) {
+    let issue = &detail_state.detail.issue;
     let state_color = match issue.state {
         ghtui_core::types::IssueState::Open => theme.success,
         ghtui_core::types::IssueState::Closed => theme.done,
     };
 
-    let mut header_lines = vec![
-        Line::from(vec![
+    let mut header_lines = vec![Line::from(vec![
+        Span::styled(
+            format!(" {} ", issue.state),
+            Style::default()
+                .fg(theme.bg)
+                .bg(state_color)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            format!(" #{}", issue.number),
+            Style::default().fg(theme.fg_muted),
+        ),
+        Span::styled(
+            format!("  by @{}", issue.user.login),
+            Style::default().fg(theme.fg_dim),
+        ),
+        Span::styled(
+            format!("  {}", issue.created_at.format("%Y-%m-%d")),
+            Style::default().fg(theme.fg_dim),
+        ),
+    ])];
+
+    // Title: inline editable or normal
+    if is_title_editing {
+        header_lines.push(Line::from(vec![
+            Span::styled(" ✎ ", Style::default().fg(theme.warning)),
             Span::styled(
-                format!(" {} ", issue.state),
+                detail_state.edit_buffer.clone(),
                 Style::default()
-                    .fg(theme.bg)
-                    .bg(state_color)
+                    .fg(Color::White)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                format!(" #{}", issue.number),
-                Style::default().fg(theme.fg_muted),
+                "█",
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::SLOW_BLINK),
             ),
-            Span::styled(
-                format!("  by @{}", issue.user.login),
-                Style::default().fg(theme.fg_dim),
-            ),
-            Span::styled(
-                format!("  {}", issue.created_at.format("%Y-%m-%d")),
-                Style::default().fg(theme.fg_dim),
-            ),
-        ]),
-        Line::styled(format!(" {}", issue.title), theme.text_bold()),
-    ];
+        ]));
+        header_lines.push(Line::styled(
+            " Ctrl+Enter: Save  Esc: Cancel".to_string(),
+            Style::default().fg(theme.fg_dim),
+        ));
+    } else {
+        header_lines.push(Line::from(vec![
+            Span::styled(format!(" {}", issue.title), theme.text_bold()),
+            Span::styled("  (T:Edit title)", Style::default().fg(theme.fg_dim)),
+        ]));
+    }
 
     // Labels
     if !issue.labels.is_empty() {
@@ -140,33 +198,34 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 .borders(Borders::BOTTOM)
                 .border_style(theme.border_style()),
         );
-    frame.render_widget(header, chunks[0]);
+    frame.render_widget(header, area);
+}
 
-    // === Body + Comments (scrollable) ===
-    let mut lines: Vec<Line<'static>> = Vec::new();
+fn render_body_comments(
+    frame: &mut Frame,
+    state: &AppState,
+    theme: &ghtui_core::theme::Theme,
+    area: Rect,
+) {
+    let detail_state = state.issue_detail.as_ref().unwrap();
+    let issue = &detail_state.detail.issue;
     let selected_comment = detail_state.selected_comment;
-    let edit_target = &detail_state.edit_target;
+    let is_editing = detail_state.is_editing();
+
+    let mut lines: Vec<Line<'static>> = Vec::new();
 
     // Issue body
     let body_selected = selected_comment.is_none();
-    let editing_body = matches!(edit_target, Some(InlineEditTarget::IssueBody));
-
     if body_selected && !is_editing {
         lines.push(Line::styled(
-            "▸ Issue Body  (e:Edit  c:Comment  r:Reply)".to_string(),
+            "▸ Issue Body  (e:Edit body  c:Comment)".to_string(),
             Style::default()
                 .fg(theme.accent)
                 .add_modifier(Modifier::BOLD),
         ));
     }
 
-    if editing_body {
-        // Show "editing..." indicator instead of body
-        lines.push(Line::styled(
-            "  ✎ Editing issue below...".to_string(),
-            Style::default().fg(theme.warning),
-        ));
-    } else if let Some(ref body) = issue.body {
+    if let Some(ref body) = issue.body {
         if !body.is_empty() {
             lines.push(Line::raw(""));
             lines.extend(render_markdown(body));
@@ -180,7 +239,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     lines.push(Line::raw(""));
     lines.push(Line::styled(
         format!(
-            "  Comments ({})  j/k:Navigate  c:Comment  e:Edit  r:Reply",
+            "  Comments ({})  j/k:Select  c:New  e:Edit  r:Reply",
             comment_count
         ),
         Style::default()
@@ -190,7 +249,6 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
     for (i, comment) in detail_state.detail.comments.iter().enumerate() {
         let is_selected = selected_comment == Some(i);
-        let editing_this = matches!(edit_target, Some(InlineEditTarget::Comment(idx)) if *idx == i);
         let marker = if is_selected && !is_editing {
             "▸ "
         } else {
@@ -225,15 +283,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
             ));
         }
         lines.push(Line::from(hdr));
-
-        if editing_this {
-            lines.push(Line::styled(
-                "  ✎ Editing comment below...".to_string(),
-                Style::default().fg(theme.warning),
-            ));
-        } else {
-            lines.extend(render_markdown(&comment.body));
-        }
+        lines.extend(render_markdown(&comment.body));
         lines.push(Line::styled("─".repeat(50), theme.border_style()));
     }
 
@@ -244,48 +294,113 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         ));
     }
 
-    let body_block_title = if is_editing {
-        " Body & Comments (editing...) "
-    } else {
-        " Body & Comments "
-    };
-
     let paragraph = Paragraph::new(lines)
         .style(theme.text())
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .border_style(theme.border_style())
-                .title(body_block_title),
+                .title(" Body & Comments "),
         )
         .wrap(Wrap { trim: false })
         .scroll((detail_state.scroll as u16, 0));
-    frame.render_widget(paragraph, chunks[1]);
-
-    // === Inline Editor (bottom panel) ===
-    if is_editing {
-        render_inline_editor(frame, detail_state, theme, chunks[2]);
-    }
+    frame.render_widget(paragraph, area);
 }
 
-fn render_inline_editor(
+fn render_fullscreen_editor(
     frame: &mut Frame,
     detail_state: &ghtui_core::state::IssueDetailState,
     theme: &ghtui_core::theme::Theme,
     area: Rect,
+    title: &str,
 ) {
-    let edit_target = detail_state.edit_target.as_ref().unwrap();
-    let title = match edit_target {
-        InlineEditTarget::IssueBody => " Edit Issue (first line=Title, rest=Body) ",
-        InlineEditTarget::Comment(_) => " Edit Comment ",
-        InlineEditTarget::NewComment => " New Comment ",
-        InlineEditTarget::QuoteReply(_) => " Reply ",
-    };
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(0), Constraint::Length(1)])
+        .split(area);
+
+    let buffer = &detail_state.edit_buffer;
+    let buffer_lines: Vec<&str> = buffer.split('\n').collect();
+    let total_lines = buffer_lines.len();
 
     let mut lines: Vec<Line<'static>> = Vec::new();
+    for (i, line) in buffer_lines.iter().enumerate() {
+        lines.push(Line::from(vec![
+            Span::styled(
+                format!(" {:>3} ", i + 1),
+                Style::default().fg(Color::Rgb(110, 118, 129)),
+            ),
+            Span::styled("│ ", Style::default().fg(Color::Rgb(48, 54, 61))),
+            Span::styled(
+                line.to_string(),
+                Style::default().fg(Color::Rgb(230, 237, 243)),
+            ),
+        ]));
+    }
 
-    // Editor content
+    // Cursor line
+    lines.push(Line::from(vec![
+        Span::styled(
+            format!(" {:>3} ", total_lines + 1),
+            Style::default().fg(Color::Rgb(110, 118, 129)),
+        ),
+        Span::styled("│ ", Style::default().fg(Color::Rgb(48, 54, 61))),
+        Span::styled(
+            "█",
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::SLOW_BLINK),
+        ),
+    ]));
+
+    let editor = Paragraph::new(lines)
+        .block(
+            Block::default()
+                .title(title)
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(theme.accent))
+                .style(Style::default().bg(Color::Rgb(22, 27, 34))),
+        )
+        .wrap(Wrap { trim: false });
+    frame.render_widget(editor, chunks[0]);
+
+    // Status bar
+    let status = Line::from(vec![
+        Span::styled(
+            " Ctrl+Enter ",
+            Style::default()
+                .fg(Color::Rgb(13, 17, 23))
+                .bg(theme.success)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(" Submit  ", Style::default().fg(theme.fg_dim)),
+        Span::styled(
+            " Esc ",
+            Style::default()
+                .fg(Color::Rgb(13, 17, 23))
+                .bg(theme.warning)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(" Cancel  ", Style::default().fg(theme.fg_dim)),
+        Span::styled(
+            format!(" {} lines  (markdown) ", total_lines),
+            Style::default().fg(theme.fg_muted),
+        ),
+    ]);
+    let status_bar = Paragraph::new(status).style(Style::default().bg(theme.footer_bg));
+    frame.render_widget(status_bar, chunks[1]);
+}
+
+fn render_bottom_editor(
+    frame: &mut Frame,
+    detail_state: &ghtui_core::state::IssueDetailState,
+    theme: &ghtui_core::theme::Theme,
+    area: Rect,
+    title: &str,
+) {
+    let mut lines: Vec<Line<'static>> = Vec::new();
     let buffer = &detail_state.edit_buffer;
+
     for line in buffer.split('\n') {
         lines.push(Line::styled(
             format!("  {}", line),
@@ -293,7 +408,6 @@ fn render_inline_editor(
         ));
     }
 
-    // Cursor
     lines.push(Line::styled(
         "  █".to_string(),
         Style::default()
@@ -301,7 +415,6 @@ fn render_inline_editor(
             .add_modifier(Modifier::SLOW_BLINK),
     ));
 
-    // Hint bar
     lines.push(Line::raw(""));
     lines.push(Line::from(vec![
         Span::styled(
@@ -320,21 +433,14 @@ fn render_inline_editor(
         Span::styled(": Cancel", Style::default().fg(theme.fg_dim)),
     ]));
 
-    let border_color = if detail_state.is_editing() {
-        theme.accent
-    } else {
-        theme.border
-    };
-
     let paragraph = Paragraph::new(lines)
         .block(
             Block::default()
                 .title(title)
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(border_color))
-                .style(Style::default().bg(Color::Rgb(22, 27, 34))), // bg_subtle
+                .border_style(Style::default().fg(theme.accent))
+                .style(Style::default().bg(Color::Rgb(22, 27, 34))),
         )
         .wrap(Wrap { trim: false });
-
     frame.render_widget(paragraph, area);
 }
