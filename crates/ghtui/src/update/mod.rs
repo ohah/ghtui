@@ -2195,6 +2195,40 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.go_back();
             refresh_current_view(state)
         }
+        Message::ArtifactsLoaded(artifacts) => {
+            if let Some(ref mut detail) = state.action_detail {
+                detail.artifacts = artifacts;
+            }
+            vec![]
+        }
+        Message::ArtifactDownloaded(name, url) => {
+            state.push_toast(format!("Artifact '{}' ready", name), ToastLevel::Success);
+            vec![Command::OpenInBrowser(url)]
+        }
+        Message::WorkflowDispatched => {
+            state.push_toast("Workflow dispatched".to_string(), ToastLevel::Success);
+            refresh_current_view(state)
+        }
+        Message::WorkflowFileLoaded(content) => {
+            if let Some(ref mut detail) = state.action_detail {
+                detail.workflow_file = Some(content);
+            }
+            vec![]
+        }
+        Message::PendingDeploymentsLoaded(deployments) => {
+            if let Some(ref mut detail) = state.action_detail {
+                detail.pending_deployments = deployments;
+            }
+            vec![]
+        }
+        Message::DeploymentApproved => {
+            state.push_toast("Deployment approved".to_string(), ToastLevel::Success);
+            refresh_current_view(state)
+        }
+        Message::DeploymentRejected => {
+            state.push_toast("Deployment rejected".to_string(), ToastLevel::Info);
+            refresh_current_view(state)
+        }
 
         // Notifications
         Message::NotificationsLoaded(notifications) => {
@@ -2876,7 +2910,11 @@ fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command> {
         }
         Route::ActionDetail { repo, run_id } => {
             state.loading.insert("action_detail".to_string());
-            vec![Command::FetchRunDetail(repo.clone(), *run_id)]
+            vec![
+                Command::FetchRunDetail(repo.clone(), *run_id),
+                Command::FetchRunArtifacts(repo.clone(), *run_id),
+                Command::FetchPendingDeployments(repo.clone(), *run_id),
+            ]
         }
         Route::JobLog {
             repo,

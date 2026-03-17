@@ -181,3 +181,37 @@ pub struct Workflow {
     pub path: String,
     pub state: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Artifact {
+    pub id: u64,
+    pub name: String,
+    pub size_in_bytes: u64,
+    pub archive_download_url: String,
+    pub expired: bool,
+    pub created_at: Option<DateTime<Utc>>,
+    pub expires_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkflowDispatchInput {
+    pub name: String,
+    pub description: Option<String>,
+    pub default: Option<String>,
+    pub required: bool,
+    #[serde(rename = "type")]
+    pub input_type: Option<String>,
+    pub options: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PendingDeployment {
+    pub id: u64,
+    pub environment: PendingEnvironment,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PendingEnvironment {
+    pub id: u64,
+    pub name: String,
+}

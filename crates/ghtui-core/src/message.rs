@@ -211,6 +211,13 @@ pub enum Message {
     ActionDetailOpenInBrowser,
     RunRerunFailed(u64),
     RunDeleted(u64),
+    ArtifactsLoaded(Vec<Artifact>),
+    ArtifactDownloaded(String, String), // artifact_name, download_url
+    WorkflowDispatched,
+    WorkflowFileLoaded(String), // file content
+    PendingDeploymentsLoaded(Vec<PendingDeployment>),
+    DeploymentApproved,
+    DeploymentRejected,
 
     // Notifications
     NotificationsLoaded(Vec<Notification>),
