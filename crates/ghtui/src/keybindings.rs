@@ -89,6 +89,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
     match &state.route {
         Route::PrDetail { .. } => handle_pr_detail_keys(key),
         Route::IssueDetail { .. } => handle_issue_detail_keys(key),
+        Route::ActionDetail { .. } | Route::JobLog { .. } => handle_action_detail_keys(key),
         Route::Security { .. } => handle_settings_keys(key),
         Route::Insights { .. } => handle_settings_keys(key),
         Route::Settings { .. } => handle_settings_keys(key),
@@ -134,6 +135,15 @@ fn handle_settings_keys(key: KeyEvent) -> Option<Message> {
         KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        _ => None,
+    }
+}
+
+fn handle_action_detail_keys(key: KeyEvent) -> Option<Message> {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Enter => Some(Message::ListSelect(0)), // Load log for selected job
         _ => None,
     }
 }
