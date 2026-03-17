@@ -3,6 +3,7 @@ pub mod issue;
 pub mod notification;
 pub mod pr;
 pub mod search;
+pub mod security;
 pub mod settings;
 
 use std::collections::{HashSet, VecDeque};
@@ -18,6 +19,7 @@ pub use issue::*;
 pub use notification::*;
 pub use pr::*;
 pub use search::*;
+pub use security::*;
 pub use settings::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -56,6 +58,7 @@ pub struct AppState {
     pub action_detail: Option<ActionDetailState>,
     pub notifications: Option<NotificationListState>,
     pub search: Option<SearchViewState>,
+    pub security: Option<SecurityState>,
     pub settings: Option<SettingsState>,
 
     // Cross-cutting
@@ -95,6 +98,7 @@ impl AppState {
             action_detail: None,
             notifications: None,
             search: None,
+            security: None,
             settings: None,
             current_repo: repo,
             loading: HashSet::new(),

@@ -45,6 +45,11 @@ pub enum Message {
     // Search
     SearchResults(SearchResultSet),
 
+    // Security
+    DependabotAlertsLoaded(Vec<security::DependabotAlert>),
+    CodeScanningAlertsLoaded(Vec<security::CodeScanningAlert>),
+    SecretScanningAlertsLoaded(Vec<security::SecretScanningAlert>),
+
     // Settings
     SettingsRepoLoaded(Box<settings::Repository>),
     SettingsBranchProtectionsLoaded(Vec<settings::BranchProtection>),

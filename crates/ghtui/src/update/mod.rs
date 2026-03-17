@@ -32,6 +32,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.action_detail = None;
             state.notifications = None;
             state.search = None;
+            state.security = None;
             state.settings = None;
             // Refresh current view
             refresh_current_view(state)
@@ -158,6 +159,30 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
 
+        // Security
+        Message::DependabotAlertsLoaded(alerts) => {
+            state.loading.remove("security");
+            state.loading.remove("dependabot");
+            if let Some(ref mut sec) = state.security {
+                sec.dependabot_alerts = alerts;
+            }
+            vec![]
+        }
+        Message::CodeScanningAlertsLoaded(alerts) => {
+            state.loading.remove("code_scanning");
+            if let Some(ref mut sec) = state.security {
+                sec.code_scanning_alerts = alerts;
+            }
+            vec![]
+        }
+        Message::SecretScanningAlertsLoaded(alerts) => {
+            state.loading.remove("secret_scanning");
+            if let Some(ref mut sec) = state.security {
+                sec.secret_scanning_alerts = alerts;
+            }
+            vec![]
+        }
+
         // Settings
         Message::SettingsRepoLoaded(repo) => {
             state.loading.remove("settings");
@@ -222,6 +247,15 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         settings.tab = settings.tab.saturating_sub(1);
                     } else {
                         settings.tab = (settings.tab + delta).min(max);
+                    }
+                }
+            } else if matches!(state.route, Route::Security { .. }) {
+                if let Some(ref mut sec) = state.security {
+                    let max = sec.tab_count().saturating_sub(1);
+                    if delta == usize::MAX {
+                        sec.tab = sec.tab.saturating_sub(1);
+                    } else {
+                        sec.tab = (sec.tab + delta).min(max);
                     }
                 }
             } else if let Some(ref mut detail) = state.pr_detail {
@@ -347,7 +381,18 @@ fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command> {
         Route::Code { .. } => vec![],
         Route::Projects { .. } => vec![],
         Route::Wiki { .. } => vec![],
-        Route::Security { .. } => vec![],
+        Route::Security { repo } => {
+            state.security = Some(SecurityState::new());
+            state.loading.insert("security".to_string());
+            state.loading.insert("dependabot".to_string());
+            state.loading.insert("code_scanning".to_string());
+            state.loading.insert("secret_scanning".to_string());
+            vec![
+                Command::FetchDependabotAlerts(repo.clone()),
+                Command::FetchCodeScanningAlerts(repo.clone()),
+                Command::FetchSecretScanningAlerts(repo.clone()),
+            ]
+        }
         Route::Insights { .. } => vec![],
         Route::Settings { repo } => {
             state.loading.insert("settings".to_string());

@@ -63,13 +63,7 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
             "Wiki",
             "Documentation and wiki pages",
         ),
-        Route::Security { .. } => views::placeholder::render(
-            frame,
-            state,
-            content_area,
-            "Security",
-            "Security advisories, Dependabot alerts, and code scanning",
-        ),
+        Route::Security { .. } => views::security::render(frame, state, content_area),
         Route::Insights { .. } => views::placeholder::render(
             frame,
             state,

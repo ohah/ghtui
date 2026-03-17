@@ -127,6 +127,24 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Err(e) => Message::Error(e.into()),
         },
 
+        // Security
+        Command::FetchDependabotAlerts(repo) => match client.list_dependabot_alerts(&repo).await {
+            Ok(alerts) => Message::DependabotAlertsLoaded(alerts),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::FetchCodeScanningAlerts(repo) => {
+            match client.list_code_scanning_alerts(&repo).await {
+                Ok(alerts) => Message::CodeScanningAlertsLoaded(alerts),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::FetchSecretScanningAlerts(repo) => {
+            match client.list_secret_scanning_alerts(&repo).await {
+                Ok(alerts) => Message::SecretScanningAlertsLoaded(alerts),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+
         // Settings
         Command::FetchRepoSettings(repo) => match client.get_repo(&repo).await {
             Ok(repository) => Message::SettingsRepoLoaded(Box::new(repository)),

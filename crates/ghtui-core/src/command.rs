@@ -42,6 +42,11 @@ pub enum Command {
     // Search
     Search(String, SearchKind, u32),
 
+    // Security
+    FetchDependabotAlerts(RepoId),
+    FetchCodeScanningAlerts(RepoId),
+    FetchSecretScanningAlerts(RepoId),
+
     // Settings
     FetchRepoSettings(RepoId),
     FetchBranchProtections(RepoId),
