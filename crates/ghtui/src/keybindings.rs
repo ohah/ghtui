@@ -296,6 +296,7 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             return match key.code {
                 KeyCode::Esc => Some(Message::PrDiffCommentCancel),
                 KeyCode::Enter if ctrl => Some(Message::PrDiffCommentSubmit),
+                KeyCode::Char('s') if ctrl => Some(Message::PrDiffInsertSuggestion),
                 KeyCode::Enter => Some(Message::PrEditNewline),
                 KeyCode::Char(c) => Some(Message::PrEditChar(c)),
                 KeyCode::Backspace => Some(Message::PrEditBackspace),

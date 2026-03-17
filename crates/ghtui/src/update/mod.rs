@@ -783,6 +783,22 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::PrDiffInsertSuggestion => {
+            if let Some(ref mut detail) = state.pr_detail {
+                if detail.diff_comment_target.is_some() {
+                    let template = "```suggestion\n\n```";
+                    for c in template.chars() {
+                        if c == '\n' {
+                            detail.diff_comment_editor.insert_newline();
+                        } else {
+                            detail.diff_comment_editor.insert_char(c);
+                        }
+                    }
+                    detail.diff_comment_editor.move_up();
+                }
+            }
+            vec![]
+        }
         Message::PrDiffCommentCancel => {
             if let Some(ref mut detail) = state.pr_detail {
                 detail.diff_comment_target = None;
