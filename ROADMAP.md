@@ -184,13 +184,16 @@
 - [x] reason 뱃지 (review, assign, @mention, CI)
 - [x] unread 카운트 표시
 
-## Phase 5 — Search 완성 (API 이미 구현됨)
+## Phase 5 — Search ✅ 완성
 
-- [ ] Search 뷰 구현
-- [ ] 코드 검색 결과 + 하이라이트
-- [ ] 이슈/PR 검색 (GitHub 검색 문법)
-- [ ] 레포 검색
-- [ ] 최근 검색 히스토리
+- [x] Search 뷰 구현 (검색바 + 결과 리스트)
+- [x] 코드 검색 결과 (경로 + 코드 프래그먼트)
+- [x] 이슈/PR 검색 (타입 아이콘, 상태, 레포 표시)
+- [x] 레포 검색 (★ 카운트, 언어, 설명)
+- [x] 검색 종류 순환 (Tab: Repos/Issues/Code)
+- [x] Ctrl+K 글로벌 검색 단축키
+- [x] 검색 결과에서 Enter로 이동 (Issue→IssueDetail, PR→PrDetail, Repo/Code→브라우저)
+- [ ] 최근 검색 히스토리 (보류)
 
 ## Phase 6 — Security 탭 나머지
 

@@ -52,13 +52,7 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
         Route::Security { .. } => views::security::render(frame, state, content_area),
         Route::Insights { .. } => views::insights::render(frame, state, content_area),
         Route::Settings { .. } => views::settings::render(frame, state, content_area),
-        Route::Search { .. } => views::placeholder::render(
-            frame,
-            state,
-            content_area,
-            "Search",
-            "Search code, issues, pull requests, and more",
-        ),
+        Route::Search { .. } => views::search::render(frame, state, content_area),
     }
 
     // Footer
@@ -262,6 +256,7 @@ fn render_footer(frame: &mut Frame, state: &AppState, theme: &Theme, area: Rect)
         }
         Route::PrDetail { .. } => "Tab:Switch c:Comment m:Merge Esc:Back",
         Route::IssueDetail { .. } => "c:Comment Esc:Back",
+        Route::Search { .. } => "/:Search Tab:Kind j/k:Nav Enter:Open Esc:Back",
         Route::Notifications => "Enter:Open m:Read M:ReadAll d:Done u:Unsub s/e:Filter g:Group",
         _ => "1-6:Tabs t:Theme ?:Help q:Quit",
     };

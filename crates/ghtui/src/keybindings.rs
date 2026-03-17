@@ -53,6 +53,9 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
             KeyCode::Char('?') => return Some(Message::ModalOpen(ModalKind::Help)),
             KeyCode::Char('t') => return Some(Message::ToggleTheme),
             KeyCode::Char('S') => return Some(Message::ModalOpen(ModalKind::AccountSwitcher)),
+            KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                return Some(Message::SearchOpen);
+            }
             // Tab navigation: 1-9 for global tabs (matching GitHub web)
             KeyCode::Char('1') => return Some(Message::GlobalTabSelect(0)),
             KeyCode::Char('2') => return Some(Message::GlobalTabSelect(1)),
@@ -122,6 +125,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         Route::IssueDetail { .. } => handle_issue_detail_keys(key, state),
         Route::ActionsList { .. } => handle_actions_list_keys(key, state),
         Route::ActionDetail { .. } | Route::JobLog { .. } => handle_action_detail_keys(key, state),
+        Route::Search { .. } => handle_search_keys(key, state),
         Route::Notifications => handle_notification_keys(key),
         Route::Security { .. } => handle_settings_keys(key),
         Route::Insights { .. } => handle_settings_keys(key),
@@ -149,6 +153,30 @@ fn handle_modal_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
                 None
             }
         }
+    }
+}
+
+fn handle_search_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let input_mode = state.search.as_ref().is_some_and(|s| s.input_mode);
+
+    if input_mode {
+        return match key.code {
+            KeyCode::Esc => Some(Message::SearchCancel),
+            KeyCode::Enter => Some(Message::SearchSubmit),
+            KeyCode::Char(c) => Some(Message::SearchInput(c.to_string())),
+            KeyCode::Backspace => Some(Message::SearchInput("\x08".to_string())),
+            KeyCode::Tab => Some(Message::SearchCycleKind),
+            _ => None,
+        };
+    }
+
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Enter => Some(Message::SearchNavigate),
+        KeyCode::Char('/') => Some(Message::SearchOpen),
+        KeyCode::Tab => Some(Message::SearchCycleKind),
+        _ => None,
     }
 }
 

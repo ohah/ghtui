@@ -2438,6 +2438,111 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::SearchOpen => {
+            let kind = state
+                .search
+                .as_ref()
+                .map(|s| s.kind)
+                .unwrap_or(ghtui_core::types::SearchKind::Repos);
+            let route = Route::Search {
+                query: String::new(),
+                kind,
+            };
+            handle_navigate(state, route)
+        }
+        Message::SearchInput(text) => {
+            if let Some(ref mut search) = state.search {
+                if text == "\x08" {
+                    search.input_query.pop();
+                } else {
+                    search.input_query.push_str(&text);
+                }
+            }
+            vec![]
+        }
+        Message::SearchSubmit => {
+            if let Some(ref mut search) = state.search {
+                search.input_mode = false;
+                search.query = search.input_query.clone();
+                if !search.query.is_empty() {
+                    let kind = search.kind;
+                    let query = search.query.clone();
+                    state.loading.insert("search".to_string());
+                    return vec![Command::Search(query, kind, 1)];
+                }
+            }
+            vec![]
+        }
+        Message::SearchCancel => {
+            if let Some(ref mut search) = state.search {
+                search.input_mode = false;
+                search.input_query = search.query.clone();
+            }
+            vec![]
+        }
+        Message::SearchCycleKind => {
+            if let Some(ref mut search) = state.search {
+                search.cycle_kind();
+                // Re-search if we have a query
+                if !search.query.is_empty() {
+                    let kind = search.kind;
+                    let query = search.query.clone();
+                    search.selected = 0;
+                    state.loading.insert("search".to_string());
+                    return vec![Command::Search(query, kind, 1)];
+                }
+            }
+            vec![]
+        }
+        Message::SearchNavigate => {
+            // Navigate to the selected search result
+            if let Some(ref search) = state.search {
+                if let Some(ref results) = search.results {
+                    if let Some(item) = results.items.get(search.selected) {
+                        match item {
+                            ghtui_core::types::SearchResultItem::Issue {
+                                repo,
+                                number,
+                                is_pr,
+                                ..
+                            } => {
+                                if let Ok(repo_id) =
+                                    repo.parse::<ghtui_core::types::common::RepoId>()
+                                {
+                                    if *is_pr {
+                                        let route = Route::PrDetail {
+                                            repo: repo_id,
+                                            number: *number,
+                                            tab: ghtui_core::PrTab::Conversation,
+                                        };
+                                        return handle_navigate(state, route);
+                                    } else {
+                                        let route = Route::IssueDetail {
+                                            repo: repo_id,
+                                            number: *number,
+                                        };
+                                        return handle_navigate(state, route);
+                                    }
+                                }
+                            }
+                            ghtui_core::types::SearchResultItem::Repo { full_name, .. } => {
+                                return vec![Command::OpenInBrowser(format!(
+                                    "https://github.com/{}",
+                                    full_name
+                                ))];
+                            }
+                            ghtui_core::types::SearchResultItem::Code { repo, path, .. } => {
+                                return vec![Command::OpenInBrowser(format!(
+                                    "https://github.com/{}/blob/HEAD/{}",
+                                    repo, path
+                                ))];
+                            }
+                        }
+                    }
+                }
+            }
+            vec![]
+        }
 
         // Security
         Message::DependabotAlertsLoaded(alerts) => {
@@ -3299,6 +3404,15 @@ fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Command> {
                     list.select_prev();
                 } else if delta > 0 {
                     list.select_next();
+                }
+            }
+        }
+        Route::Search { .. } => {
+            if let Some(ref mut search) = state.search {
+                if delta == usize::MAX {
+                    search.select_prev();
+                } else if delta > 0 {
+                    search.select_next();
                 }
             }
         }

@@ -5,6 +5,7 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph};
 
+#[allow(dead_code)]
 pub fn render(frame: &mut Frame, state: &AppState, area: Rect, title: &str, description: &str) {
     let theme = &state.theme;
 
