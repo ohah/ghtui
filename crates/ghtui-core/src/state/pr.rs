@@ -122,7 +122,8 @@ pub enum PrInlineEditTarget {
 pub struct PrDetailState {
     pub detail: PullRequestDetail,
     pub diff: Option<Vec<DiffFile>>,
-    pub scroll: usize,
+    pub scroll: usize,      // conversation scroll
+    pub diff_scroll: usize, // diff tab scroll
     pub tab: usize,
     pub comment_input: String,
     pub focus: PrSection,
@@ -139,6 +140,7 @@ impl PrDetailState {
             detail,
             diff: None,
             scroll: 0,
+            diff_scroll: 0,
             tab: 0,
             comment_input: String::new(),
             focus: PrSection::Title,

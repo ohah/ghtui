@@ -454,6 +454,7 @@ fn render_diff_tab(
 
     if let Some(ref files) = detail.diff {
         let mut diff_state = ghtui_widgets::DiffViewState {
+            scroll: detail.diff_scroll,
             show_all_files: true,
             ..Default::default()
         };
@@ -485,23 +486,80 @@ fn render_checks(
 ) {
     let theme = &state.theme;
 
-    let lines: Vec<Line> = if detail.detail.checks.is_empty() {
-        vec![Line::styled("  No checks found", theme.text_dim())]
-    } else {
-        detail
-            .detail
-            .checks
-            .iter()
-            .map(|check| {
-                let icon = match check.conclusion.as_deref() {
-                    Some("success") => Span::styled("  ✓ ", Style::default().fg(theme.success)),
-                    Some("failure") => Span::styled("  ✗ ", Style::default().fg(theme.danger)),
-                    _ => Span::styled("  ● ", Style::default().fg(theme.warning)),
-                };
-                Line::from(vec![icon, Span::styled(&check.name, theme.text())])
-            })
-            .collect()
+    let (passed, failed, pending) = {
+        let mut p = 0usize;
+        let mut f = 0usize;
+        let mut w = 0usize;
+        for c in &detail.detail.checks {
+            match c.conclusion.as_deref() {
+                Some("success") => p += 1,
+                Some("failure") | Some("cancelled") | Some("timed_out") => f += 1,
+                _ => w += 1,
+            }
+        }
+        (p, f, w)
     };
+
+    let mut lines: Vec<Line> = Vec::new();
+
+    if detail.detail.checks.is_empty() {
+        lines.push(Line::styled("  No checks found", theme.text_dim()));
+    } else {
+        // Summary line
+        let mut summary_spans = vec![Span::styled("  ", Style::default())];
+        if passed > 0 {
+            summary_spans.push(Span::styled(
+                format!("✓ {} passed", passed),
+                Style::default().fg(theme.success),
+            ));
+            summary_spans.push(Span::styled("  ", Style::default()));
+        }
+        if failed > 0 {
+            summary_spans.push(Span::styled(
+                format!("✗ {} failed", failed),
+                Style::default().fg(theme.danger),
+            ));
+            summary_spans.push(Span::styled("  ", Style::default()));
+        }
+        if pending > 0 {
+            summary_spans.push(Span::styled(
+                format!("● {} pending", pending),
+                Style::default().fg(theme.warning),
+            ));
+        }
+        lines.push(Line::from(summary_spans));
+        lines.push(Line::styled(
+            "  ─".to_string() + &"─".repeat(40),
+            theme.border_style(),
+        ));
+
+        for check in &detail.detail.checks {
+            let icon = match check.conclusion.as_deref() {
+                Some("success") => Span::styled("  ✓ ", Style::default().fg(theme.success)),
+                Some("failure") => Span::styled("  ✗ ", Style::default().fg(theme.danger)),
+                Some("cancelled") => Span::styled("  ⊘ ", Style::default().fg(theme.fg_dim)),
+                _ => {
+                    if check.status == "in_progress" {
+                        Span::styled("  ◎ ", Style::default().fg(theme.warning))
+                    } else {
+                        Span::styled("  ● ", Style::default().fg(theme.warning))
+                    }
+                }
+            };
+            let status_text = match check.conclusion.as_deref() {
+                Some(c) => c.to_string(),
+                None => check.status.clone(),
+            };
+            lines.push(Line::from(vec![
+                icon,
+                Span::styled(&check.name, theme.text()),
+                Span::styled(
+                    format!("  ({})", status_text),
+                    Style::default().fg(theme.fg_dim),
+                ),
+            ]));
+        }
+    }
 
     let paragraph = Paragraph::new(lines).block(
         Block::default()

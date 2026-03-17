@@ -71,6 +71,7 @@ pub struct PullRequest {
     pub merged_at: Option<DateTime<Utc>>,
     pub closed_at: Option<DateTime<Utc>>,
     pub head_ref: String,
+    pub head_sha: String,
     pub base_ref: String,
     pub draft: bool,
     pub labels: Vec<Label>,
@@ -90,6 +91,7 @@ pub struct PullRequest {
 struct GitRef {
     #[serde(rename = "ref")]
     ref_name: String,
+    sha: String,
 }
 
 #[derive(Deserialize)]
@@ -139,6 +141,7 @@ impl<'de> Deserialize<'de> for PullRequest {
             merged_at: api.merged_at,
             closed_at: api.closed_at,
             head_ref: api.head.ref_name,
+            head_sha: api.head.sha,
             base_ref: api.base.ref_name,
             draft: api.draft,
             labels: api.labels,
