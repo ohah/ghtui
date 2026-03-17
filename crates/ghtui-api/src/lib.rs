@@ -8,3 +8,4 @@ pub mod rate_limit;
 pub use client::GithubClient;
 pub use error::ApiError;
 pub use rate_limit::RateLimitState;
+// Test: multi-file diff
