@@ -124,6 +124,7 @@ pub struct IssueComment {
 /// Timeline event types from GitHub Timeline API
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineEvent {
+    #[serde(default)]
     pub event: String,
     pub created_at: Option<DateTime<Utc>>,
     pub actor: Option<User>,
@@ -242,6 +243,13 @@ impl TimelineEvent {
             "referenced" => format!("{} referenced this", actor),
             "mentioned" => format!("{} was mentioned", actor),
             "subscribed" => format!("{} subscribed", actor),
+            "reviewed" => format!("{} reviewed", actor),
+            "review_requested" => format!("{} requested a review", actor),
+            "merged" => format!("{} merged this", actor),
+            "head_ref_deleted" => format!("{} deleted the branch", actor),
+            "head_ref_restored" => format!("{} restored the branch", actor),
+            "convert_to_draft" => format!("{} marked as draft", actor),
+            "ready_for_review" => format!("{} marked as ready for review", actor),
             other => format!("{} {} this", actor, other),
         }
     }
@@ -257,6 +265,12 @@ impl TimelineEvent {
             "locked" | "unlocked" => "🔐",
             "cross-referenced" | "referenced" => "🔗",
             "mentioned" => "💬",
+            "reviewed" => "👁️",
+            "review_requested" => "📋",
+            "merged" => "🟣",
+            "head_ref_deleted" | "head_ref_restored" => "🌿",
+            "connected" | "disconnected" => "🔗",
+            "convert_to_draft" | "ready_for_review" => "📝",
             _ => "•",
         }
     }

@@ -182,11 +182,21 @@ impl GithubClient {
             }
         }
 
-        // Parse timeline
-        let timeline = match timeline_body {
-            Ok(body) => serde_json::from_str(&body).unwrap_or_default(),
-            Err(_) => Vec::new(),
-        };
+        // Parse timeline (individual items to handle varied event schemas)
+        let mut timeline = Vec::new();
+        if let Ok(body) = timeline_body {
+            if let Ok(arr) = serde_json::from_str::<Vec<serde_json::Value>>(&body) {
+                for item in arr {
+                    if let Ok(event) =
+                        serde_json::from_value::<ghtui_core::types::issue::TimelineEvent>(item)
+                    {
+                        if !event.event.is_empty() {
+                            timeline.push(event);
+                        }
+                    }
+                }
+            }
+        }
 
         Ok(PullRequestDetail {
             pr,
