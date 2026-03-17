@@ -489,6 +489,77 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        // PR milestone picker
+        Message::PrMilestoneToggle => {
+            if let Some(ref repo) = state.current_repo {
+                state.loading.insert("milestones".to_string());
+                vec![Command::FetchMilestones(repo.clone())]
+            } else {
+                vec![]
+            }
+        }
+        Message::PrMilestoneSelect(idx) => {
+            if let Some(ref mut detail) = state.pr_detail {
+                if let Some(ref mut picker) = detail.milestone_picker {
+                    if let Some(ms) = picker.available.get(idx) {
+                        let num = ms.number as u64;
+                        if picker.selected == Some(num) {
+                            picker.selected = None;
+                        } else {
+                            picker.selected = Some(num);
+                        }
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::PrMilestoneApply => {
+            if let Some(ref detail) = state.pr_detail {
+                if let (Some(picker), Some(repo)) = (&detail.milestone_picker, &state.current_repo)
+                {
+                    let number = detail.detail.pr.number;
+                    let ms = picker.selected;
+                    let cmds = vec![Command::SetMilestone(repo.clone(), number, ms)];
+                    if let Some(ref mut d) = state.pr_detail {
+                        d.milestone_picker = None;
+                    }
+                    return cmds;
+                }
+            }
+            if let Some(ref mut d) = state.pr_detail {
+                d.milestone_picker = None;
+            }
+            vec![]
+        }
+        Message::PrMilestoneClear => {
+            if let Some(ref detail) = state.pr_detail {
+                if let Some(ref repo) = state.current_repo {
+                    let number = detail.detail.pr.number;
+                    if let Some(ref mut d) = state.pr_detail {
+                        d.milestone_picker = None;
+                    }
+                    return vec![Command::SetMilestone(repo.clone(), number, None)];
+                }
+            }
+            vec![]
+        }
+        Message::PrMilestoneCancel => {
+            if let Some(ref mut d) = state.pr_detail {
+                d.milestone_picker = None;
+            }
+            vec![]
+        }
+        // PR draft toggle
+        Message::PrDraftToggle => {
+            if let Some(ref detail) = state.pr_detail {
+                if let Some(ref repo) = state.current_repo {
+                    let number = detail.detail.pr.number;
+                    let new_draft = !detail.detail.pr.draft;
+                    return vec![Command::SetPrDraft(repo.clone(), number, new_draft)];
+                }
+            }
+            vec![]
+        }
         // PR reviewer (modal input)
         Message::PrReviewerToggle => {
             let current = state
@@ -1505,6 +1576,19 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::IssueMilestonesLoaded(milestones) => {
             state.loading.remove("milestones");
+            // Route to PR detail if on PR view
+            if matches!(state.route, Route::PrDetail { .. }) {
+                if let Some(ref mut detail) = state.pr_detail {
+                    let current = detail.detail.pr.milestone.as_ref().map(|m| m.number as u64);
+                    detail.milestone_picker =
+                        Some(ghtui_core::state::issue::MilestonePickerState {
+                            available: milestones,
+                            selected: current,
+                            cursor: 0,
+                        });
+                }
+                return vec![];
+            }
             if let Some(ref mut detail) = state.issue_detail {
                 let current = detail
                     .detail
@@ -2748,6 +2832,13 @@ fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Command> {
                         picker.cursor = (picker.cursor + 1).min(max);
                     }
                 } else if let Some(ref mut picker) = detail.assignee_picker {
+                    let max = picker.available.len().saturating_sub(1);
+                    if delta == usize::MAX {
+                        picker.cursor = picker.cursor.saturating_sub(1);
+                    } else if delta > 0 {
+                        picker.cursor = (picker.cursor + 1).min(max);
+                    }
+                } else if let Some(ref mut picker) = detail.milestone_picker {
                     let max = picker.available.len().saturating_sub(1);
                     if delta == usize::MAX {
                         picker.cursor = picker.cursor.saturating_sub(1);

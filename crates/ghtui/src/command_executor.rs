@@ -109,6 +109,12 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 Err(e) => Message::Error(e.into()),
             }
         }
+        Command::SetPrDraft(repo, number, draft) => {
+            match client.set_draft(&repo, number, draft).await {
+                Ok(()) => Message::PrUpdated(number),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
 
         // Issues
         Command::FetchIssueList(repo, filters, page) => {

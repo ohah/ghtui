@@ -90,16 +90,22 @@ pub enum Message {
     PrDiffTreeUp,           // Move up in file tree
     PrDiffTreeDown,         // Move down in file tree
     PrDiffTreeSelect,       // Select file in tree → jump to diff
-    PrReviewerToggle,       // Open reviewer picker
-    PrReviewerApply,        // Apply reviewer changes
-    PrReviewerCancel,       // Cancel reviewer picker
-    PrApprove,              // Approve PR
-    PrRequestChanges,       // Request changes on PR
-    PrActionBarFocus,       // Toggle focus on action bar
-    PrActionBarLeft,        // Move left in action bar
-    PrActionBarRight,       // Move right in action bar
-    PrActionBarSelect,      // Execute selected action
-    PrChangeBase,           // Change merge target branch
+    PrMilestoneToggle,      // Open milestone picker
+    PrMilestoneSelect(usize),
+    PrMilestoneApply,
+    PrMilestoneClear,
+    PrMilestoneCancel,
+    PrDraftToggle,     // Toggle draft status
+    PrReviewerToggle,  // Open reviewer picker
+    PrReviewerApply,   // Apply reviewer changes
+    PrReviewerCancel,  // Cancel reviewer picker
+    PrApprove,         // Approve PR
+    PrRequestChanges,  // Request changes on PR
+    PrActionBarFocus,  // Toggle focus on action bar
+    PrActionBarLeft,   // Move left in action bar
+    PrActionBarRight,  // Move right in action bar
+    PrActionBarSelect, // Execute selected action
+    PrChangeBase,      // Change merge target branch
 
     // Issue
     IssueListLoaded(Vec<Issue>, Pagination, IssueFilters),

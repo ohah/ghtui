@@ -28,6 +28,7 @@ pub enum Command {
     DeletePrComment(RepoId, u64),
     ChangePrBase(RepoId, u64, String), // repo, number, new_base_branch
     SetPrReviewers(RepoId, u64, Vec<String>), // repo, number, reviewer logins
+    SetPrDraft(RepoId, u64, bool),     // repo, number, draft
 
     // Issue
     FetchIssueList(RepoId, IssueFilters, u32),

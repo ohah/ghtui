@@ -418,6 +418,25 @@ impl GithubClient {
         self.post(&path, &body).await?;
         Ok(())
     }
+    pub async fn set_draft(&self, repo: &RepoId, number: u64, draft: bool) -> Result<(), ApiError> {
+        // Get PR node_id
+        let pr_path = format!("/repos/{}/{}/pulls/{}", repo.owner, repo.name, number);
+        let pr_body = self.get(&pr_path).await?;
+        let pr_json: serde_json::Value = serde_json::from_str(&pr_body)?;
+        let node_id = pr_json["node_id"]
+            .as_str()
+            .ok_or_else(|| ApiError::Other("Missing node_id".into()))?
+            .to_string();
+
+        if draft {
+            let query = "mutation($id: ID!) { convertPullRequestToDraft(input: {pullRequestId: $id}) { pullRequest { isDraft } } }";
+            self.graphql(query, json!({"id": node_id})).await?;
+        } else {
+            let query = "mutation($id: ID!) { markPullRequestReadyForReview(input: {pullRequestId: $id}) { pullRequest { isDraft } } }";
+            self.graphql(query, json!({"id": node_id})).await?;
+        }
+        Ok(())
+    }
 }
 
 // Internal API response types for deserialization
