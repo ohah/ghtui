@@ -889,8 +889,27 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::PrDiffInsertSuggestion => {
             if let Some(ref mut detail) = state.pr_detail {
-                if detail.diff_comment_target.is_some() {
-                    let template = "```suggestion\n\n```";
+                if let Some((ref path, line)) = detail.diff_comment_target.clone() {
+                    // Find the original code at this line
+                    let original_code = detail
+                        .diff
+                        .as_ref()
+                        .and_then(|files| {
+                            files.iter().find(|f| f.filename == *path).and_then(|f| {
+                                f.hunks.iter().find_map(|h| {
+                                    h.lines.iter().find_map(|dl| {
+                                        if dl.new_line == Some(line) || dl.old_line == Some(line) {
+                                            Some(dl.content.clone())
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                })
+                            })
+                        })
+                        .unwrap_or_default();
+
+                    let template = format!("```suggestion\n{}\n```", original_code);
                     for c in template.chars() {
                         if c == '\n' {
                             detail.diff_comment_editor.insert_newline();

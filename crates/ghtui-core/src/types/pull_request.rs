@@ -193,6 +193,8 @@ pub struct PrComment {
     pub body: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    #[serde(default)]
+    pub reactions: Option<super::issue::Reactions>,
 }
 
 #[derive(Debug, Clone)]

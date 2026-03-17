@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | 1 | Code | - | dashboard.rs | 레포 소개 + README placeholder (파일 브라우저 미구현) |
 | 2 | Issues | ✅ | issue_list, issue_detail | **Phase 1 완료** — 목록(카드UI), 상세(섹션포커스), CRUD, 필터/검색/정렬, 라벨/Assignee/Milestone, 리액션, 타임라인, 핀/잠금/이전 |
-| 3 | Pull requests | ✅ | pr_list, pr_detail | **Phase 2 완료** — 목록(필터/검색/정렬), Conversation/Commits/Checks/Files changed 4탭, 인라인 편집, Approve/Request changes, 파일트리, diff 리뷰 코멘트, suggestion, CI 상태, 액션 바 |
+| 3 | Pull requests | ✅ | pr_list, pr_detail | **Phase 2-4 완료** — 목록(필터/검색/정렬), 4탭(Conversation/Commits/Checks/Files changed), 인라인 편집, Approve/Request changes, 파일트리, diff 리뷰 코멘트, suggestion, CI 상태, 타임라인, 액션 바, PR 생성, 리뷰어 관리 |
 | 4 | Actions | ✅ | actions_list, action_detail | 워크플로우 목록, 잡 선택, 로그 뷰어(스크롤), 취소/재실행 |
 | 5 | Security | ✅ | security.rs | Dependabot, Code Scanning, Secret Scanning (read-only) |
 | 6 | Insights | ✅ | insights.rs | Contributors, Commit Activity, Traffic (read-only) |
@@ -113,17 +113,24 @@
 - [x] Conversation에 CI 상태 요약 + 개별 체크 표시
 - [x] 마크다운: 테이블(풀 박스), 링크 URL, 취소선, 체크박스
 
-### Phase 2-4 남은 기능
-- [ ] PR 생성 UI (모달 폼)
+### Phase 2-4 완료 (PR 생성/타임라인/리뷰어)
+- [x] PR 생성 UI (전체화면 에디터: 제목/base/body)
+- [x] Merge PR 모달 (merge/squash/rebase 선택)
+- [x] PR Conversation 타임라인 이벤트 (closed/reopened/merged/reviewed/labeled 등)
+- [x] 타임라인 파싱 수정 (committed 이벤트 스키마 대응)
+- [x] 리뷰어 추가 (`v` → 로그인 입력)
+- [x] 전체화면 에디터 (모달→전체화면, 라인번호, 테마 색상, 컬러 버튼)
+- [x] Confirm 모달 렌더링 (base 변경/request changes 등)
+
+### Phase 2-5 남은 기능
 - [ ] Draft 토글
 - [ ] Auto-merge 활성화
 - [ ] Side-by-side diff 모드
 - [ ] 리뷰 스레드 resolve/unresolve
-- [ ] 리뷰어 추가/제거
 - [ ] Milestone 설정
 - [ ] Linked issues
 - [ ] 파일별 Viewed 체크
-- [ ] PR Conversation 타임라인 이벤트
+- [ ] Suggestion에 선택 코드 자동 삽입
 
 ## Phase 3 — Actions 탭 완성
 
