@@ -2142,6 +2142,22 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::ActionsCancelRun => {
+            if let (Some(list), Some(repo)) = (&state.actions_list, &state.current_repo) {
+                if let Some(run) = list.selected_run() {
+                    return vec![Command::CancelRun(repo.clone(), run.id)];
+                }
+            }
+            vec![]
+        }
+        Message::ActionsRerunRun => {
+            if let (Some(list), Some(repo)) = (&state.actions_list, &state.current_repo) {
+                if let Some(run) = list.selected_run() {
+                    return vec![Command::RerunRun(repo.clone(), run.id)];
+                }
+            }
+            vec![]
+        }
         Message::ActionDetailToggleStep(_) => {
             if let Some(ref mut detail) = state.action_detail {
                 detail.toggle_steps_collapsed();

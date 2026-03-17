@@ -214,6 +214,8 @@ fn handle_actions_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         KeyCode::Char('/') => Some(Message::ActionsSearchStart),
         KeyCode::Char('o') => Some(Message::ActionsOpenInBrowser),
         KeyCode::Char('F') => Some(Message::ActionsFilterClear),
+        KeyCode::Char('x') => Some(Message::ActionsCancelRun),
+        KeyCode::Char('R') => Some(Message::ActionsRerunRun),
         _ => None,
     }
 }
@@ -247,6 +249,8 @@ fn handle_action_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message>
                 Some(Message::ScrollUp)
             }
             KeyCode::Tab => Some(Message::ActionDetailFocusJobs),
+            KeyCode::BackTab => Some(Message::ActionDetailActionBarFocus),
+            KeyCode::Char('x') => Some(Message::ActionDetailActionBarFocus),
             KeyCode::Char('o') => Some(Message::ActionDetailOpenInBrowser),
             _ => None,
         },
@@ -255,6 +259,7 @@ fn handle_action_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message>
             KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
             KeyCode::Enter => Some(Message::ListSelect(0)),
             KeyCode::Tab => Some(Message::ActionDetailFocusLog),
+            KeyCode::BackTab => Some(Message::ActionDetailActionBarFocus), // Shift+Tab → action bar
             // Step fold/unfold: toggle all steps for selected job
             KeyCode::Char('h') | KeyCode::Left => Some(Message::ActionDetailToggleStep(0)),
             KeyCode::Char('l') | KeyCode::Right => Some(Message::ActionDetailToggleStep(0)),
@@ -266,6 +271,7 @@ fn handle_action_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message>
             KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 Some(Message::ScrollUp)
             }
+            KeyCode::Char('x') => Some(Message::ActionDetailActionBarFocus), // x → action bar (quick)
             KeyCode::Char('o') => Some(Message::ActionDetailOpenInBrowser),
             _ => None,
         },

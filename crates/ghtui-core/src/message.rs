@@ -200,6 +200,8 @@ pub enum Message {
     ActionsFilterClear,
     ActionsSelectWorkflow(Option<u64>),
     ActionsOpenInBrowser,
+    ActionsCancelRun, // Cancel selected run from list
+    ActionsRerunRun,  // Re-run selected run from list
     // Action detail
     ActionDetailToggleStep(u32), // toggle step fold by step number
     ActionDetailFocusJobs,
