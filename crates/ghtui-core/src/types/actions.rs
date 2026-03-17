@@ -194,17 +194,6 @@ pub struct Artifact {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WorkflowDispatchInput {
-    pub name: String,
-    pub description: Option<String>,
-    pub default: Option<String>,
-    pub required: bool,
-    #[serde(rename = "type")]
-    pub input_type: Option<String>,
-    pub options: Option<Vec<String>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PendingDeployment {
     pub id: u64,
     pub environment: PendingEnvironment,

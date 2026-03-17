@@ -1949,7 +1949,19 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::RunDetailLoaded(detail) => {
             state.loading.remove("action_detail");
+            let workflow_id = detail.run.workflow_id;
             state.action_detail = Some(ActionDetailState::new(*detail));
+            // Fetch workflow file if we know the path
+            if let Some(ref repo) = state.current_repo {
+                let workflow_path = state
+                    .actions_list
+                    .as_ref()
+                    .and_then(|l| l.workflows.iter().find(|w| w.id == workflow_id))
+                    .map(|w| w.path.clone());
+                if let Some(path) = workflow_path {
+                    return vec![Command::FetchWorkflowFile(repo.clone(), path)];
+                }
+            }
             vec![]
         }
         Message::JobLogLoaded(job_id, lines) => {
