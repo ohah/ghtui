@@ -64,6 +64,7 @@ fn make_issue(number: u64, title: &str) -> Issue {
         assignees: vec![],
         milestone: None,
         comments: None,
+        reactions: None,
     }
 }
 

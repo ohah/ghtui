@@ -87,6 +87,10 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         render_assignee_picker(frame, picker, theme, area);
         return;
     }
+    if let Some(ref picker) = detail_state.milestone_picker {
+        render_milestone_picker(frame, picker, theme, area);
+        return;
+    }
 
     // === Bottom editor for comments ===
     if is_comment_editing {
@@ -298,8 +302,43 @@ fn render_body_comments(
             lines.extend(render_markdown(body));
         }
     }
+    // Issue reactions
+    if let Some(ref reactions) = issue.reactions {
+        let summary = reactions.summary();
+        if !summary.is_empty() {
+            lines.push(Line::styled(
+                format!("  {} (+/- to react)", summary),
+                Style::default().fg(theme.fg_dim),
+            ));
+        }
+    }
     lines.push(Line::raw(""));
     lines.push(Line::styled("─".repeat(50), theme.border_style()));
+
+    // --- Timeline events ---
+    if !detail_state.detail.timeline.is_empty() {
+        lines.push(Line::raw(""));
+        for event in &detail_state.detail.timeline {
+            // Skip "commented" events (shown as comments already)
+            if event.event == "commented" {
+                continue;
+            }
+            let time = event
+                .created_at
+                .map(|t| t.format("%m/%d %H:%M").to_string())
+                .unwrap_or_default();
+            lines.push(Line::from(vec![
+                Span::styled(
+                    format!("  {} ", event.icon()),
+                    Style::default().fg(theme.fg_dim),
+                ),
+                Span::styled(event.display(), Style::default().fg(theme.fg_muted)),
+                Span::styled(format!("  {}", time), Style::default().fg(theme.fg_dim)),
+            ]));
+        }
+        lines.push(Line::raw(""));
+        lines.push(Line::styled("─".repeat(50), theme.border_style()));
+    }
 
     // --- Comments ---
     let comment_count = detail_state.detail.comments.len();
@@ -348,6 +387,16 @@ fn render_body_comments(
         }
         lines.push(Line::from(hdr));
         lines.extend(render_markdown(&comment.body));
+        // Comment reactions
+        if let Some(ref reactions) = comment.reactions {
+            let summary = reactions.summary();
+            if !summary.is_empty() {
+                lines.push(Line::styled(
+                    format!("  {}", summary),
+                    Style::default().fg(theme.fg_dim),
+                ));
+            }
+        }
         lines.push(Line::styled("─".repeat(50), theme.border_style()));
     }
 
@@ -512,6 +561,66 @@ fn render_assignee_picker(
         picker.selected_names.len(),
         picker.available.len()
     );
+
+    let list = List::new(items).block(
+        Block::default()
+            .title(title)
+            .borders(Borders::ALL)
+            .style(Style::default().bg(Color::Black)),
+    );
+    frame.render_widget(list, popup_area);
+}
+
+fn render_milestone_picker(
+    frame: &mut Frame,
+    picker: &ghtui_core::state::issue::MilestonePickerState,
+    theme: &ghtui_core::theme::Theme,
+    area: Rect,
+) {
+    let height = (picker.available.len() as u16 + 5).min(area.height.saturating_sub(4));
+    let width = 50.min(area.width.saturating_sub(4));
+    let x = (area.width.saturating_sub(width)) / 2 + area.x;
+    let y = (area.height.saturating_sub(height)) / 2 + area.y;
+    let popup_area = Rect::new(x, y, width, height);
+
+    frame.render_widget(Clear, popup_area);
+
+    let items: Vec<ListItem> = picker
+        .available
+        .iter()
+        .enumerate()
+        .map(|(i, ms)| {
+            let is_cursor = i == picker.cursor;
+            let is_selected = picker.selected == Some(ms.number as u64);
+            let check = if is_selected { "(●) " } else { "( ) " };
+            let cursor = if is_cursor { "▸ " } else { "  " };
+
+            let style = if is_cursor {
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD)
+            } else if is_selected {
+                Style::default().fg(theme.success)
+            } else {
+                Style::default().fg(Color::Gray)
+            };
+
+            ListItem::new(Line::from(vec![
+                Span::styled(cursor.to_string(), style),
+                Span::styled(
+                    check.to_string(),
+                    if is_selected {
+                        Style::default().fg(theme.success)
+                    } else {
+                        Style::default().fg(Color::DarkGray)
+                    },
+                ),
+                Span::styled(ms.title.clone(), style),
+            ]))
+        })
+        .collect();
+
+    let title = " Milestone — Space:Select  s:Save  0:Clear  Esc:Cancel ".to_string();
 
     let list = List::new(items).block(
         Block::default()

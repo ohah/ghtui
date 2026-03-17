@@ -399,6 +399,120 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
 
+        // Reactions
+        Message::IssueAddReaction(reaction) => {
+            if let Some(ref detail) = state.issue_detail {
+                if let Some(ref repo) = state.current_repo {
+                    use ghtui_core::state::issue::IssueSection;
+                    match &detail.focus {
+                        IssueSection::Body | IssueSection::Title => {
+                            let number = detail.detail.issue.number;
+                            return vec![Command::AddReaction(
+                                repo.clone(),
+                                number,
+                                reaction,
+                                true,
+                            )];
+                        }
+                        IssueSection::Comment(idx) => {
+                            if let Some(comment) = detail.detail.comments.get(*idx) {
+                                return vec![Command::AddReaction(
+                                    repo.clone(),
+                                    comment.id,
+                                    reaction,
+                                    false,
+                                )];
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::ReactionAdded => {
+            state.push_toast("Reaction added".to_string(), ToastLevel::Success);
+            refresh_current_view(state)
+        }
+
+        // Milestone picker
+        Message::IssueMilestoneToggle => {
+            if let Some(ref repo) = state.current_repo {
+                state.loading.insert("milestones".to_string());
+                vec![Command::FetchMilestones(repo.clone())]
+            } else {
+                vec![]
+            }
+        }
+        Message::IssueMilestonesLoaded(milestones) => {
+            state.loading.remove("milestones");
+            if let Some(ref mut detail) = state.issue_detail {
+                let current = detail
+                    .detail
+                    .issue
+                    .milestone
+                    .as_ref()
+                    .map(|m| m.number as u64);
+                detail.milestone_picker = Some(ghtui_core::state::issue::MilestonePickerState {
+                    available: milestones,
+                    selected: current,
+                    cursor: 0,
+                });
+            }
+            vec![]
+        }
+        Message::IssueMilestoneSelect(idx) => {
+            if let Some(ref mut detail) = state.issue_detail {
+                if let Some(ref mut picker) = detail.milestone_picker {
+                    if let Some(ms) = picker.available.get(idx) {
+                        let num = ms.number as u64;
+                        if picker.selected == Some(num) {
+                            picker.selected = None;
+                        } else {
+                            picker.selected = Some(num);
+                        }
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::IssueMilestoneApply => {
+            if let Some(ref detail) = state.issue_detail {
+                if let (Some(picker), Some(repo)) = (&detail.milestone_picker, &state.current_repo)
+                {
+                    let number = detail.detail.issue.number;
+                    let ms = picker.selected;
+                    let cmds = vec![Command::SetMilestone(repo.clone(), number, ms)];
+                    if let Some(ref mut detail) = state.issue_detail {
+                        detail.milestone_picker = None;
+                    }
+                    return cmds;
+                }
+            }
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.milestone_picker = None;
+            }
+            vec![]
+        }
+        Message::IssueMilestoneClear => {
+            if let Some(ref detail) = state.issue_detail {
+                if let Some(ref repo) = state.current_repo {
+                    let number = detail.detail.issue.number;
+                    if let Some(ref mut d) = state.issue_detail {
+                        d.milestone_picker = None;
+                    }
+                    return vec![Command::SetMilestone(repo.clone(), number, None)];
+                }
+            }
+            vec![]
+        }
+        Message::IssueMilestoneCancel => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.milestone_picker = None;
+            }
+            vec![]
+        }
+
         // Inline editing
         Message::IssueStartEditTitle => {
             if let Some(ref mut detail) = state.issue_detail {
@@ -1386,6 +1500,13 @@ fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Command> {
                         picker.cursor = (picker.cursor + 1).min(max);
                     }
                 } else if let Some(ref mut picker) = detail.assignee_picker {
+                    let max = picker.available.len().saturating_sub(1);
+                    if delta == usize::MAX {
+                        picker.cursor = picker.cursor.saturating_sub(1);
+                    } else if delta > 0 {
+                        picker.cursor = (picker.cursor + 1).min(max);
+                    }
+                } else if let Some(ref mut picker) = detail.milestone_picker {
                     let max = picker.available.len().saturating_sub(1);
                     if delta == usize::MAX {
                         picker.cursor = picker.cursor.saturating_sub(1);

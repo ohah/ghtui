@@ -50,9 +50,9 @@
 - [x] 이슈 닫기/열기 (`x`키)
 - [x] 브라우저에서 열기 (`o`키)
 - [x] 섹션 포커스 (j/k로 Title→Labels→Assignees→Body→Comments 이동)
-- [ ] Milestone 설정
-- [ ] 리액션 (👍 등)
-- [ ] 타임라인 이벤트 (assigned, labeled 등)
+- [x] Milestone 설정 (`m`키 → 마일스톤 피커)
+- [x] 리액션 (`+`/`-`키로 👍👎 빠른 추가, 이슈/코멘트 모두)
+- [x] 타임라인 이벤트 (labeled, assigned, closed, renamed 등 표시)
 - [ ] 교차 참조 (linked PRs)
 - [ ] 이슈 잠금
 - [ ] 이슈 핀

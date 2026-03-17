@@ -115,6 +115,27 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 Err(e) => Message::Error(e.into()),
             }
         }
+        Command::AddReaction(repo, id, reaction, is_issue) => {
+            let result = if is_issue {
+                client.add_issue_reaction(&repo, id, &reaction).await
+            } else {
+                client.add_reaction(&repo, id, &reaction).await
+            };
+            match result {
+                Ok(()) => Message::ReactionAdded,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::SetMilestone(repo, number, ms_number) => {
+            match client.set_issue_milestone(&repo, number, ms_number).await {
+                Ok(()) => Message::IssueUpdated(number),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::FetchMilestones(repo) => match client.list_milestones(&repo).await {
+            Ok(milestones) => Message::IssueMilestonesLoaded(milestones),
+            Err(e) => Message::Error(e.into()),
+        },
         Command::AddComment(repo, number, body) => {
             match client.add_issue_comment(&repo, number, &body).await {
                 Ok(()) => Message::CommentAdded,

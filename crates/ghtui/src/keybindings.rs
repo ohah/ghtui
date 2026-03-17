@@ -247,46 +247,54 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         };
     }
 
-    // Picker mode (label or assignee)
+    // Picker mode (label, assignee, milestone)
     let has_picker = state.issue_detail.as_ref().is_some_and(|d| d.has_picker());
 
     if has_picker {
-        let is_label = state
-            .issue_detail
-            .as_ref()
-            .is_some_and(|d| d.label_picker.is_some());
-        return match key.code {
-            KeyCode::Esc => {
-                if is_label {
-                    Some(Message::IssueLabelCancel)
-                } else {
-                    Some(Message::IssueAssigneeCancel)
-                }
+        if let Some(ref detail) = state.issue_detail {
+            // Determine which picker is active
+            if detail.label_picker.is_some() {
+                return match key.code {
+                    KeyCode::Esc => Some(Message::IssueLabelCancel),
+                    KeyCode::Enter | KeyCode::Char(' ') => detail
+                        .label_picker
+                        .as_ref()
+                        .map(|p| Message::IssueLabelSelect(p.cursor)),
+                    KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+                    KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+                    KeyCode::Char('s') => Some(Message::IssueLabelApply),
+                    _ => None,
+                };
             }
-            KeyCode::Enter | KeyCode::Char(' ') => {
-                if let Some(ref detail) = state.issue_detail {
-                    if let Some(ref picker) = detail.label_picker {
-                        Some(Message::IssueLabelSelect(picker.cursor))
-                    } else if let Some(ref picker) = detail.assignee_picker {
-                        Some(Message::IssueAssigneeSelect(picker.cursor))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
+            if detail.assignee_picker.is_some() {
+                return match key.code {
+                    KeyCode::Esc => Some(Message::IssueAssigneeCancel),
+                    KeyCode::Enter | KeyCode::Char(' ') => detail
+                        .assignee_picker
+                        .as_ref()
+                        .map(|p| Message::IssueAssigneeSelect(p.cursor)),
+                    KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+                    KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+                    KeyCode::Char('s') => Some(Message::IssueAssigneeApply),
+                    _ => None,
+                };
             }
-            KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-            KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-            KeyCode::Char('s') => {
-                if is_label {
-                    Some(Message::IssueLabelApply)
-                } else {
-                    Some(Message::IssueAssigneeApply)
-                }
+            if detail.milestone_picker.is_some() {
+                return match key.code {
+                    KeyCode::Esc => Some(Message::IssueMilestoneCancel),
+                    KeyCode::Enter | KeyCode::Char(' ') => detail
+                        .milestone_picker
+                        .as_ref()
+                        .map(|p| Message::IssueMilestoneSelect(p.cursor)),
+                    KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+                    KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+                    KeyCode::Char('s') => Some(Message::IssueMilestoneApply),
+                    KeyCode::Char('0') => Some(Message::IssueMilestoneClear),
+                    _ => None,
+                };
             }
-            _ => None,
-        };
+        }
+        return None;
     }
 
     // Normal section navigation mode
@@ -298,9 +306,13 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         KeyCode::Char('r') => Some(Message::IssueStartReply),
         KeyCode::Char('l') => Some(Message::IssueLabelToggle),
         KeyCode::Char('a') => Some(Message::IssueAssigneeToggle),
+        KeyCode::Char('m') => Some(Message::IssueMilestoneToggle),
         KeyCode::Char('d') => Some(Message::IssueDeleteComment),
-        KeyCode::Char('x') => Some(Message::IssueToggleState), // close/reopen
+        KeyCode::Char('x') => Some(Message::IssueToggleState),
         KeyCode::Char('o') => Some(Message::IssueOpenInBrowser),
+        // Quick reactions
+        KeyCode::Char('+') => Some(Message::IssueAddReaction("+1".to_string())),
+        KeyCode::Char('-') => Some(Message::IssueAddReaction("-1".to_string())),
         KeyCode::PageDown => Some(Message::ScrollDown),
         KeyCode::PageUp => Some(Message::ScrollUp),
         _ => None,
