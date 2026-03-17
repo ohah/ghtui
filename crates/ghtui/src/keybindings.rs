@@ -203,7 +203,8 @@ fn handle_issue_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         KeyCode::Char('p') => Some(Message::IssuePrevPage),
         KeyCode::Char('c') => Some(Message::ModalOpen(ModalKind::CreateIssue)),
         KeyCode::Char('/') => Some(Message::IssueSearchStart),
-        KeyCode::Char('o') => Some(Message::IssueSortCycle), // cycle sort order
+        KeyCode::Char('o') => Some(Message::IssueSortCycle),
+        KeyCode::Char('F') => Some(Message::IssueFilterClear), // Shift+F: clear filters
         _ => None,
     }
 }
@@ -312,6 +313,7 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         KeyCode::Char('x') => Some(Message::IssueToggleState),
         KeyCode::Char('L') => Some(Message::IssueLockToggle),
         KeyCode::Char('P') => Some(Message::IssuePinToggle),
+        KeyCode::Char('X') => Some(Message::IssueTransfer), // Shift+X: transfer
         KeyCode::Char('o') => Some(Message::IssueOpenInBrowser),
         // Quick reactions
         KeyCode::Char('+') => Some(Message::IssueAddReaction("+1".to_string())),

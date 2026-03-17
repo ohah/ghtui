@@ -194,6 +194,88 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::IssueFilterByLabel(label) => {
+            if let Some(ref mut list) = state.issue_list {
+                list.filters.label = Some(label);
+            }
+            if let Some(ref repo) = state.current_repo {
+                if let Some(ref list) = state.issue_list {
+                    state.loading.insert("issue_list".to_string());
+                    return vec![Command::FetchIssueList(
+                        repo.clone(),
+                        list.filters.clone(),
+                        1,
+                    )];
+                }
+            }
+            vec![]
+        }
+        Message::IssueFilterByAuthor(author) => {
+            if let Some(ref mut list) = state.issue_list {
+                list.filters.author = Some(author);
+            }
+            if let Some(ref repo) = state.current_repo {
+                if let Some(ref list) = state.issue_list {
+                    state.loading.insert("issue_list".to_string());
+                    return vec![Command::FetchIssueList(
+                        repo.clone(),
+                        list.filters.clone(),
+                        1,
+                    )];
+                }
+            }
+            vec![]
+        }
+        Message::IssueFilterByAssignee(assignee) => {
+            if let Some(ref mut list) = state.issue_list {
+                list.filters.assignee = Some(assignee);
+            }
+            if let Some(ref repo) = state.current_repo {
+                if let Some(ref list) = state.issue_list {
+                    state.loading.insert("issue_list".to_string());
+                    return vec![Command::FetchIssueList(
+                        repo.clone(),
+                        list.filters.clone(),
+                        1,
+                    )];
+                }
+            }
+            vec![]
+        }
+        Message::IssueFilterClear => {
+            if let Some(ref mut list) = state.issue_list {
+                let state_filter = list.filters.state;
+                list.filters = IssueFilters {
+                    state: state_filter,
+                    ..Default::default()
+                };
+            }
+            if let Some(ref repo) = state.current_repo {
+                if let Some(ref list) = state.issue_list {
+                    state.loading.insert("issue_list".to_string());
+                    return vec![Command::FetchIssueList(
+                        repo.clone(),
+                        list.filters.clone(),
+                        1,
+                    )];
+                }
+            }
+            vec![]
+        }
+        Message::IssueTransfer => {
+            // Use input_buffer for destination repo
+            state.input_buffer.clear();
+            state.modal = Some(ghtui_core::ModalKind::Confirm {
+                title: "Transfer Issue".to_string(),
+                message: "Enter destination repo (owner/name):".to_string(),
+            });
+            state.input_mode = ghtui_core::state::InputMode::Insert;
+            vec![]
+        }
+        Message::IssueTemplatesLoaded(_templates) => {
+            // Templates info stored for CreateIssue modal
+            vec![]
+        }
         Message::IssueNextPage => {
             if let (Some(repo), Some(list)) = (&state.current_repo, &state.issue_list) {
                 if list.pagination.has_next {
@@ -1262,6 +1344,30 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         vec![Command::CreateIssue(repo.clone(), input)]
                     } else {
                         vec![]
+                    }
+                }
+                Some(ghtui_core::ModalKind::Confirm { ref title, .. })
+                    if title == "Transfer Issue" =>
+                {
+                    let dest = state.input_buffer.trim().to_string();
+                    if dest.contains('/') {
+                        if let (Some(repo), Some(detail)) =
+                            (&state.current_repo, &state.issue_detail)
+                        {
+                            vec![Command::TransferIssue(
+                                repo.clone(),
+                                detail.detail.issue.number,
+                                dest,
+                            )]
+                        } else {
+                            vec![]
+                        }
+                    } else {
+                        state.push_toast(
+                            "Invalid format. Use owner/repo".to_string(),
+                            ToastLevel::Warning,
+                        );
+                        return vec![];
                     }
                 }
                 _ => vec![],

@@ -15,6 +15,7 @@ chrono.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 lru.workspace = true
+base64.workspace = true
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

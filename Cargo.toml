@@ -49,6 +49,7 @@ open = "5"
 arboard = "3"
 unicode-width = "0.2"
 textwrap = "0.16"
+base64 = "0.22"
 
 # Error handling & Logging
 thiserror = "2"

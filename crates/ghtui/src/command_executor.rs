@@ -104,6 +104,26 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Ok(numbers) => Message::IssuePinnedNumbersLoaded(numbers),
             Err(_) => Message::IssuePinnedNumbersLoaded(Vec::new()),
         },
+        Command::TransferIssue(repo, number, dest) => {
+            let parts: Vec<&str> = dest.splitn(2, '/').collect();
+            if parts.len() == 2 {
+                match client
+                    .transfer_issue(&repo, number, parts[0], parts[1])
+                    .await
+                {
+                    Ok(()) => Message::IssueUpdated(number),
+                    Err(e) => Message::Error(e.into()),
+                }
+            } else {
+                Message::Error(ghtui_core::GhtuiError::Other(
+                    "Invalid destination format".into(),
+                ))
+            }
+        }
+        Command::FetchIssueTemplates(repo) => match client.list_issue_templates(&repo).await {
+            Ok(templates) => Message::IssueTemplatesLoaded(templates),
+            Err(_) => Message::IssueTemplatesLoaded(Vec::new()),
+        },
         Command::CreateIssue(repo, input) => match client.create_issue(&repo, &input).await {
             Ok(number) => Message::IssueCreated(number),
             Err(e) => Message::Error(e.into()),
