@@ -76,11 +76,7 @@ impl AppConfig {
     }
 
     /// Resolve a token, optionally filtering by host and user.
-    pub fn resolve_token_for(
-        &self,
-        host: Option<&str>,
-        user: Option<&str>,
-    ) -> Option<String> {
+    pub fn resolve_token_for(&self, host: Option<&str>, user: Option<&str>) -> Option<String> {
         // 1. Config file token (only if no specific host/user requested)
         if host.is_none() && user.is_none() {
             if let Some(ref token) = self.token {
@@ -186,8 +182,7 @@ fn parse_hosts_yml(content: &str) -> Option<HashMap<String, Vec<HostAccount>>> {
     //     user: user1  (active user)
     //     git_protocol: https
 
-    let parsed: HashMap<String, serde_yaml::Value> =
-        serde_yaml::from_str(&content).ok()?;
+    let parsed: HashMap<String, serde_yaml::Value> = serde_yaml::from_str(content).ok()?;
 
     let mut result: HashMap<String, Vec<HostAccount>> = HashMap::new();
 
@@ -516,7 +511,7 @@ github.com:
 "#;
         let result = parse_hosts_yml(yaml).unwrap();
         // No token means no account should be returned
-        assert!(result.get("github.com").is_none());
+        assert!(!result.contains_key("github.com"));
     }
 
     #[test]
@@ -528,7 +523,7 @@ github.com:
 "#;
         let result = parse_hosts_yml(yaml).unwrap();
         // No user means no account should be returned
-        assert!(result.get("github.com").is_none());
+        assert!(!result.contains_key("github.com"));
     }
 
     #[test]

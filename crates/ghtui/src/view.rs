@@ -103,9 +103,7 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
     if let Some(ref modal) = state.modal {
         match modal {
             ModalKind::Help => views::help::render(frame, size),
-            ModalKind::AccountSwitcher => {
-                views::account_switcher::render(frame, state, size)
-            }
+            ModalKind::AccountSwitcher => views::account_switcher::render(frame, state, size),
             _ => {}
         }
     }
@@ -266,10 +264,7 @@ fn render_footer(frame: &mut Frame, state: &AppState, theme: &Theme, area: Rect)
             Style::default().fg(theme.fg_muted),
         ),
         Span::raw("  "),
-        Span::styled(
-            account_display,
-            Style::default().fg(theme.accent),
-        ),
+        Span::styled(account_display, Style::default().fg(theme.accent)),
     ]);
 
     let paragraph = Paragraph::new(line).style(Style::default().bg(theme.footer_bg));

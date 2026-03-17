@@ -171,8 +171,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             if matches!(state.modal, Some(ghtui_core::ModalKind::AccountSwitcher)) {
                 if !state.accounts.is_empty() {
                     if delta == usize::MAX {
-                        state.account_selected =
-                            state.account_selected.saturating_sub(1);
+                        state.account_selected = state.account_selected.saturating_sub(1);
                     } else if delta > 0 && delta != usize::MAX {
                         state.account_selected =
                             (state.account_selected + 1).min(state.accounts.len() - 1);

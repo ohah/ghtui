@@ -267,7 +267,12 @@ fn test_account_switch_clears_cached_data() {
     let config = AppConfig::default();
     let repo = RepoId::new("owner", "repo");
     let accounts = make_test_accounts();
-    let mut state = AppState::new(config, Some(repo), Some(accounts[0].clone()), accounts.clone());
+    let mut state = AppState::new(
+        config,
+        Some(repo),
+        Some(accounts[0].clone()),
+        accounts.clone(),
+    );
 
     // Simulate loaded data
     state.pr_list = Some(PrListState::new(vec![], Default::default()));

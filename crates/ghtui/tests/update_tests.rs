@@ -1,10 +1,10 @@
+use ghtui_core::AppState;
 use ghtui_core::config::{AppConfig, GhAccount};
 use ghtui_core::message::ModalKind;
 use ghtui_core::router::Route;
 use ghtui_core::state::*;
 use ghtui_core::types::common::RepoId;
 use ghtui_core::types::*;
-use ghtui_core::AppState;
 
 // Import the update module from the binary crate's lib
 // Since update is private to the binary, we test via integration of state transitions

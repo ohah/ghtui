@@ -48,14 +48,12 @@ pub struct Pagination {
     pub total: Option<u32>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SortOrder {
     Asc,
     #[default]
     Desc,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
