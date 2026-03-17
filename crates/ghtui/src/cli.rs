@@ -11,6 +11,14 @@ pub struct Cli {
     #[arg(short, long)]
     pub token: Option<String>,
 
+    /// GitHub host (e.g. github.com, github.enterprise.com)
+    #[arg(long)]
+    pub host: Option<String>,
+
+    /// GitHub username (for multi-account selection)
+    #[arg(short, long)]
+    pub user: Option<String>,
+
     /// Log file path for debug output
     #[arg(long)]
     pub log_file: Option<String>,

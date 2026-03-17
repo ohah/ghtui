@@ -11,6 +11,31 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
 
+        // Account
+        Message::AccountSwitch(account) => {
+            state.modal = None;
+            state.input_mode = InputMode::Normal;
+            vec![Command::SwitchAccount(account)]
+        }
+        Message::AccountSwitched(account) => {
+            state.push_toast(
+                format!("Switched to {}", account.display_name()),
+                ToastLevel::Success,
+            );
+            state.current_account = Some(account);
+            // Clear cached data
+            state.pr_list = None;
+            state.pr_detail = None;
+            state.issue_list = None;
+            state.issue_detail = None;
+            state.actions_list = None;
+            state.action_detail = None;
+            state.notifications = None;
+            state.search = None;
+            // Refresh current view
+            refresh_current_view(state)
+        }
+
         // PR
         Message::PrListLoaded(prs, pagination) => {
             state.loading.remove("pr_list");
@@ -142,6 +167,19 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::ListSelect(delta) => {
+            // Handle account switcher navigation
+            if matches!(state.modal, Some(ghtui_core::ModalKind::AccountSwitcher)) {
+                if !state.accounts.is_empty() {
+                    if delta == usize::MAX {
+                        state.account_selected =
+                            state.account_selected.saturating_sub(1);
+                    } else if delta > 0 && delta != usize::MAX {
+                        state.account_selected =
+                            (state.account_selected + 1).min(state.accounts.len() - 1);
+                    }
+                }
+                return vec![];
+            }
             handle_list_select(state, delta);
             vec![]
         }

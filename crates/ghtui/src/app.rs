@@ -1,5 +1,6 @@
 use anyhow::Result;
 use ghtui_api::GithubClient;
+use ghtui_core::config::GhAccount;
 use ghtui_core::types::common::RepoId;
 use ghtui_core::{AppConfig, AppState, Command, Message};
 use tokio::sync::mpsc;
@@ -18,9 +19,15 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(config: AppConfig, client: GithubClient, repo: Option<RepoId>) -> Self {
+    pub fn new(
+        config: AppConfig,
+        client: GithubClient,
+        repo: Option<RepoId>,
+        current_account: Option<GhAccount>,
+        accounts: Vec<GhAccount>,
+    ) -> Self {
         Self {
-            state: AppState::new(config.clone(), repo),
+            state: AppState::new(config.clone(), repo, current_account, accounts),
             client,
             tick: 0,
         }
@@ -66,6 +73,20 @@ impl App {
                     if matches!(cmd, Command::Quit) {
                         tui::restore()?;
                         return Ok(());
+                    }
+
+                    // Handle account switch inline (needs mutable access to self.client)
+                    if let Command::SwitchAccount(ref account) = cmd {
+                        match GithubClient::new(account.token.clone()) {
+                            Ok(new_client) => {
+                                self.client = new_client;
+                                let _ = msg_tx.send(Message::AccountSwitched(account.clone()));
+                            }
+                            Err(e) => {
+                                let _ = msg_tx.send(Message::Error(e.into()));
+                            }
+                        }
+                        continue;
                     }
 
                     let tx = msg_tx.clone();

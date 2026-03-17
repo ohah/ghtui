@@ -139,5 +139,8 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Message::Tick
         }
         Command::Quit => Message::Quit,
+
+        // SwitchAccount is handled directly in App::run(), not here
+        Command::SwitchAccount(_) => Message::Tick,
     }
 }

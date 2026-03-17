@@ -6,7 +6,7 @@ pub mod search;
 
 use std::collections::{HashSet, VecDeque};
 
-use crate::config::AppConfig;
+use crate::config::{AppConfig, GhAccount};
 use crate::message::ModalKind;
 use crate::router::Route;
 use crate::theme::Theme;
@@ -68,10 +68,20 @@ pub struct AppState {
     pub input_mode: InputMode,
     pub input_buffer: String,
     pub terminal_size: (u16, u16),
+
+    // Account
+    pub current_account: Option<GhAccount>,
+    pub accounts: Vec<GhAccount>,
+    pub account_selected: usize,
 }
 
 impl AppState {
-    pub fn new(config: AppConfig, repo: Option<RepoId>) -> Self {
+    pub fn new(
+        config: AppConfig,
+        repo: Option<RepoId>,
+        current_account: Option<GhAccount>,
+        accounts: Vec<GhAccount>,
+    ) -> Self {
         let theme = Theme::from_mode(config.theme);
         Self {
             route: Route::Dashboard,
@@ -94,6 +104,9 @@ impl AppState {
             input_mode: InputMode::Normal,
             input_buffer: String::new(),
             terminal_size: (80, 24),
+            current_account,
+            accounts,
+            account_selected: 0,
         }
     }
 

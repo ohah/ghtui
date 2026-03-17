@@ -7,7 +7,7 @@ use ghtui_core::types::common::RepoId;
 fn test_app_state_new() {
     let config = AppConfig::default();
     let repo = RepoId::new("owner", "repo");
-    let state = AppState::new(config, Some(repo.clone()));
+    let state = AppState::new(config, Some(repo.clone()), None, vec![]);
 
     assert_eq!(state.route, Route::Dashboard);
     assert!(state.route_history.is_empty());
@@ -22,7 +22,7 @@ fn test_app_state_new() {
 fn test_navigation() {
     let config = AppConfig::default();
     let repo = RepoId::new("owner", "repo");
-    let mut state = AppState::new(config, Some(repo.clone()));
+    let mut state = AppState::new(config, Some(repo.clone()), None, vec![]);
 
     // Navigate to PR list
     let pr_route = Route::PrList {
@@ -63,7 +63,7 @@ fn test_navigation() {
 #[test]
 fn test_toast_lifecycle() {
     let config = AppConfig::default();
-    let mut state = AppState::new(config, None);
+    let mut state = AppState::new(config, None, None, vec![]);
 
     assert!(state.toasts.is_empty());
 
@@ -85,7 +85,7 @@ fn test_toast_lifecycle() {
 #[test]
 fn test_loading_state() {
     let config = AppConfig::default();
-    let mut state = AppState::new(config, None);
+    let mut state = AppState::new(config, None, None, vec![]);
 
     assert!(!state.is_loading("pr_list"));
 

@@ -11,8 +11,8 @@ mod views;
 use anyhow::{Context, Result};
 use clap::Parser;
 use ghtui_api::GithubClient;
-use ghtui_core::AppConfig;
 use ghtui_core::types::common::RepoId;
+use ghtui_core::{AppConfig, list_gh_accounts};
 
 use crate::app::App;
 use crate::cli::Cli;
@@ -29,10 +29,19 @@ async fn main() -> Result<()> {
         config.token = Some(token.clone());
     }
 
-    // Resolve token
-    let token = config
-        .resolve_token()
-        .context("No GitHub token found. Set GITHUB_TOKEN env var or login with `gh auth login`")?;
+    // Discover all gh accounts
+    let accounts = list_gh_accounts();
+
+    // Resolve token (with optional host/user filter)
+    let token = if args.token.is_some() {
+        config.resolve_token()
+    } else {
+        config.resolve_token_for(args.host.as_deref(), args.user.as_deref())
+    }
+    .context("No GitHub token found. Set GITHUB_TOKEN env var or login with `gh auth login`")?;
+
+    // Find current account
+    let current_account = accounts.iter().find(|a| a.token == token).cloned();
 
     // Resolve repo
     let repo_str = args
@@ -58,6 +67,6 @@ async fn main() -> Result<()> {
     let client = GithubClient::new(token)?;
 
     // Run app
-    let mut app = App::new(config, client, repo);
+    let mut app = App::new(config, client, repo, current_account, accounts);
     app.run().await
 }

@@ -12,7 +12,7 @@ use ghtui_core::{AppState, Command, Message};
 fn make_state() -> AppState {
     let config = AppConfig::default();
     let repo = RepoId::new("owner", "repo");
-    AppState::new(config, Some(repo))
+    AppState::new(config, Some(repo), None, vec![])
 }
 
 fn make_pr(number: u64, title: &str) -> PullRequest {

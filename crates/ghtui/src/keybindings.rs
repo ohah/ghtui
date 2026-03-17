@@ -35,7 +35,7 @@ fn handle_insert_mode(key: KeyEvent) -> Option<Message> {
 fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
     // Modal-specific keys
     if state.modal.is_some() {
-        return handle_modal_keys(key);
+        return handle_modal_keys(key, state);
     }
 
     // Global keys
@@ -43,6 +43,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         KeyCode::Char('q') => return Some(Message::Quit),
         KeyCode::Char('?') => return Some(Message::ModalOpen(ModalKind::Help)),
         KeyCode::Char('t') => return Some(Message::ToggleTheme),
+        KeyCode::Char('S') => return Some(Message::ModalOpen(ModalKind::AccountSwitcher)),
         // Tab navigation: 1-9 for global tabs (matching GitHub web)
         KeyCode::Char('1') => return Some(Message::GlobalTabSelect(0)), // Code
         KeyCode::Char('2') => return Some(Message::GlobalTabSelect(1)), // Issues
@@ -91,10 +92,27 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
     }
 }
 
-fn handle_modal_keys(key: KeyEvent) -> Option<Message> {
+fn handle_modal_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     match key.code {
         KeyCode::Esc | KeyCode::Char('q') => Some(Message::ModalClose),
-        _ => None,
+        _ => {
+            // Account switcher modal: j/k to navigate, Enter to select
+            if matches!(state.modal, Some(ModalKind::AccountSwitcher)) {
+                match key.code {
+                    KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+                    KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+                    KeyCode::Enter => {
+                        state
+                            .accounts
+                            .get(state.account_selected)
+                            .map(|account| Message::AccountSwitch(account.clone()))
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }
     }
 }
 
