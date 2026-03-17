@@ -168,4 +168,30 @@ impl GithubClient {
         self.post(&path, &body).await?;
         Ok(())
     }
+
+    pub async fn set_issue_labels(
+        &self,
+        repo: &RepoId,
+        number: u64,
+        labels: &[String],
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/issues/{}/labels",
+            repo.owner, repo.name, number
+        );
+        let body = json!({ "labels": labels });
+        // PUT replaces all labels
+        self.put(&path, &body).await?;
+        Ok(())
+    }
+
+    pub async fn list_repo_labels(
+        &self,
+        repo: &RepoId,
+    ) -> Result<Vec<ghtui_core::types::common::Label>, ApiError> {
+        let path = format!("/repos/{}/{}/labels?per_page=100", repo.owner, repo.name);
+        let body = self.get(&path).await?;
+        let labels: Vec<ghtui_core::types::common::Label> = serde_json::from_str(&body)?;
+        Ok(labels)
+    }
 }

@@ -37,7 +37,7 @@
 - [x] 필터 UI (open/closed 토글 — `s`키)
 - [ ] 필터 UI (author, label, milestone, assignee)
 - [ ] 정렬 UI (newest, oldest, most commented)
-- [ ] 이슈 검색
+- [x] 이슈 검색 (`/`키 → 검색어 입력 → Enter)
 - [x] 이슈 생성 UI (모달 폼 — `c`키, Ctrl+Enter 제출)
 - [x] 이슈 제목 편집 (`T`키 — 헤더 인라인 편집, Enter 제출)
 - [x] 이슈 본문 편집 (`e`키 — 전체화면 에디터, 라인번호 표시)
@@ -45,7 +45,7 @@
 - [x] 코멘트 편집 (`e`키 — 코멘트 선택 시 하단 패널)
 - [x] 인용 답글 (`r`키 — 코멘트 선택 시 quote reply)
 - [ ] 코멘트 삭제
-- [ ] 라벨 추가/제거
+- [x] 라벨 추가/제거 (`l`키 → 라벨 피커 → Space:토글 → s:적용)
 - [ ] Assignee 추가/제거
 - [ ] Milestone 설정
 - [ ] 리액션 (👍 등)

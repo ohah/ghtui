@@ -168,6 +168,125 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
         }
 
+        // Issue search
+        Message::IssueSearchStart => {
+            if let Some(ref mut list) = state.issue_list {
+                list.search_mode = true;
+                list.search_query.clear();
+            }
+            vec![]
+        }
+        Message::IssueSearchInput(text) => {
+            if let Some(ref mut list) = state.issue_list {
+                if text == "\x08" {
+                    list.search_query.pop();
+                } else {
+                    list.search_query.push_str(&text);
+                }
+            }
+            vec![]
+        }
+        Message::IssueSearchSubmit => {
+            if let (Some(list), Some(repo)) = (&mut state.issue_list, &state.current_repo) {
+                list.search_mode = false;
+                let query = list.search_query.clone();
+                if query.is_empty() {
+                    // Reset to normal list
+                    state.loading.insert("issue_list".to_string());
+                    vec![Command::FetchIssueList(
+                        repo.clone(),
+                        list.filters.clone(),
+                        1,
+                    )]
+                } else {
+                    // Search via API
+                    let search_query = format!("repo:{} is:issue {}", repo.full_name(), query);
+                    state.loading.insert("issue_list".to_string());
+                    vec![Command::Search(
+                        search_query,
+                        ghtui_core::types::SearchKind::Issues,
+                        1,
+                    )]
+                }
+            } else {
+                vec![]
+            }
+        }
+        Message::IssueSearchCancel => {
+            if let Some(ref mut list) = state.issue_list {
+                list.search_mode = false;
+                list.search_query.clear();
+            }
+            vec![]
+        }
+
+        // Label picker
+        Message::IssueLabelToggle => {
+            if let Some(ref repo) = state.current_repo {
+                // Fetch available labels and open picker
+                state.loading.insert("repo_labels".to_string());
+                vec![Command::FetchRepoLabels(repo.clone())]
+            } else {
+                vec![]
+            }
+        }
+        Message::IssueLabelsLoaded(labels) => {
+            state.loading.remove("repo_labels");
+            if let Some(ref mut detail) = state.issue_detail {
+                let current_labels: Vec<String> = detail
+                    .detail
+                    .issue
+                    .labels
+                    .iter()
+                    .map(|l| l.name.clone())
+                    .collect();
+                detail.label_picker = Some(ghtui_core::state::issue::LabelPickerState {
+                    available: labels,
+                    selected_names: current_labels,
+                    cursor: 0,
+                });
+            }
+            vec![]
+        }
+        Message::IssueLabelSelect(idx) => {
+            if let Some(ref mut detail) = state.issue_detail {
+                if let Some(ref mut picker) = detail.label_picker {
+                    if let Some(label) = picker.available.get(idx) {
+                        let name = label.name.clone();
+                        if picker.selected_names.contains(&name) {
+                            picker.selected_names.retain(|n| n != &name);
+                        } else {
+                            picker.selected_names.push(name);
+                        }
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::IssueLabelApply => {
+            if let Some(ref detail) = state.issue_detail {
+                if let (Some(picker), Some(repo)) = (&detail.label_picker, &state.current_repo) {
+                    let number = detail.detail.issue.number;
+                    let labels = picker.selected_names.clone();
+                    let cmds = vec![Command::SetIssueLabels(repo.clone(), number, labels)];
+                    if let Some(ref mut detail) = state.issue_detail {
+                        detail.label_picker = None;
+                    }
+                    return cmds;
+                }
+            }
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.label_picker = None;
+            }
+            vec![]
+        }
+        Message::IssueLabelCancel => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.label_picker = None;
+            }
+            vec![]
+        }
+
         // Inline editing
         Message::IssueStartEditTitle => {
             if let Some(ref mut detail) = state.issue_detail {
@@ -1143,9 +1262,17 @@ fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Command> {
         }
         Route::IssueDetail { .. } => {
             if let Some(ref mut detail) = state.issue_detail {
-                if delta == usize::MAX {
+                // Label picker mode: move cursor in picker
+                if let Some(ref mut picker) = detail.label_picker {
+                    let max = picker.available.len().saturating_sub(1);
+                    if delta == usize::MAX {
+                        picker.cursor = picker.cursor.saturating_sub(1);
+                    } else if delta > 0 {
+                        picker.cursor = (picker.cursor + 1).min(max);
+                    }
+                } else if delta == usize::MAX {
                     detail.select_prev_comment();
-                } else if delta > 0 && delta != 0 {
+                } else if delta > 0 {
                     detail.select_next_comment();
                 }
             }

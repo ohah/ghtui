@@ -35,10 +35,19 @@ pub enum Message {
     IssueToggleStateFilter,
     IssueNextPage,
     IssuePrevPage,
-    IssueStartEditTitle, // Edit title (inline in header)
-    IssueStartEditBody,  // Edit body (fullscreen) or selected comment
-    IssueStartComment,   // Start new comment
-    IssueStartReply,     // Start quote reply to selected comment
+    IssueSearchStart,
+    IssueSearchInput(String),
+    IssueSearchSubmit,
+    IssueSearchCancel,
+    IssueLabelToggle,                      // Open label picker
+    IssueLabelSelect(usize),               // Select label in picker
+    IssueLabelApply,                       // Apply label changes
+    IssueLabelCancel,                      // Cancel label picker
+    IssueLabelsLoaded(Vec<common::Label>), // Available labels loaded
+    IssueStartEditTitle,                   // Edit title (inline in header)
+    IssueStartEditBody,                    // Edit body (fullscreen) or selected comment
+    IssueStartComment,                     // Start new comment
+    IssueStartReply,                       // Start quote reply to selected comment
     IssueEditChar(char),
     IssueEditNewline,
     IssueEditBackspace,

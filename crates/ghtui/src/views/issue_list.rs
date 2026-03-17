@@ -81,10 +81,36 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 Style::default().fg(theme.fg_muted)
             },
         ),
-        Span::styled("  (s:toggle)", Style::default().fg(theme.fg_dim)),
+        Span::styled("  (s:toggle  /:search)", Style::default().fg(theme.fg_dim)),
     ]);
-    let filter_bar = Paragraph::new(filter_line).style(Style::default().bg(theme.bg_subtle));
-    frame.render_widget(filter_bar, chunks[0]);
+
+    // If in search mode, show search bar instead of filter
+    if list_state.search_mode {
+        let search_line = Line::from(vec![
+            Span::styled(" 🔍 ", Style::default().fg(theme.accent)),
+            Span::styled(
+                list_state.search_query.clone(),
+                Style::default()
+                    .fg(ratatui::style::Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                "█",
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::SLOW_BLINK),
+            ),
+            Span::styled(
+                "  Enter:Search  Esc:Cancel",
+                Style::default().fg(theme.fg_dim),
+            ),
+        ]);
+        let search_bar = Paragraph::new(search_line).style(Style::default().bg(theme.bg_subtle));
+        frame.render_widget(search_bar, chunks[0]);
+    } else {
+        let filter_bar = Paragraph::new(filter_line).style(Style::default().bg(theme.bg_subtle));
+        frame.render_widget(filter_bar, chunks[0]);
+    }
 
     // Issue list
     let items: Vec<ListItem> = list_state

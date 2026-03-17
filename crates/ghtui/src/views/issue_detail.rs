@@ -1,11 +1,11 @@
 use ghtui_core::AppState;
-use ghtui_core::state::issue::InlineEditTarget;
+use ghtui_core::state::issue::{InlineEditTarget, LabelPickerState};
 use ghtui_widgets::render_markdown;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap};
 
 pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     let theme = &state.theme;
@@ -75,6 +75,12 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
     // === Body + Comments ===
     render_body_comments(frame, state, theme, chunks[1]);
+
+    // === Label picker overlay ===
+    if let Some(ref picker) = detail_state.label_picker {
+        render_label_picker(frame, picker, theme, area);
+        return;
+    }
 
     // === Bottom editor for comments ===
     if is_comment_editing {
@@ -340,4 +346,68 @@ fn render_bottom_editor(
 ) {
     let widget = ghtui_widgets::InlineEditorView::new(&detail_state.editor, title);
     frame.render_widget(widget, area);
+}
+
+fn render_label_picker(
+    frame: &mut Frame,
+    picker: &LabelPickerState,
+    theme: &ghtui_core::theme::Theme,
+    area: Rect,
+) {
+    let height = (picker.available.len() as u16 + 4).min(area.height.saturating_sub(4));
+    let width = 50.min(area.width.saturating_sub(4));
+    let x = (area.width.saturating_sub(width)) / 2 + area.x;
+    let y = (area.height.saturating_sub(height)) / 2 + area.y;
+    let popup_area = Rect::new(x, y, width, height);
+
+    frame.render_widget(Clear, popup_area);
+
+    let items: Vec<ListItem> = picker
+        .available
+        .iter()
+        .enumerate()
+        .map(|(i, label)| {
+            let is_cursor = i == picker.cursor;
+            let is_selected = picker.selected_names.contains(&label.name);
+            let check = if is_selected { "[x] " } else { "[ ] " };
+            let cursor = if is_cursor { "▸ " } else { "  " };
+
+            let style = if is_cursor {
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD)
+            } else if is_selected {
+                Style::default().fg(theme.success)
+            } else {
+                Style::default().fg(Color::Gray)
+            };
+
+            ListItem::new(Line::from(vec![
+                Span::styled(cursor.to_string(), style),
+                Span::styled(
+                    check.to_string(),
+                    if is_selected {
+                        Style::default().fg(theme.success)
+                    } else {
+                        Style::default().fg(Color::DarkGray)
+                    },
+                ),
+                Span::styled(label.name.clone(), style),
+            ]))
+        })
+        .collect();
+
+    let title = format!(
+        " Labels ({}/{}) — Space:Toggle  s:Save  Esc:Cancel ",
+        picker.selected_names.len(),
+        picker.available.len()
+    );
+
+    let list = List::new(items).block(
+        Block::default()
+            .title(title)
+            .borders(Borders::ALL)
+            .style(Style::default().bg(Color::Black)),
+    );
+    frame.render_widget(list, popup_area);
 }
