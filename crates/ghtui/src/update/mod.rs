@@ -254,6 +254,54 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::IssueEditDelete => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.delete();
+            }
+            vec![]
+        }
+        Message::IssueEditTab => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.insert_tab();
+            }
+            vec![]
+        }
+        Message::IssueEditWordLeft => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.move_word_left();
+            }
+            vec![]
+        }
+        Message::IssueEditWordRight => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.move_word_right();
+            }
+            vec![]
+        }
+        Message::IssueEditPageUp => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.page_up();
+            }
+            vec![]
+        }
+        Message::IssueEditPageDown => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.page_down();
+            }
+            vec![]
+        }
+        Message::IssueEditUndo => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.undo();
+            }
+            vec![]
+        }
+        Message::IssueEditRedo => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.editor.redo();
+            }
+            vec![]
+        }
         Message::IssueEditSubmit => {
             if let Some(ref detail) = state.issue_detail {
                 if let Some(ref repo) = state.current_repo {
