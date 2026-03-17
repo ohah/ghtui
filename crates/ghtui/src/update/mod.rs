@@ -51,6 +51,13 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::PrDetailLoaded(detail) => {
             state.loading.remove("pr_detail");
             state.pr_detail = Some(PrDetailState::new(*detail));
+            // Fetch diff after detail is loaded (avoids race condition)
+            if let Some(ref repo) = state.current_repo {
+                if let Route::PrDetail { number, .. } = &state.route {
+                    state.loading.insert("pr_diff".to_string());
+                    return vec![Command::FetchPrDiff(repo.clone(), *number)];
+                }
+            }
             vec![]
         }
         Message::PrDiffLoaded(files) => {
@@ -2001,11 +2008,8 @@ fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command> {
         }
         Route::PrDetail { repo, number, .. } => {
             state.loading.insert("pr_detail".to_string());
-            state.loading.insert("pr_diff".to_string());
-            vec![
-                Command::FetchPrDetail(repo.clone(), *number),
-                Command::FetchPrDiff(repo.clone(), *number),
-            ]
+            // Diff is fetched after detail loads (see PrDetailLoaded handler)
+            vec![Command::FetchPrDetail(repo.clone(), *number)]
         }
         Route::IssueList { repo, filters } => {
             state.loading.insert("issue_list".to_string());
