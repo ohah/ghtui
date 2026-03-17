@@ -1,0 +1,16 @@
+[package]
+name = "ghtui-widgets"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+ghtui-core.workspace = true
+ratatui.workspace = true
+pulldown-cmark.workspace = true
+syntect.workspace = true
+unicode-width.workspace = true
+textwrap.workspace = true
+
+[dev-dependencies]

@@ -1,0 +1,127 @@
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ghtui_core::message::ModalKind;
+use ghtui_core::router::Route;
+use ghtui_core::state::InputMode;
+use ghtui_core::{AppState, Message};
+
+pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<Message> {
+    // Global: Ctrl-C always quits
+    if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
+        return Some(Message::Quit);
+    }
+
+    match state.input_mode {
+        InputMode::Insert => handle_insert_mode(key),
+        InputMode::Normal => handle_normal_mode(key, state),
+    }
+}
+
+fn handle_insert_mode(key: KeyEvent) -> Option<Message> {
+    match key.code {
+        KeyCode::Esc => Some(Message::ModalClose),
+        KeyCode::Enter => {
+            if key.modifiers.contains(KeyModifiers::CONTROL) {
+                Some(Message::ModalClose)
+            } else {
+                Some(Message::InputChanged("\n".to_string()))
+            }
+        }
+        KeyCode::Char(c) => Some(Message::InputChanged(c.to_string())),
+        KeyCode::Backspace => Some(Message::InputChanged("\x08".to_string())),
+        _ => None,
+    }
+}
+
+fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
+    // Modal-specific keys
+    if state.modal.is_some() {
+        return handle_modal_keys(key);
+    }
+
+    // Global keys
+    match key.code {
+        KeyCode::Char('q') => return Some(Message::Quit),
+        KeyCode::Char('?') => return Some(Message::ModalOpen(ModalKind::Help)),
+        KeyCode::Char('t') => return Some(Message::ToggleTheme),
+        // Tab navigation: 1-9 for global tabs (matching GitHub web)
+        KeyCode::Char('1') => return Some(Message::GlobalTabSelect(0)), // Code
+        KeyCode::Char('2') => return Some(Message::GlobalTabSelect(1)), // Issues
+        KeyCode::Char('3') => return Some(Message::GlobalTabSelect(2)), // Pull requests
+        KeyCode::Char('4') => return Some(Message::GlobalTabSelect(3)), // Actions
+        KeyCode::Char('5') => return Some(Message::GlobalTabSelect(4)), // Projects
+        KeyCode::Char('6') => return Some(Message::GlobalTabSelect(5)), // Wiki
+        KeyCode::Char('7') => return Some(Message::GlobalTabSelect(6)), // Security
+        KeyCode::Char('8') => return Some(Message::GlobalTabSelect(7)), // Insights
+        KeyCode::Char('9') => return Some(Message::GlobalTabSelect(8)), // Settings
+        _ => {}
+    }
+
+    // Tab / Shift-Tab for global tab navigation (except in detail views which use Tab internally)
+    let in_detail = matches!(
+        &state.route,
+        Route::PrDetail { .. } | Route::IssueDetail { .. } | Route::ActionDetail { .. } | Route::JobLog { .. }
+    );
+    if !in_detail {
+        match key.code {
+            KeyCode::Tab => return Some(Message::GlobalTabNext),
+            KeyCode::BackTab => return Some(Message::GlobalTabPrev),
+            _ => {}
+        }
+    }
+
+    // Esc behavior: in detail views go back, in list views do nothing
+    if key.code == KeyCode::Esc {
+        return match &state.route {
+            Route::PrDetail { .. }
+            | Route::IssueDetail { .. }
+            | Route::ActionDetail { .. }
+            | Route::JobLog { .. } => Some(Message::Back),
+            _ => None,
+        };
+    }
+
+    // Route-specific keys
+    match &state.route {
+        Route::PrDetail { .. } => handle_pr_detail_keys(key),
+        Route::IssueDetail { .. } => handle_issue_detail_keys(key),
+        _ => handle_list_keys(key),
+    }
+}
+
+fn handle_modal_keys(key: KeyEvent) -> Option<Message> {
+    match key.code {
+        KeyCode::Esc | KeyCode::Char('q') => Some(Message::ModalClose),
+        _ => None,
+    }
+}
+
+fn handle_list_keys(key: KeyEvent) -> Option<Message> {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Enter => Some(Message::ListSelect(0)),
+        KeyCode::Char('r') => Some(Message::Tick), // refresh
+        _ => None,
+    }
+}
+
+fn handle_pr_detail_keys(key: KeyEvent) -> Option<Message> {
+    match key.code {
+        KeyCode::Tab => Some(Message::TabChanged(1)),
+        KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
+        KeyCode::Char('c') => Some(Message::ModalOpen(ModalKind::AddComment)),
+        KeyCode::Char('m') => Some(Message::ModalOpen(ModalKind::MergePr)),
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        _ => None,
+    }
+}
+
+fn handle_issue_detail_keys(key: KeyEvent) -> Option<Message> {
+    match key.code {
+        KeyCode::Char('c') => Some(Message::ModalOpen(ModalKind::AddComment)),
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        _ => None,
+    }
+}

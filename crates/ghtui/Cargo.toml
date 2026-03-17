@@ -1,0 +1,25 @@
+[package]
+name = "ghtui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+ghtui-api.workspace = true
+ghtui-core.workspace = true
+ghtui-widgets.workspace = true
+ratatui.workspace = true
+crossterm.workspace = true
+tokio.workspace = true
+futures.workspace = true
+clap.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+dirs.workspace = true
+open.workspace = true
+arboard.workspace = true
+
+[dev-dependencies]
+chrono.workspace = true

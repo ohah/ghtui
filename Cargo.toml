@@ -1,6 +1,56 @@
-[package]
-name = "ghtui"
+[workspace]
+members = [
+    "crates/ghtui",
+    "crates/ghtui-api",
+    "crates/ghtui-core",
+    "crates/ghtui-widgets",
+]
+resolver = "3"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+repository = "https://github.com/ohah/ghtui"
 
-[dependencies]
+[workspace.dependencies]
+# Internal crates
+ghtui-api = { path = "crates/ghtui-api" }
+ghtui-core = { path = "crates/ghtui-core" }
+ghtui-widgets = { path = "crates/ghtui-widgets" }
+
+# TUI
+ratatui = "0.30"
+crossterm = "0.29"
+
+# Async
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+
+# HTTP & Serialization
+reqwest = { version = "0.13", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Markdown & Syntax
+pulldown-cmark = "0.13"
+syntect = "5"
+
+# Utilities
+chrono = { version = "0.4", features = ["serde"] }
+toml = "1.0"
+dirs = "6"
+lru = "0.16"
+open = "5"
+arboard = "3"
+unicode-width = "0.2"
+textwrap = "0.16"
+
+# Error handling & Logging
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
