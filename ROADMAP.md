@@ -129,12 +129,15 @@
 - [x] Suggestion에 현재 코드 자동 삽입
 - [x] 리뷰 코멘트 422 에러 수정
 
-### Phase 2-6 남은 기능
-- [ ] Auto-merge 활성화
+### Phase 2-6 완료 (Auto-merge/Linked/Viewed)
+- [x] Auto-merge 토글 (`G` — GraphQL enablePullRequestAutoMerge)
+- [x] Linked Issues 표시 (PR body에서 Closes/Fixes/Resolves #N 파싱)
+- [x] 파일별 Viewed 체크 (`V` — 로컬 추적, 파일트리에 ✓ 표시)
+- [x] auto_merge 상태 PR 헤더에 표시
+
+### Phase 2-7 남은 기능
 - [ ] Side-by-side diff 모드
 - [ ] 리뷰 스레드 resolve/unresolve
-- [ ] Linked issues
-- [ ] 파일별 Viewed 체크
 
 ## Phase 3 — Actions 탭 완성
 
