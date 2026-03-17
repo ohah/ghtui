@@ -122,6 +122,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         Route::IssueDetail { .. } => handle_issue_detail_keys(key, state),
         Route::ActionsList { .. } => handle_actions_list_keys(key, state),
         Route::ActionDetail { .. } | Route::JobLog { .. } => handle_action_detail_keys(key, state),
+        Route::Notifications => handle_notification_keys(key),
         Route::Security { .. } => handle_settings_keys(key),
         Route::Insights { .. } => handle_settings_keys(key),
         Route::Settings { .. } => handle_settings_keys(key),
@@ -148,6 +149,23 @@ fn handle_modal_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
                 None
             }
         }
+    }
+}
+
+fn handle_notification_keys(key: KeyEvent) -> Option<Message> {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Enter => Some(Message::NotificationNavigate),
+        KeyCode::Char('r') => Some(Message::Tick),
+        KeyCode::Char('m') => Some(Message::NotificationMarkRead),
+        KeyCode::Char('M') => Some(Message::NotificationMarkAllRead),
+        KeyCode::Char('u') => Some(Message::NotificationUnsubscribe),
+        KeyCode::Char('d') => Some(Message::NotificationDone),
+        KeyCode::Char('s') => Some(Message::NotificationCycleReason),
+        KeyCode::Char('e') => Some(Message::NotificationCycleType),
+        KeyCode::Char('g') => Some(Message::NotificationToggleGrouped),
+        _ => None,
     }
 }
 

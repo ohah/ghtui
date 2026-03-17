@@ -166,16 +166,17 @@
 - [x] 실시간 로그 스트리밍 (in_progress 잡 감지 → 5초 폴링 → auto-scroll)
 - [x] LIVE 인디케이터 표시
 
-## Phase 4 — Notifications 완성
+## Phase 4 — Notifications ✅ 완성
 
-현재 되는 것: 알림 목록, 개별 읽음 처리
-
-- [ ] 해당 PR/이슈로 이동 (Enter)
-- [ ] 필터 (reason, type)
-- [ ] 레포별 그룹핑
-- [ ] 구독 해제
-- [ ] Done 처리
-- [ ] 전체 읽음 UI
+- [x] 해당 PR/이슈로 이동 (Enter — URL에서 number 추출 → PrDetail/IssueDetail 네비게이션)
+- [x] 필터 (reason 순환 `s`: review/assign/mention/subscribed/ci, type 순환 `e`: PR/Issue/Release)
+- [x] 레포별 그룹핑 (`g` 토글)
+- [x] 구독 해제 (`u` — subscription DELETE API)
+- [x] Done 처리 (`d` — thread DELETE API)
+- [x] 전체 읽음 UI (`M` — PUT /notifications)
+- [x] 필터 바 렌더링 (reason/type/grouped 표시)
+- [x] reason 뱃지 (review, assign, @mention, CI)
+- [x] unread 카운트 표시
 
 ## Phase 5 — Search 완성 (API 이미 구현됨)
 

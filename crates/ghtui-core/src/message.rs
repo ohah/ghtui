@@ -222,6 +222,17 @@ pub enum Message {
     // Notifications
     NotificationsLoaded(Vec<Notification>),
     NotificationMarkedRead(String),
+    NotificationNavigate,
+    NotificationMarkRead,
+    NotificationMarkAllRead,
+    NotificationUnsubscribe,
+    NotificationDone,
+    NotificationCycleReason,
+    NotificationCycleType,
+    NotificationToggleGrouped,
+    NotificationAllMarkedRead,
+    NotificationUnsubscribed(String),
+    NotificationDoneResult(String),
 
     // Search
     SearchResults(SearchResultSet),

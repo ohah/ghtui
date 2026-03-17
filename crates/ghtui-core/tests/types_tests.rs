@@ -194,3 +194,107 @@ fn test_actions_filters_has_active() {
     filters.workflow_id = Some(123);
     assert!(filters.has_active_filters());
 }
+
+// -- NotificationFilters tests --
+
+#[test]
+fn test_notification_filters_default() {
+    use ghtui_core::types::NotificationFilters;
+    let filters = NotificationFilters::default();
+    assert!(filters.reason.is_none());
+    assert!(filters.subject_type.is_none());
+    assert!(!filters.has_active_filters());
+}
+
+#[test]
+fn test_notification_filters_cycle_reason() {
+    use ghtui_core::types::NotificationFilters;
+    let mut filters = NotificationFilters::default();
+
+    filters.cycle_reason();
+    assert_eq!(filters.reason.as_deref(), Some("review_requested"));
+    assert_eq!(filters.reason_display(), "Review requested");
+
+    filters.cycle_reason();
+    assert_eq!(filters.reason.as_deref(), Some("assign"));
+
+    filters.cycle_reason();
+    assert_eq!(filters.reason.as_deref(), Some("mention"));
+
+    filters.cycle_reason();
+    assert_eq!(filters.reason.as_deref(), Some("subscribed"));
+
+    filters.cycle_reason();
+    assert_eq!(filters.reason.as_deref(), Some("ci_activity"));
+
+    filters.cycle_reason();
+    assert!(filters.reason.is_none());
+}
+
+#[test]
+fn test_notification_filters_cycle_type() {
+    use ghtui_core::types::NotificationFilters;
+    let mut filters = NotificationFilters::default();
+
+    filters.cycle_type();
+    assert_eq!(filters.subject_type.as_deref(), Some("PullRequest"));
+    assert_eq!(filters.type_display(), "PRs");
+
+    filters.cycle_type();
+    assert_eq!(filters.subject_type.as_deref(), Some("Issue"));
+
+    filters.cycle_type();
+    assert_eq!(filters.subject_type.as_deref(), Some("Release"));
+
+    filters.cycle_type();
+    assert!(filters.subject_type.is_none());
+}
+
+#[test]
+fn test_notification_extract_number() {
+    use chrono::Utc;
+    use ghtui_core::types::*;
+
+    let notif = Notification {
+        id: "1".to_string(),
+        unread: true,
+        reason: "review_requested".to_string(),
+        updated_at: Utc::now(),
+        subject: NotificationSubject {
+            title: "Fix bug".to_string(),
+            subject_type: "PullRequest".to_string(),
+            url: Some("https://api.github.com/repos/owner/repo/pulls/42".to_string()),
+            latest_comment_url: None,
+        },
+        repository: NotificationRepo {
+            full_name: "owner/repo".to_string(),
+        },
+    };
+
+    assert_eq!(notif.extract_number(), Some(42));
+    assert_eq!(notif.repo_parts(), Some(("owner", "repo")));
+}
+
+#[test]
+fn test_notification_extract_number_none() {
+    use chrono::Utc;
+    use ghtui_core::types::*;
+
+    let notif = Notification {
+        id: "1".to_string(),
+        unread: false,
+        reason: "subscribed".to_string(),
+        updated_at: Utc::now(),
+        subject: NotificationSubject {
+            title: "Release v1.0".to_string(),
+            subject_type: "Release".to_string(),
+            url: None,
+            latest_comment_url: None,
+        },
+        repository: NotificationRepo {
+            full_name: "owner/repo".to_string(),
+        },
+    };
+
+    assert_eq!(notif.extract_number(), None);
+}

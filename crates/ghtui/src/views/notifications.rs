@@ -1,6 +1,6 @@
 use ghtui_core::AppState;
 use ratatui::Frame;
-use ratatui::layout::Rect;
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph};
@@ -39,61 +39,73 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     };
 
-    if notif_state.items.is_empty() {
-        let paragraph = Paragraph::new("  No notifications — all caught up!")
-            .style(theme.text_dim())
-            .block(
-                Block::default()
-                    .title(" Notifications ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
-        frame.render_widget(paragraph, area);
+    // Layout: filter bar + list
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Min(0)])
+        .split(area);
+
+    // Filter bar
+    render_filter_bar(frame, notif_state, theme, chunks[0]);
+
+    let filtered = notif_state.filtered_items();
+
+    if filtered.is_empty() {
+        let msg = if notif_state.filters.has_active_filters() {
+            "  No notifications matching filters"
+        } else {
+            "  No notifications — all caught up!"
+        };
+        let paragraph = Paragraph::new(msg).style(theme.text_dim()).block(
+            Block::default()
+                .title(" Notifications ")
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        );
+        frame.render_widget(paragraph, chunks[1]);
         return;
     }
 
-    let items: Vec<ListItem> = notif_state
-        .items
-        .iter()
-        .enumerate()
-        .map(|(i, notif)| {
-            let is_selected = i == notif_state.selected;
+    // Build list items (with optional repo grouping)
+    let items: Vec<ListItem> = if notif_state.grouped {
+        let groups = notif_state.repo_groups();
+        let mut list_items = Vec::new();
+        let mut flat_idx = 0usize;
 
-            let unread = if notif.unread {
-                Span::styled(" ● ", Style::default().fg(theme.accent))
-            } else {
-                Span::raw("   ")
-            };
+        for repo_name in &groups {
+            // Repo group header
+            list_items.push(ListItem::new(Line::from(vec![
+                Span::styled("  ", Style::default()),
+                Span::styled(repo_name.clone(), theme.text_bold()),
+            ])));
 
-            let type_icon = match notif.subject.subject_type.as_str() {
-                "PullRequest" => Span::styled("PR ", Style::default().fg(theme.success)),
-                "Issue" => Span::styled("IS ", Style::default().fg(theme.success)),
-                "Release" => Span::styled("RE ", Style::default().fg(theme.warning)),
-                _ => Span::styled("   ", Style::default().fg(theme.fg_muted)),
-            };
+            for notif in &filtered {
+                if notif.repository.full_name != *repo_name {
+                    continue;
+                }
+                let is_selected = flat_idx == notif_state.selected;
+                list_items.push(render_notification_item(notif, is_selected, false, theme));
+                flat_idx += 1;
+            }
+        }
+        list_items
+    } else {
+        filtered
+            .iter()
+            .enumerate()
+            .map(|(i, notif)| {
+                let is_selected = i == notif_state.selected;
+                render_notification_item(notif, is_selected, true, theme)
+            })
+            .collect()
+    };
 
-            let title_style = if is_selected {
-                theme.selected()
-            } else {
-                theme.text()
-            };
-
-            let line = Line::from(vec![
-                unread,
-                type_icon,
-                Span::styled(&notif.subject.title, title_style),
-                Span::raw(" "),
-                Span::styled(
-                    &notif.repository.full_name,
-                    Style::default().fg(theme.fg_dim),
-                ),
-            ]);
-
-            ListItem::new(line)
-        })
-        .collect();
-
-    let title = format!(" Notifications ({}) ", notif_state.items.len());
+    let unread_count = filtered.iter().filter(|n| n.unread).count();
+    let title = format!(
+        " Notifications ({}/{} unread) ",
+        unread_count,
+        filtered.len()
+    );
 
     let list = List::new(items)
         .block(
@@ -106,5 +118,110 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
     let mut list_widget_state = ListState::default();
     list_widget_state.select(Some(notif_state.selected));
-    frame.render_stateful_widget(list, area, &mut list_widget_state);
+    frame.render_stateful_widget(list, chunks[1], &mut list_widget_state);
+}
+
+fn render_notification_item<'a>(
+    notif: &'a ghtui_core::types::Notification,
+    is_selected: bool,
+    show_repo: bool,
+    theme: &ghtui_core::Theme,
+) -> ListItem<'a> {
+    let unread = if notif.unread {
+        Span::styled(" ● ", Style::default().fg(theme.accent))
+    } else {
+        Span::raw("   ")
+    };
+
+    let type_icon = match notif.subject.subject_type.as_str() {
+        "PullRequest" => Span::styled("PR ", Style::default().fg(theme.success)),
+        "Issue" => Span::styled("IS ", Style::default().fg(theme.success)),
+        "Release" => Span::styled("RE ", Style::default().fg(theme.warning)),
+        _ => Span::styled("   ", Style::default().fg(theme.fg_muted)),
+    };
+
+    let title_style = if is_selected {
+        theme.selected()
+    } else {
+        theme.text()
+    };
+
+    // Reason badge
+    let reason_badge = match notif.reason.as_str() {
+        "review_requested" => Span::styled(" review ", Style::default().fg(theme.warning)),
+        "assign" => Span::styled(" assign ", Style::default().fg(theme.accent)),
+        "mention" => Span::styled(" @mention ", Style::default().fg(theme.accent)),
+        "ci_activity" => Span::styled(" CI ", Style::default().fg(theme.fg_muted)),
+        _ => Span::styled("", Style::default()),
+    };
+
+    let mut spans = vec![
+        unread,
+        type_icon,
+        Span::styled(&notif.subject.title, title_style),
+        reason_badge,
+    ];
+
+    if show_repo {
+        spans.push(Span::raw(" "));
+        spans.push(Span::styled(
+            &notif.repository.full_name,
+            Style::default().fg(theme.fg_dim),
+        ));
+    }
+
+    ListItem::new(Line::from(spans))
+}
+
+fn render_filter_bar(
+    frame: &mut Frame,
+    notif_state: &ghtui_core::state::NotificationListState,
+    theme: &ghtui_core::Theme,
+    area: Rect,
+) {
+    let mut spans = vec![Span::styled(" ", Style::default())];
+
+    // Reason filter
+    let reason_style = if notif_state.filters.reason.is_some() {
+        Style::default().fg(theme.accent)
+    } else {
+        Style::default().fg(theme.fg_dim)
+    };
+    spans.push(Span::styled(
+        format!("[s]:{} ", notif_state.filters.reason_display()),
+        reason_style,
+    ));
+
+    // Type filter
+    let type_style = if notif_state.filters.subject_type.is_some() {
+        Style::default().fg(theme.accent)
+    } else {
+        Style::default().fg(theme.fg_dim)
+    };
+    spans.push(Span::styled(
+        format!("[e]:{} ", notif_state.filters.type_display()),
+        type_style,
+    ));
+
+    // Grouped toggle
+    let group_style = if notif_state.grouped {
+        Style::default().fg(theme.accent)
+    } else {
+        Style::default().fg(theme.fg_dim)
+    };
+    spans.push(Span::styled(
+        format!(
+            "[g]:{} ",
+            if notif_state.grouped {
+                "Grouped"
+            } else {
+                "Flat"
+            }
+        ),
+        group_style,
+    ));
+
+    let line = Line::from(spans);
+    let paragraph = Paragraph::new(line).style(Style::default().bg(theme.bg));
+    frame.render_widget(paragraph, area);
 }

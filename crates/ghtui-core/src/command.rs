@@ -77,6 +77,9 @@ pub enum Command {
     // Notifications
     FetchNotifications(NotificationFilters),
     MarkNotificationRead(String),
+    MarkAllNotificationsRead,
+    UnsubscribeThread(String),
+    MarkThreadDone(String),
 
     // Search
     Search(String, SearchKind, u32),
