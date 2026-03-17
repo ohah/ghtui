@@ -31,6 +31,7 @@ fn make_pr(number: u64, title: &str) -> PullRequest {
         merged_at: None,
         closed_at: None,
         head_ref: "feature".into(),
+        head_sha: "abc123".into(),
         base_ref: "main".into(),
         draft: false,
         labels: vec![],

@@ -1626,7 +1626,11 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             if matches!(state.route, Route::PrDetail { .. }) {
                 if let Some(ref mut detail) = state.pr_detail {
-                    detail.scroll = detail.scroll.saturating_sub(3);
+                    if detail.tab == 1 {
+                        detail.diff_scroll = detail.diff_scroll.saturating_sub(3);
+                    } else {
+                        detail.scroll = detail.scroll.saturating_sub(3);
+                    }
                     return vec![];
                 }
             }
@@ -1649,7 +1653,11 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             if matches!(state.route, Route::PrDetail { .. }) {
                 if let Some(ref mut detail) = state.pr_detail {
-                    detail.scroll += 3;
+                    if detail.tab == 1 {
+                        detail.diff_scroll += 3;
+                    } else {
+                        detail.scroll += 3;
+                    }
                     return vec![];
                 }
             }

@@ -81,11 +81,21 @@ impl GithubClient {
             "/repos/{}/{}/pulls/{}/comments",
             repo.owner, repo.name, number
         );
+        let checks_path = format!(
+            "/repos/{}/{}/commits/{}/check-runs",
+            repo.owner, repo.name, pr.head_sha
+        );
+        let status_path = format!(
+            "/repos/{}/{}/commits/{}/status",
+            repo.owner, repo.name, pr.head_sha
+        );
 
-        let (reviews_body, comments_body, review_comments_body) = tokio::join!(
+        let (reviews_body, comments_body, review_comments_body, checks_body, status_body) = tokio::join!(
             self.get(&reviews_path),
             self.get(&comments_path),
             self.get(&review_comments_path),
+            self.get(&checks_path),
+            self.get(&status_path),
         );
 
         let reviews: Vec<ApiReview> = serde_json::from_str(&reviews_body?).unwrap_or_default();
@@ -93,12 +103,45 @@ impl GithubClient {
         let review_comments: Vec<ApiReviewComment> =
             serde_json::from_str(&review_comments_body?).unwrap_or_default();
 
+        // Parse check runs
+        let mut checks: Vec<CheckStatus> = Vec::new();
+        if let Ok(body) = checks_body {
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&body) {
+                if let Some(runs) = val["check_runs"].as_array() {
+                    for run in runs {
+                        checks.push(CheckStatus {
+                            name: run["name"].as_str().unwrap_or("").to_string(),
+                            status: run["status"].as_str().unwrap_or("").to_string(),
+                            conclusion: run["conclusion"].as_str().map(|s| s.to_string()),
+                            url: run["html_url"].as_str().map(|s| s.to_string()),
+                        });
+                    }
+                }
+            }
+        }
+
+        // Parse commit statuses (older CI systems use this)
+        if let Ok(body) = status_body {
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&body) {
+                if let Some(statuses) = val["statuses"].as_array() {
+                    for status in statuses {
+                        checks.push(CheckStatus {
+                            name: status["context"].as_str().unwrap_or("").to_string(),
+                            status: status["state"].as_str().unwrap_or("").to_string(),
+                            conclusion: status["state"].as_str().map(|s| s.to_string()),
+                            url: status["target_url"].as_str().map(|s| s.to_string()),
+                        });
+                    }
+                }
+            }
+        }
+
         Ok(PullRequestDetail {
             pr,
             reviews: reviews.into_iter().map(|r| r.into()).collect(),
             comments,
             review_comments: review_comments.into_iter().map(|c| c.into()).collect(),
-            checks: vec![],
+            checks,
         })
     }
 
