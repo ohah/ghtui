@@ -1,5 +1,7 @@
 use ghtui_core::types::common::RepoId;
-use ghtui_core::types::insights::{CommitActivity, ContributorStats, TrafficClones, TrafficViews};
+use ghtui_core::types::insights::{
+    CodeFrequency, CommitActivity, ContributorStats, Fork, TrafficClones, TrafficViews,
+};
 
 use crate::client::GithubClient;
 use crate::error::ApiError;
@@ -66,5 +68,27 @@ impl GithubClient {
             }),
             Err(e) => Err(e),
         }
+    }
+
+    pub async fn get_code_frequency(&self, repo: &RepoId) -> Result<Vec<CodeFrequency>, ApiError> {
+        let path = format!("/repos/{}/{}/stats/code_frequency", repo.owner, repo.name);
+        match self.get(&path).await {
+            Ok(body) => {
+                let freq: Vec<CodeFrequency> = serde_json::from_str(&body).unwrap_or_default();
+                Ok(freq)
+            }
+            Err(ApiError::GitHub { status: 202, .. }) => Ok(Vec::new()),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn list_forks(&self, repo: &RepoId) -> Result<Vec<Fork>, ApiError> {
+        let path = format!(
+            "/repos/{}/{}/forks?sort=stargazers&per_page=30",
+            repo.owner, repo.name
+        );
+        let body = self.get(&path).await?;
+        let forks: Vec<Fork> = serde_json::from_str(&body).unwrap_or_default();
+        Ok(forks)
     }
 }

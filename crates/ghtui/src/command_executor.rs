@@ -408,6 +408,14 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Ok(views) => Message::TrafficViewsLoaded(views),
             Err(e) => Message::Error(e.into()),
         },
+        Command::FetchCodeFrequency(repo) => match client.get_code_frequency(&repo).await {
+            Ok(freq) => Message::CodeFrequencyLoaded(freq),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::FetchForks(repo) => match client.list_forks(&repo).await {
+            Ok(forks) => Message::ForksLoaded(forks),
+            Err(e) => Message::Error(e.into()),
+        },
 
         // Security
         Command::FetchDependabotAlerts(repo) => match client.list_dependabot_alerts(&repo).await {

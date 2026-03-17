@@ -66,3 +66,17 @@ pub struct TrafficEntry {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CodeFrequency(pub i64, pub i64, pub i64); // [week, additions, deletions]
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Fork {
+    pub full_name: String,
+    pub owner: ForkOwner,
+    pub stargazers_count: u64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ForkOwner {
+    pub login: String,
+}

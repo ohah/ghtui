@@ -48,6 +48,8 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         format!("Contributors ({})", insights.contributors.len()),
         "Commit Activity".to_string(),
         "Traffic".to_string(),
+        "Code Frequency".to_string(),
+        format!("Forks ({})", insights.forks.len()),
     ];
     let tabs = Tabs::new(tab_titles)
         .select(insights.tab)
@@ -69,6 +71,8 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         0 => render_contributors(frame, state, chunks[1]),
         1 => render_commit_activity(frame, state, chunks[1]),
         2 => render_traffic(frame, state, chunks[1]),
+        3 => render_code_frequency(frame, state, chunks[1]),
+        4 => render_forks(frame, state, chunks[1]),
         _ => {}
     }
 }
@@ -296,4 +300,149 @@ fn render_traffic(frame: &mut Frame, state: &AppState, area: Rect) {
         .wrap(Wrap { trim: false })
         .scroll((insights.scroll as u16, 0));
     frame.render_widget(paragraph, area);
+}
+
+fn render_code_frequency(frame: &mut Frame, state: &AppState, area: Rect) {
+    let theme = &state.theme;
+    let insights = state.insights.as_ref().unwrap();
+
+    if state.is_loading("code_frequency") || insights.code_frequency.is_empty() {
+        let msg = if state.is_loading("code_frequency") {
+            "  Loading code frequency..."
+        } else {
+            "  No code frequency data available"
+        };
+        let paragraph = Paragraph::new(msg).style(theme.text_dim()).block(
+            Block::default()
+                .title(" Code Frequency ")
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        );
+        frame.render_widget(paragraph, area);
+        return;
+    }
+
+    let recent: Vec<_> = insights
+        .code_frequency
+        .iter()
+        .rev()
+        .take(26)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect();
+
+    let max_val = recent
+        .iter()
+        .map(|cf| cf.1.unsigned_abs().max(cf.2.unsigned_abs()))
+        .max()
+        .unwrap_or(1)
+        .max(1);
+
+    let mut lines: Vec<Line<'static>> = Vec::new();
+    lines.push(Line::raw(""));
+    lines.push(Line::styled(
+        "  Additions/Deletions (last 26 weeks)".to_string(),
+        Style::default()
+            .fg(theme.accent)
+            .add_modifier(Modifier::BOLD),
+    ));
+    lines.push(Line::raw(""));
+
+    for cf in &recent {
+        let ts = chrono::DateTime::from_timestamp(cf.0, 0)
+            .map(|dt| dt.format("%m/%d").to_string())
+            .unwrap_or_default();
+
+        let add_bar_len = ((cf.1.unsigned_abs() as f64 / max_val as f64) * 30.0) as usize;
+        let del_bar_len = ((cf.2.unsigned_abs() as f64 / max_val as f64) * 30.0) as usize;
+
+        lines.push(Line::from(vec![
+            Span::styled(format!("  {} ", ts), Style::default().fg(theme.fg_dim)),
+            Span::styled(format!("+{:<6}", cf.1), Style::default().fg(theme.success)),
+            Span::styled("█".repeat(add_bar_len), Style::default().fg(theme.success)),
+        ]));
+        lines.push(Line::from(vec![
+            Span::styled("        ".to_string(), Style::default()),
+            Span::styled(
+                format!("-{:<6}", cf.2.unsigned_abs()),
+                Style::default().fg(theme.danger),
+            ),
+            Span::styled("█".repeat(del_bar_len), Style::default().fg(theme.danger)),
+        ]));
+    }
+
+    let paragraph = Paragraph::new(lines)
+        .block(
+            Block::default()
+                .title(" Code Frequency ")
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        )
+        .wrap(Wrap { trim: false })
+        .scroll((insights.scroll as u16, 0));
+    frame.render_widget(paragraph, area);
+}
+
+fn render_forks(frame: &mut Frame, state: &AppState, area: Rect) {
+    let theme = &state.theme;
+    let insights = state.insights.as_ref().unwrap();
+
+    if state.is_loading("forks") {
+        let spinner = ghtui_widgets::Spinner::new(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as usize
+                / 100,
+        );
+        let paragraph = Paragraph::new(Line::from(spinner.span()))
+            .style(theme.text())
+            .block(
+                Block::default()
+                    .title(" Forks ")
+                    .borders(Borders::ALL)
+                    .border_style(theme.border_style()),
+            );
+        frame.render_widget(paragraph, area);
+        return;
+    }
+
+    if insights.forks.is_empty() {
+        let paragraph = Paragraph::new("  No forks").style(theme.text_dim()).block(
+            Block::default()
+                .title(" Forks ")
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        );
+        frame.render_widget(paragraph, area);
+        return;
+    }
+
+    let items: Vec<ListItem> = insights
+        .forks
+        .iter()
+        .map(|fork| {
+            ListItem::new(Line::from(vec![
+                Span::styled("  ", Style::default()),
+                Span::styled(fork.full_name.clone(), theme.text()),
+                Span::styled(
+                    format!(" ★{}", fork.stargazers_count),
+                    Style::default().fg(theme.warning),
+                ),
+                Span::styled(
+                    format!(" @{}", fork.owner.login),
+                    Style::default().fg(theme.fg_dim),
+                ),
+            ]))
+        })
+        .collect();
+
+    let list = List::new(items).block(
+        Block::default()
+            .title(format!(" Forks ({}) ", insights.forks.len()))
+            .borders(Borders::ALL)
+            .border_style(theme.border_style()),
+    );
+    frame.render_widget(list, area);
 }
