@@ -249,6 +249,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
 
+        // Mouse scroll → same as j/k
+        Message::ScrollUp => update(state, Message::ListSelect(usize::MAX)),
+        Message::ScrollDown => update(state, Message::ListSelect(1)),
+
         // UI
         Message::InputChanged(text) => {
             if text == "\x08" {
@@ -596,6 +600,25 @@ fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Command> {
                     list.select_prev();
                 } else {
                     list.select_next();
+                }
+            }
+        }
+        Route::ActionDetail { repo, run_id } => {
+            if let Some(ref mut detail) = state.action_detail {
+                if delta == 0 {
+                    // Enter: fetch log for selected job
+                    if let Some(job) = detail.detail.jobs.get(detail.selected_job) {
+                        let job_id = job.id;
+                        detail.log = None;
+                        detail.log_scroll = 0;
+                        state.loading.insert("job_log".to_string());
+                        return vec![Command::FetchJobLog(repo.clone(), *run_id, job_id)];
+                    }
+                } else if delta == usize::MAX {
+                    detail.selected_job = detail.selected_job.saturating_sub(1);
+                } else {
+                    let max = detail.detail.jobs.len().saturating_sub(1);
+                    detail.selected_job = (detail.selected_job + 1).min(max);
                 }
             }
         }

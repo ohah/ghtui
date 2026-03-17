@@ -55,6 +55,14 @@ impl App {
                 Some(event) = events.next() => {
                     match event {
                         Event::Key(key) => keybindings::handle_key(key, &self.state),
+                        Event::Mouse(mouse) => {
+                            use crossterm::event::{MouseEventKind};
+                            match mouse.kind {
+                                MouseEventKind::ScrollUp => Some(Message::ScrollUp),
+                                MouseEventKind::ScrollDown => Some(Message::ScrollDown),
+                                _ => None,
+                            }
+                        }
                         Event::Resize(w, h) => Some(Message::Resize(w, h)),
                         Event::Tick => {
                             self.tick = self.tick.wrapping_add(1);

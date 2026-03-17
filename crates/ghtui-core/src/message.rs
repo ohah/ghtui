@@ -61,6 +61,10 @@ pub enum Message {
     SettingsBranchProtectionsLoaded(Vec<settings::BranchProtection>),
     SettingsCollaboratorsLoaded(Vec<settings::Collaborator>),
 
+    // Mouse
+    ScrollUp,
+    ScrollDown,
+
     // UI
     InputChanged(String),
     ListSelect(usize),
