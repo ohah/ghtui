@@ -10,11 +10,9 @@
 | 2 | Issues | ✅ | issue_list, issue_detail | 목록, 상세, 닫기/열기 |
 | 3 | Pull requests | ✅ | pr_list, pr_detail | 목록, 상세(Conversation/Diff/Checks), 머지, 리뷰 |
 | 4 | Actions | ✅ | actions_list, action_detail | 워크플로우 목록, 잡 목록, 로그, 취소/재실행 |
-| 5 | Projects | - | placeholder | 미구현 |
-| 6 | Wiki | - | placeholder | 미구현 |
-| 7 | Security | ✅ | security.rs | Dependabot, Code Scanning, Secret Scanning (read-only) |
-| 8 | Insights | ✅ | insights.rs | Contributors, Commit Activity, Traffic (read-only) |
-| 9 | Settings | ✅ | settings.rs | 일반설정, 브랜치 보호, Collaborators (read-only) |
+| 5 | Security | ✅ | security.rs | Dependabot, Code Scanning, Secret Scanning (read-only) |
+| 6 | Insights | ✅ | insights.rs | Contributors, Commit Activity, Traffic (read-only) |
+| 7 | Settings | ✅ | settings.rs | 일반설정, 브랜치 보호, Collaborators (read-only) |
 
 ### 완료된 기반 기능
 

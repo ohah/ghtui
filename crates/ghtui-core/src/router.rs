@@ -56,16 +56,6 @@ pub enum Route {
         job_id: u64,
     },
 
-    // Projects tab
-    Projects {
-        repo: RepoId,
-    },
-
-    // Wiki tab
-    Wiki {
-        repo: RepoId,
-    },
-
     // Security tab
     Security {
         repo: RepoId,
@@ -89,24 +79,20 @@ pub enum Route {
     },
 }
 
-/// Global tab indices matching the GitHub web layout exactly
+/// Global tab indices
 pub const TAB_CODE: usize = 0;
 pub const TAB_ISSUES: usize = 1;
 pub const TAB_PRS: usize = 2;
 pub const TAB_ACTIONS: usize = 3;
-pub const TAB_PROJECTS: usize = 4;
-pub const TAB_WIKI: usize = 5;
-pub const TAB_SECURITY: usize = 6;
-pub const TAB_INSIGHTS: usize = 7;
-pub const TAB_SETTINGS: usize = 8;
+pub const TAB_SECURITY: usize = 4;
+pub const TAB_INSIGHTS: usize = 5;
+pub const TAB_SETTINGS: usize = 6;
 
 pub const TAB_LABELS: &[&str] = &[
     "Code",
     "Issues",
     "Pull requests",
     "Actions",
-    "Projects",
-    "Wiki",
     "Security",
     "Insights",
     "Settings",
@@ -124,8 +110,6 @@ impl Route {
             Route::ActionsList { repo, .. } => format!("{} - Actions", repo),
             Route::ActionDetail { repo, run_id } => format!("{} - Run #{}", repo, run_id),
             Route::JobLog { repo, job_id, .. } => format!("{} - Job #{}", repo, job_id),
-            Route::Projects { repo } => format!("{} - Projects", repo),
-            Route::Wiki { repo } => format!("{} - Wiki", repo),
             Route::Security { repo } => format!("{} - Security", repo),
             Route::Insights { repo } => format!("{} - Insights", repo),
             Route::Settings { repo } => format!("{} - Settings", repo),
@@ -143,8 +127,6 @@ impl Route {
             Route::ActionsList { .. } | Route::ActionDetail { .. } | Route::JobLog { .. } => {
                 Some(TAB_ACTIONS)
             }
-            Route::Projects { .. } => Some(TAB_PROJECTS),
-            Route::Wiki { .. } => Some(TAB_WIKI),
             Route::Security { .. } => Some(TAB_SECURITY),
             Route::Insights { .. } => Some(TAB_INSIGHTS),
             Route::Settings { .. } => Some(TAB_SETTINGS),

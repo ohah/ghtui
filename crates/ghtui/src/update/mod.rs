@@ -423,8 +423,6 @@ fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command> {
             }
         }
         Route::Code { .. } => vec![],
-        Route::Projects { .. } => vec![],
-        Route::Wiki { .. } => vec![],
         Route::Security { repo } => {
             state.security = Some(SecurityState::new());
             state.loading.insert("security".to_string());
@@ -492,8 +490,6 @@ fn navigate_to_tab(state: &mut AppState) -> Vec<Command> {
             repo,
             filters: ActionsFilters::default(),
         },
-        TAB_PROJECTS => Route::Projects { repo },
-        TAB_WIKI => Route::Wiki { repo },
         TAB_SECURITY => Route::Security { repo },
         TAB_INSIGHTS => Route::Insights { repo },
         TAB_SETTINGS => Route::Settings { repo },
