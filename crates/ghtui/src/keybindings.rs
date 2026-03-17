@@ -292,6 +292,8 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             KeyCode::Char('j') | KeyCode::Down => Some(Message::PrDiffCursorDown),
             KeyCode::Char('k') | KeyCode::Up => Some(Message::PrDiffCursorUp),
             KeyCode::Enter => Some(Message::PrDiffToggleCollapse),
+            KeyCode::Char('l') | KeyCode::Right => Some(Message::PrDiffExpand),
+            KeyCode::Char('h') | KeyCode::Left => Some(Message::PrDiffCollapse),
             KeyCode::Esc => Some(Message::PrDiffClearSelection),
             KeyCode::PageDown => Some(Message::ScrollDown),
             KeyCode::PageUp => Some(Message::ScrollUp),
