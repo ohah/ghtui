@@ -115,6 +115,17 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 Err(e) => Message::Error(e.into()),
             }
         }
+        Command::SetAutoMerge(repo, number, enable) => {
+            let result = if enable {
+                client.enable_auto_merge(&repo, number).await
+            } else {
+                client.disable_auto_merge(&repo, number).await
+            };
+            match result {
+                Ok(()) => Message::PrUpdated(number),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
 
         // Issues
         Command::FetchIssueList(repo, filters, page) => {

@@ -96,6 +96,8 @@ pub enum Message {
     PrMilestoneClear,
     PrMilestoneCancel,
     PrDraftToggle,     // Toggle draft status
+    PrAutoMergeToggle, // Toggle auto-merge
+    PrDiffMarkViewed,  // Mark file as viewed (local)
     PrReviewerToggle,  // Open reviewer picker
     PrReviewerApply,   // Apply reviewer changes
     PrReviewerCancel,  // Cancel reviewer picker
