@@ -1,9 +1,9 @@
 use ghtui_core::AppState;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::style::{Modifier, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph};
+use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap};
 
 pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     let theme = &state.theme;
@@ -39,67 +39,60 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     };
 
+    // Separate pinned and unpinned issues
+    let pinned_count = list_state
+        .items
+        .iter()
+        .filter(|i| list_state.pinned_numbers.contains(&i.number))
+        .count();
+
+    // Card height: 4 lines per card (border top, title+labels, meta, border bottom)
+    // Cards laid out horizontally, 2 per row
+    let card_rows = (pinned_count + 1) / 2; // ceil div
+    let pinned_height = if pinned_count > 0 {
+        (card_rows as u16 * 4) + 1 // +1 for "Pinned" header
+    } else {
+        0
+    };
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1),
-            Constraint::Min(0),
-            Constraint::Length(1),
+            Constraint::Length(1),             // Filter bar
+            Constraint::Length(pinned_height), // Pinned cards
+            Constraint::Min(0),                // Issue list
+            Constraint::Length(1),             // Footer
         ])
         .split(area);
 
-    // Filter bar
-    let filter_state = list_state
-        .filters
-        .state
-        .map(|s| format!("{}", s))
-        .unwrap_or_else(|| "open".to_string());
-    let is_open = filter_state == "open";
+    // === Filter bar ===
+    render_filter_bar(frame, list_state, theme, chunks[0]);
 
-    let filter_line = Line::from(vec![
-        Span::styled(" Filter: ", Style::default().fg(theme.fg_muted)),
-        Span::styled(
-            if is_open { " ● Open " } else { "   Open " },
-            if is_open {
-                Style::default()
-                    .fg(theme.success)
-                    .add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(theme.fg_muted)
-            },
-        ),
-        Span::styled(" / ", Style::default().fg(theme.fg_dim)),
-        Span::styled(
-            if !is_open {
-                " ● Closed "
-            } else {
-                "   Closed "
-            },
-            if !is_open {
-                Style::default().fg(theme.done).add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(theme.fg_muted)
-            },
-        ),
-        Span::styled("  │ ", Style::default().fg(theme.fg_dim)),
-        Span::styled(
-            format!("Sort: {}", list_state.sort_display()),
-            Style::default().fg(theme.fg_muted),
-        ),
-        Span::styled(
-            "  (s:state  o:sort  /:search)",
-            Style::default().fg(theme.fg_dim),
-        ),
-    ]);
+    // === Pinned cards ===
+    if pinned_count > 0 {
+        render_pinned_cards(frame, list_state, theme, chunks[1]);
+    }
 
-    // If in search mode, show search bar instead of filter
+    // === Issue list (non-pinned only in list) ===
+    render_issue_list(frame, list_state, theme, chunks[2]);
+
+    // === Footer ===
+    render_footer(frame, list_state, theme, chunks[3]);
+}
+
+fn render_filter_bar(
+    frame: &mut Frame,
+    list_state: &ghtui_core::state::IssueListState,
+    theme: &ghtui_core::theme::Theme,
+    area: Rect,
+) {
     if list_state.search_mode {
         let search_line = Line::from(vec![
             Span::styled(" 🔍 ", Style::default().fg(theme.accent)),
             Span::styled(
                 list_state.search_query.clone(),
                 Style::default()
-                    .fg(ratatui::style::Color::White)
+                    .fg(Color::White)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
@@ -113,27 +106,195 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 Style::default().fg(theme.fg_dim),
             ),
         ]);
-        let search_bar = Paragraph::new(search_line).style(Style::default().bg(theme.bg_subtle));
-        frame.render_widget(search_bar, chunks[0]);
+        let bar = Paragraph::new(search_line).style(Style::default().bg(theme.bg_subtle));
+        frame.render_widget(bar, area);
     } else {
-        let filter_bar = Paragraph::new(filter_line).style(Style::default().bg(theme.bg_subtle));
-        frame.render_widget(filter_bar, chunks[0]);
+        let filter_state = list_state
+            .filters
+            .state
+            .map(|s| format!("{}", s))
+            .unwrap_or_else(|| "open".to_string());
+        let is_open = filter_state == "open";
+
+        let line = Line::from(vec![
+            Span::styled(" Filter: ", Style::default().fg(theme.fg_muted)),
+            Span::styled(
+                if is_open { " ● Open " } else { "   Open " },
+                if is_open {
+                    Style::default()
+                        .fg(theme.success)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(theme.fg_muted)
+                },
+            ),
+            Span::styled(" / ", Style::default().fg(theme.fg_dim)),
+            Span::styled(
+                if !is_open {
+                    " ● Closed "
+                } else {
+                    "   Closed "
+                },
+                if !is_open {
+                    Style::default().fg(theme.done).add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(theme.fg_muted)
+                },
+            ),
+            Span::styled("  │ ", Style::default().fg(theme.fg_dim)),
+            Span::styled(
+                format!("Sort: {}", list_state.sort_display()),
+                Style::default().fg(theme.fg_muted),
+            ),
+            Span::styled(
+                "  (s:state  o:sort  /:search)",
+                Style::default().fg(theme.fg_dim),
+            ),
+        ]);
+        let bar = Paragraph::new(line).style(Style::default().bg(theme.bg_subtle));
+        frame.render_widget(bar, area);
+    }
+}
+
+fn render_pinned_cards(
+    frame: &mut Frame,
+    list_state: &ghtui_core::state::IssueListState,
+    theme: &ghtui_core::theme::Theme,
+    area: Rect,
+) {
+    let pinned: Vec<_> = list_state
+        .items
+        .iter()
+        .enumerate()
+        .filter(|(_, i)| list_state.pinned_numbers.contains(&i.number))
+        .collect();
+
+    if pinned.is_empty() {
+        return;
     }
 
-    // Issue list
+    // Header
+    let header_area = Rect::new(area.x, area.y, area.width, 1);
+    let header = Paragraph::new(Line::from(vec![
+        Span::styled(
+            " 📌 Pinned ",
+            Style::default()
+                .fg(theme.warning)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            format!("({})", pinned.len()),
+            Style::default().fg(theme.fg_muted),
+        ),
+    ]));
+    frame.render_widget(header, header_area);
+
+    // Cards area (below header)
+    let cards_area = Rect::new(
+        area.x,
+        area.y + 1,
+        area.width,
+        area.height.saturating_sub(1),
+    );
+
+    // Layout cards in rows of 2
+    let card_width = (cards_area.width / 2).max(20);
+    let mut y = cards_area.y;
+
+    for row_cards in pinned.chunks(2) {
+        if y + 3 > cards_area.y + cards_area.height {
+            break;
+        }
+
+        for (col, (list_idx, issue)) in row_cards.iter().enumerate() {
+            let x = cards_area.x + (col as u16 * card_width);
+            let w = if col == 0 && row_cards.len() == 1 {
+                cards_area.width // Full width if only 1 card in row
+            } else {
+                card_width.min(cards_area.width - (col as u16 * card_width))
+            };
+            let card_area = Rect::new(x, y, w, 3);
+
+            let is_selected = *list_idx == list_state.selected;
+
+            // Card content
+            let state_icon = match issue.state {
+                ghtui_core::types::IssueState::Open => "● ",
+                ghtui_core::types::IssueState::Closed => "● ",
+            };
+            let state_color = match issue.state {
+                ghtui_core::types::IssueState::Open => theme.success,
+                ghtui_core::types::IssueState::Closed => theme.done,
+            };
+
+            let mut title_spans = vec![
+                Span::styled(state_icon, Style::default().fg(state_color)),
+                Span::styled(
+                    issue.title.clone(),
+                    if is_selected {
+                        theme.selected()
+                    } else {
+                        theme.text_bold()
+                    },
+                ),
+                Span::styled(
+                    format!(" #{}", issue.number),
+                    Style::default().fg(theme.fg_muted),
+                ),
+            ];
+
+            let mut meta_spans: Vec<Span> = Vec::new();
+            for label in issue.labels.iter().take(3) {
+                meta_spans.push(Span::styled(
+                    format!(" {} ", label.name),
+                    Style::default().fg(theme.accent),
+                ));
+            }
+            if let Some(count) = issue.comments {
+                if count > 0 {
+                    meta_spans.push(Span::styled(
+                        format!(" 💬{}", count),
+                        Style::default().fg(theme.fg_dim),
+                    ));
+                }
+            }
+
+            let lines = vec![Line::from(title_spans), Line::from(meta_spans)];
+
+            let border_color = if is_selected {
+                theme.accent
+            } else {
+                theme.border
+            };
+            let card = Paragraph::new(lines)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(border_color))
+                        .style(Style::default().bg(theme.bg_subtle)),
+                )
+                .wrap(Wrap { trim: true });
+            frame.render_widget(card, card_area);
+        }
+
+        y += 3;
+    }
+}
+
+fn render_issue_list(
+    frame: &mut Frame,
+    list_state: &ghtui_core::state::IssueListState,
+    theme: &ghtui_core::theme::Theme,
+    area: Rect,
+) {
+    // Show all issues (pinned ones are also in list but already shown as cards)
     let items: Vec<ListItem> = list_state
         .items
         .iter()
         .enumerate()
         .map(|(i, issue)| {
             let is_selected = i == list_state.selected;
-
             let is_pinned = list_state.pinned_numbers.contains(&issue.number);
-            let pin_icon = if is_pinned {
-                Span::styled("📌", Style::default().fg(theme.warning))
-            } else {
-                Span::raw("  ")
-            };
 
             let state_icon = match issue.state {
                 ghtui_core::types::IssueState::Open => {
@@ -151,7 +312,11 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
             };
 
             let mut spans = vec![
-                pin_icon,
+                if is_pinned {
+                    Span::styled("📌", Style::default().fg(theme.warning))
+                } else {
+                    Span::raw("  ")
+                },
                 state_icon,
                 Span::styled(issue.title.clone(), title_style),
                 Span::styled(
@@ -160,7 +325,6 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 ),
             ];
 
-            // Labels
             for label in &issue.labels {
                 spans.push(Span::styled(
                     format!(" {} ", label.name),
@@ -168,7 +332,6 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 ));
             }
 
-            // Comment count
             if let Some(count) = issue.comments {
                 if count > 0 {
                     spans.push(Span::styled(
@@ -178,7 +341,6 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 }
             }
 
-            // Assignees
             if !issue.assignees.is_empty() {
                 let assignees: Vec<String> =
                     issue.assignees.iter().map(|a| a.login.clone()).collect();
@@ -205,9 +367,15 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
     let mut list_widget_state = ListState::default();
     list_widget_state.select(Some(list_state.selected));
-    frame.render_stateful_widget(list, chunks[1], &mut list_widget_state);
+    frame.render_stateful_widget(list, area, &mut list_widget_state);
+}
 
-    // Pagination footer
+fn render_footer(
+    frame: &mut Frame,
+    list_state: &ghtui_core::state::IssueListState,
+    theme: &ghtui_core::theme::Theme,
+    area: Rect,
+) {
     let page = list_state.pagination.page;
     let has_next = list_state.pagination.has_next;
     let page_info = format!(" Page {} ", page);
@@ -227,5 +395,5 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         ),
     ]);
     let footer = Paragraph::new(footer_line).style(Style::default().bg(theme.bg_subtle));
-    frame.render_widget(footer, chunks[2]);
+    frame.render_widget(footer, area);
 }
