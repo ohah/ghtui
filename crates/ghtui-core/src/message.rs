@@ -238,6 +238,12 @@ pub enum Message {
 
     // Search
     SearchResults(SearchResultSet),
+    SearchOpen,          // Open global search
+    SearchInput(String), // Search query input
+    SearchSubmit,        // Submit search query
+    SearchCancel,        // Cancel search
+    SearchCycleKind,     // Cycle search kind (Repos/Issues/Code)
+    SearchNavigate,      // Enter on selected result
 
     // Insights
     ContributorStatsLoaded(Vec<insights::ContributorStats>),
