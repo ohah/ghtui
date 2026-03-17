@@ -35,6 +35,7 @@ pub enum Command {
     AddReaction(RepoId, u64, String, bool), // repo, id, reaction, is_issue (vs comment)
     SetMilestone(RepoId, u64, Option<u64>), // repo, issue_number, milestone_number
     FetchMilestones(RepoId),
+    SearchIssues(RepoId, String), // repo, query - search issues and return as IssueListLoaded
     AddComment(RepoId, u64, String),
     UpdateComment(RepoId, u64, u64, String),
 
