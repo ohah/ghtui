@@ -1,4 +1,5 @@
 use ghtui_core::router::Route;
+use ghtui_core::state::issue::InlineEditTarget;
 use ghtui_core::state::*;
 use ghtui_core::types::{IssueFilters, IssueState};
 use ghtui_core::{AppState, Command, Message};
@@ -165,6 +166,102 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             } else {
                 vec![]
             }
+        }
+
+        // Inline editing
+        Message::IssueStartEdit => {
+            if let Some(ref mut detail) = state.issue_detail {
+                match detail.selected_comment {
+                    None => detail.start_edit_issue(),
+                    Some(idx) => detail.start_edit_comment(idx),
+                }
+            }
+            vec![]
+        }
+        Message::IssueStartComment => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.start_new_comment();
+            }
+            vec![]
+        }
+        Message::IssueStartReply => {
+            if let Some(ref mut detail) = state.issue_detail {
+                if let Some(idx) = detail.selected_comment {
+                    detail.start_quote_reply(idx);
+                } else {
+                    detail.start_new_comment();
+                }
+            }
+            vec![]
+        }
+        Message::IssueEditInput(text) => {
+            if let Some(ref mut detail) = state.issue_detail {
+                if text == "\x08" {
+                    detail.edit_buffer.pop();
+                } else {
+                    detail.edit_buffer.push_str(&text);
+                }
+            }
+            vec![]
+        }
+        Message::IssueEditSubmit => {
+            if let Some(ref detail) = state.issue_detail {
+                if let Some(ref repo) = state.current_repo {
+                    let cmds = match &detail.edit_target {
+                        Some(InlineEditTarget::IssueBody) => {
+                            let input = detail.edit_buffer.clone();
+                            let mut parts = input.splitn(2, '\n');
+                            let title = parts.next().unwrap_or("").trim().to_string();
+                            let body = parts.next().map(|b| b.trim().to_string());
+                            let number = detail.detail.issue.number;
+                            let title_opt = if title.is_empty() { None } else { Some(title) };
+                            vec![Command::UpdateIssue(repo.clone(), number, title_opt, body)]
+                        }
+                        Some(InlineEditTarget::Comment(idx)) => {
+                            if let Some(comment) = detail.detail.comments.get(*idx) {
+                                let body = detail.edit_buffer.clone();
+                                if body.trim().is_empty() {
+                                    vec![]
+                                } else {
+                                    vec![Command::UpdateComment(
+                                        repo.clone(),
+                                        detail.detail.issue.number,
+                                        comment.id,
+                                        body,
+                                    )]
+                                }
+                            } else {
+                                vec![]
+                            }
+                        }
+                        Some(InlineEditTarget::NewComment | InlineEditTarget::QuoteReply(_)) => {
+                            let body = detail.edit_buffer.clone();
+                            if body.trim().is_empty() {
+                                vec![]
+                            } else {
+                                let number = detail.detail.issue.number;
+                                vec![Command::AddComment(repo.clone(), number, body)]
+                            }
+                        }
+                        None => vec![],
+                    };
+                    // Clear editing state
+                    if let Some(ref mut detail) = state.issue_detail {
+                        detail.cancel_edit();
+                    }
+                    return cmds;
+                }
+            }
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.cancel_edit();
+            }
+            vec![]
+        }
+        Message::IssueEditCancel => {
+            if let Some(ref mut detail) = state.issue_detail {
+                detail.cancel_edit();
+            }
+            vec![]
         }
 
         // Actions
