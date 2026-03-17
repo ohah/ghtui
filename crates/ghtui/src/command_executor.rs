@@ -1,4 +1,5 @@
 use ghtui_api::GithubClient;
+use ghtui_core::types::IssueFilters;
 use ghtui_core::{Command, Message};
 
 pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
@@ -134,6 +135,12 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
         }
         Command::FetchMilestones(repo) => match client.list_milestones(&repo).await {
             Ok(milestones) => Message::IssueMilestonesLoaded(milestones),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::SearchIssues(repo, query) => match client.search_issues(&repo, &query).await {
+            Ok((issues, pagination)) => {
+                Message::IssueListLoaded(issues, pagination, IssueFilters::default())
+            }
             Err(e) => Message::Error(e.into()),
         },
         Command::AddComment(repo, number, body) => {

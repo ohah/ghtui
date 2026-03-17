@@ -61,6 +61,57 @@ impl GithubClient {
         Ok((issues, pagination))
     }
 
+    pub async fn search_issues(
+        &self,
+        repo: &RepoId,
+        query: &str,
+    ) -> Result<(Vec<Issue>, Pagination), ApiError> {
+        // Build search query with proper encoding
+        let search_query = format!("repo:{}/{} is:issue {}", repo.owner, repo.name, query);
+        // Simple percent encoding for search query
+        let encoded: String = search_query
+            .chars()
+            .map(|c| match c {
+                ' ' => "+".to_string(),
+                '/' => "%2F".to_string(),
+                ':' => "%3A".to_string(),
+                '#' => "%23".to_string(),
+                _ => c.to_string(),
+            })
+            .collect();
+        let path = format!("/search/issues?q={}&per_page=30", encoded);
+        let body = self.get(&path).await?;
+        let result: serde_json::Value = serde_json::from_str(&body)?;
+
+        let items = result
+            .get("items")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        // Filter out PRs (search API may return them)
+        let issues: Vec<Issue> = items
+            .into_iter()
+            .filter(|i| i.get("pull_request").is_none())
+            .map(serde_json::from_value)
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap_or_default();
+
+        let total = result
+            .get("total_count")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as u32);
+
+        let pagination = Pagination {
+            page: 1,
+            per_page: 30,
+            has_next: issues.len() >= 30,
+            total,
+        };
+
+        Ok((issues, pagination))
+    }
+
     pub async fn get_issue(&self, repo: &RepoId, number: u64) -> Result<Issue, ApiError> {
         let path = format!("/repos/{}/{}/issues/{}", repo.owner, repo.name, number);
         let body = self.get(&path).await?;

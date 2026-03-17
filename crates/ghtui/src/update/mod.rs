@@ -199,14 +199,8 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         1,
                     )]
                 } else {
-                    // Search via API
-                    let search_query = format!("repo:{} is:issue {}", repo.full_name(), query);
                     state.loading.insert("issue_list".to_string());
-                    vec![Command::Search(
-                        search_query,
-                        ghtui_core::types::SearchKind::Issues,
-                        1,
-                    )]
+                    vec![Command::SearchIssues(repo.clone(), query)]
                 }
             } else {
                 vec![]
