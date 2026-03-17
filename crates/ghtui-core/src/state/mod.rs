@@ -3,6 +3,7 @@ pub mod issue;
 pub mod notification;
 pub mod pr;
 pub mod search;
+pub mod settings;
 
 use std::collections::{HashSet, VecDeque};
 
@@ -17,6 +18,7 @@ pub use issue::*;
 pub use notification::*;
 pub use pr::*;
 pub use search::*;
+pub use settings::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum InputMode {
@@ -54,6 +56,7 @@ pub struct AppState {
     pub action_detail: Option<ActionDetailState>,
     pub notifications: Option<NotificationListState>,
     pub search: Option<SearchViewState>,
+    pub settings: Option<SettingsState>,
 
     // Cross-cutting
     pub current_repo: Option<RepoId>,
@@ -92,6 +95,7 @@ impl AppState {
             action_detail: None,
             notifications: None,
             search: None,
+            settings: None,
             current_repo: repo,
             loading: HashSet::new(),
             toasts: VecDeque::new(),

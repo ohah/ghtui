@@ -77,13 +77,7 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
             "Insights",
             "Contributors, traffic, commits, and code frequency",
         ),
-        Route::Settings { .. } => views::placeholder::render(
-            frame,
-            state,
-            content_area,
-            "Settings",
-            "Repository settings and configuration",
-        ),
+        Route::Settings { .. } => views::settings::render(frame, state, content_area),
         Route::Search { .. } => views::placeholder::render(
             frame,
             state,

@@ -45,6 +45,11 @@ pub enum Message {
     // Search
     SearchResults(SearchResultSet),
 
+    // Settings
+    SettingsRepoLoaded(Box<settings::Repository>),
+    SettingsBranchProtectionsLoaded(Vec<settings::BranchProtection>),
+    SettingsCollaboratorsLoaded(Vec<settings::Collaborator>),
+
     // UI
     InputChanged(String),
     ListSelect(usize),

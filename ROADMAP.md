@@ -14,7 +14,7 @@
 | 6 | Wiki | - | placeholder | 미구현 |
 | 7 | Security | - | placeholder | 미구현 |
 | 8 | Insights | - | placeholder | 미구현 |
-| 9 | Settings | - | placeholder | 미구현 |
+| 9 | Settings | ✅ | settings.rs | 일반설정, 브랜치 보호, Collaborators (read-only) |
 
 ### 완료된 기반 기능
 
@@ -136,10 +136,10 @@
 
 ## Phase 8 — Settings 탭
 
-- [ ] Repository API (read-only 우선)
-- [ ] 일반 설정 (이름, description, visibility)
-- [ ] 브랜치 보호 규칙 보기
-- [ ] Collaborators 목록
+- [x] Repository API (read-only 우선)
+- [x] 일반 설정 (이름, description, visibility)
+- [x] 브랜치 보호 규칙 보기
+- [x] Collaborators 목록
 - [ ] Webhooks 목록
 - [ ] Deploy keys
 

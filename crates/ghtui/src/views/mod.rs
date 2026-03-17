@@ -9,3 +9,4 @@ pub mod notifications;
 pub mod placeholder;
 pub mod pr_detail;
 pub mod pr_list;
+pub mod settings;
