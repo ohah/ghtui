@@ -249,9 +249,68 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
 
-        // Mouse scroll → same as j/k
-        Message::ScrollUp => update(state, Message::ListSelect(usize::MAX)),
-        Message::ScrollDown => update(state, Message::ListSelect(1)),
+        // Mouse click
+        Message::MouseClick(_col, row) => {
+            // Row 0 = repo header, Row 1 = tab bar, Row 2+ = content
+            if row == 1 {
+                // Tab bar click — compute which tab was clicked based on column position
+                // Tab labels with spacing: " N Label " format
+                let mut x: u16 = 0;
+                for (i, label) in ghtui_core::router::TAB_LABELS.iter().enumerate() {
+                    let key_width = 3u16; // " N "
+                    let label_width = label.len() as u16;
+                    let sep_width = if i < ghtui_core::router::TAB_LABELS.len() - 1 {
+                        1
+                    } else {
+                        0
+                    };
+                    let tab_end = x + key_width + label_width + sep_width;
+                    if _col >= x && _col < tab_end {
+                        state.active_tab = i;
+                        return navigate_to_tab(state);
+                    }
+                    x = tab_end;
+                }
+                vec![]
+            } else if row >= 2 {
+                // Content area click — select list item by row offset
+                let content_row = (row - 2) as usize;
+                // Find which item is at this row (accounting for border)
+                if content_row > 0 {
+                    let item_index = content_row - 1; // -1 for top border
+                    handle_mouse_list_select(state, item_index)
+                } else {
+                    vec![]
+                }
+            } else {
+                vec![]
+            }
+        }
+
+        // Scroll — context-aware
+        Message::ScrollUp => {
+            // Action Detail with log: scroll log
+            if matches!(state.route, Route::ActionDetail { .. }) {
+                if let Some(ref mut detail) = state.action_detail {
+                    if detail.log.is_some() {
+                        detail.log_scroll = detail.log_scroll.saturating_sub(3);
+                        return vec![];
+                    }
+                }
+            }
+            update(state, Message::ListSelect(usize::MAX))
+        }
+        Message::ScrollDown => {
+            if matches!(state.route, Route::ActionDetail { .. }) {
+                if let Some(ref mut detail) = state.action_detail {
+                    if detail.log.is_some() {
+                        detail.log_scroll += 3;
+                        return vec![];
+                    }
+                }
+            }
+            update(state, Message::ListSelect(1))
+        }
 
         // UI
         Message::InputChanged(text) => {
@@ -646,6 +705,41 @@ fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Command> {
                     settings.scroll = settings.scroll.saturating_sub(1);
                 } else if delta > 0 {
                     settings.scroll += 1;
+                }
+            }
+        }
+        _ => {}
+    }
+    vec![]
+}
+
+fn handle_mouse_list_select(state: &mut AppState, item_index: usize) -> Vec<Command> {
+    match &state.route {
+        Route::PrList { .. } => {
+            if let Some(ref mut list) = state.pr_list {
+                if item_index < list.items.len() {
+                    list.selected = item_index;
+                }
+            }
+        }
+        Route::IssueList { .. } => {
+            if let Some(ref mut list) = state.issue_list {
+                if item_index < list.items.len() {
+                    list.selected = item_index;
+                }
+            }
+        }
+        Route::ActionsList { .. } => {
+            if let Some(ref mut list) = state.actions_list {
+                if item_index < list.items.len() {
+                    list.selected = item_index;
+                }
+            }
+        }
+        Route::Notifications => {
+            if let Some(ref mut list) = state.notifications {
+                if item_index < list.items.len() {
+                    list.selected = item_index;
                 }
             }
         }

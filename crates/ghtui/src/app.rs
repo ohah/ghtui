@@ -56,10 +56,13 @@ impl App {
                     match event {
                         Event::Key(key) => keybindings::handle_key(key, &self.state),
                         Event::Mouse(mouse) => {
-                            use crossterm::event::{MouseEventKind};
+                            use crossterm::event::MouseEventKind;
                             match mouse.kind {
                                 MouseEventKind::ScrollUp => Some(Message::ScrollUp),
                                 MouseEventKind::ScrollDown => Some(Message::ScrollDown),
+                                MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
+                                    Some(Message::MouseClick(mouse.column, mouse.row))
+                                }
                                 _ => None,
                             }
                         }

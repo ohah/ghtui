@@ -141,9 +141,19 @@ fn handle_settings_keys(key: KeyEvent) -> Option<Message> {
 
 fn handle_action_detail_keys(key: KeyEvent) -> Option<Message> {
     match key.code {
+        // Job selection
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::Enter => Some(Message::ListSelect(0)), // Load log for selected job
+        KeyCode::Enter => Some(Message::ListSelect(0)),
+        // Log scroll
+        KeyCode::PageDown => Some(Message::ScrollDown),
+        KeyCode::PageUp => Some(Message::ScrollUp),
+        KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            Some(Message::ScrollDown)
+        }
+        KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            Some(Message::ScrollUp)
+        }
         _ => None,
     }
 }
