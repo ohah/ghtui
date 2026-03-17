@@ -62,12 +62,11 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
     let header_height = if is_title_editing { 6 } else { 5 };
     let editor_height: u16 = if is_comment_editing { 10 } else { 0 };
-    // Action bar only on conversation tab, not when editing
-    let action_bar_height: u16 = if detail_state.tab == 0 && !detail_state.is_editing() {
-        2
-    } else {
-        0
-    };
+    // Action bar on conversation and files changed tabs
+    let show_action_bar = (detail_state.tab == 0 || detail_state.tab == 3)
+        && !detail_state.is_editing()
+        && detail_state.diff_comment_target.is_none();
+    let action_bar_height: u16 = if show_action_bar { 2 } else { 0 };
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -143,73 +142,48 @@ fn render_action_bar(
 ) {
     let theme = &state.theme;
     let pr = &detail.detail.pr;
+    let focused = detail.action_bar_focused;
+    let sel = detail.action_bar_selected;
 
-    let mut actions: Vec<Span> = Vec::new();
+    // Button definitions: (label, normal_fg, normal_bg)
+    let buttons: Vec<(&str, ratatui::style::Color, ratatui::style::Color)> = match pr.state {
+        ghtui_core::types::PrState::Open => vec![
+            ("Comment", theme.fg, theme.bg_subtle),
+            ("Approve", theme.bg, theme.success),
+            ("Request changes", theme.bg, theme.danger),
+            ("Merge", theme.bg, theme.done),
+            ("Close", theme.fg, theme.bg_subtle),
+        ],
+        ghtui_core::types::PrState::Closed => vec![("Reopen", theme.bg, theme.success)],
+        ghtui_core::types::PrState::Merged => vec![("Merged", theme.bg, theme.done)],
+    };
 
-    // Status-dependent actions
-    match pr.state {
-        ghtui_core::types::PrState::Open => {
-            actions.push(Span::styled(
-                " [c] Comment ",
-                Style::default().fg(theme.fg).bg(theme.bg_subtle),
-            ));
-            actions.push(Span::styled("  ", Style::default()));
-            actions.push(Span::styled(
-                " [A] Approve ",
-                Style::default()
-                    .fg(theme.bg)
-                    .bg(theme.success)
-                    .add_modifier(Modifier::BOLD),
-            ));
-            actions.push(Span::styled("  ", Style::default()));
-            actions.push(Span::styled(
-                " [R] Request changes ",
-                Style::default()
-                    .fg(theme.bg)
-                    .bg(theme.danger)
-                    .add_modifier(Modifier::BOLD),
-            ));
-            actions.push(Span::styled("  ", Style::default()));
-            actions.push(Span::styled(
-                " [m] Merge ",
-                Style::default()
-                    .fg(theme.bg)
-                    .bg(theme.done)
-                    .add_modifier(Modifier::BOLD),
-            ));
-            actions.push(Span::styled("  ", Style::default()));
-            actions.push(Span::styled(
-                " [x] Close ",
-                Style::default().fg(theme.fg).bg(theme.bg_subtle),
-            ));
-        }
-        ghtui_core::types::PrState::Closed => {
-            actions.push(Span::styled(
-                " [x] Reopen ",
-                Style::default()
-                    .fg(theme.bg)
-                    .bg(theme.success)
-                    .add_modifier(Modifier::BOLD),
-            ));
-        }
-        ghtui_core::types::PrState::Merged => {
-            actions.push(Span::styled(
-                " ✓ Merged ",
-                Style::default()
-                    .fg(theme.bg)
-                    .bg(theme.done)
-                    .add_modifier(Modifier::BOLD),
-            ));
+    let mut spans: Vec<Span> = Vec::new();
+    for (i, (label, fg, bg)) in buttons.iter().enumerate() {
+        let is_sel = focused && i == sel;
+        let style = if is_sel {
+            Style::default()
+                .fg(*bg)
+                .bg(*fg)
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED)
+        } else {
+            Style::default().fg(*fg).bg(*bg)
+        };
+        let prefix = if is_sel { "▸" } else { " " };
+        spans.push(Span::styled(format!("{}{} ", prefix, label), style));
+        if i < buttons.len() - 1 {
+            spans.push(Span::styled(" ", Style::default()));
         }
     }
 
-    // Second line: common actions
-    let info = Line::from(vec![Span::styled(
-        " [e] Edit  [l] Labels  [a] Assignees  [b] Base  [o] Browser  [d] Delete comment ",
-        Style::default().fg(theme.fg_dim),
-    )]);
+    let hint = if focused {
+        " ←/→:select  Enter:execute  Esc:back"
+    } else {
+        " ↓:actions  c:Comment  A:Approve  R:Request changes  m:Merge"
+    };
 
-    let top = Line::from(actions);
+    let info = Line::from(vec![Span::styled(hint, Style::default().fg(theme.fg_dim))]);
+    let top = Line::from(spans);
     let paragraph = Paragraph::new(vec![top, info]).style(Style::default().bg(theme.bg_subtle));
     frame.render_widget(paragraph, area);
 }

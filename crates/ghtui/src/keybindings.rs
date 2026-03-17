@@ -364,6 +364,23 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         };
     }
 
+    // Action bar focused
+    let action_focused = state
+        .pr_detail
+        .as_ref()
+        .is_some_and(|d| d.action_bar_focused);
+    if action_focused {
+        return match key.code {
+            KeyCode::Char('h') | KeyCode::Left => Some(Message::PrActionBarLeft),
+            KeyCode::Char('l') | KeyCode::Right => Some(Message::PrActionBarRight),
+            KeyCode::Enter => Some(Message::PrActionBarSelect),
+            KeyCode::Esc | KeyCode::Char('k') | KeyCode::Up => Some(Message::PrActionBarFocus),
+            KeyCode::Tab => Some(Message::TabChanged(1)),
+            KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
+            _ => None,
+        };
+    }
+
     // Normal mode (conversation/checks tabs)
     match key.code {
         KeyCode::Tab => Some(Message::TabChanged(1)),
