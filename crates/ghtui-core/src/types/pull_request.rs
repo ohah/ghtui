@@ -159,12 +159,21 @@ impl<'de> Deserialize<'de> for PullRequest {
 }
 
 #[derive(Debug, Clone)]
+pub struct PrCommit {
+    pub sha: String,
+    pub message: String,
+    pub author: String,
+    pub date: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone)]
 pub struct PullRequestDetail {
     pub pr: PullRequest,
     pub reviews: Vec<Review>,
     pub comments: Vec<PrComment>,
     pub review_comments: Vec<ReviewComment>,
     pub checks: Vec<CheckStatus>,
+    pub commits: Vec<PrCommit>,
 }
 
 #[derive(Debug, Clone)]

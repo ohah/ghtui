@@ -26,6 +26,7 @@ pub enum Command {
     AddPrComment(RepoId, u64, String),
     UpdatePrComment(RepoId, u64, u64, String),
     DeletePrComment(RepoId, u64),
+    ChangePrBase(RepoId, u64, String), // repo, number, new_base_branch
 
     // Issue
     FetchIssueList(RepoId, IssueFilters, u32),

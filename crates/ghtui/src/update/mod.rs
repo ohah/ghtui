@@ -268,6 +268,17 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::PrChangeBase => {
+            if let Some(ref detail) = state.pr_detail {
+                state.input_buffer = detail.detail.pr.base_ref.clone();
+                state.modal = Some(ghtui_core::ModalKind::Confirm {
+                    title: "Change Base Branch".to_string(),
+                    message: "Enter target branch name:".to_string(),
+                });
+                state.input_mode = InputMode::Insert;
+            }
+            vec![]
+        }
         Message::PrDeleteComment => {
             if let Some(ref detail) = state.pr_detail {
                 if let Some(idx) = detail.selected_comment() {
@@ -1794,7 +1805,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             if matches!(state.route, Route::PrDetail { .. }) {
                 if let Some(ref mut detail) = state.pr_detail {
-                    if detail.tab == 1 {
+                    if detail.tab == 3 {
                         detail.diff_scroll = detail.diff_scroll.saturating_sub(3);
                     } else {
                         detail.scroll = detail.scroll.saturating_sub(3);
@@ -1821,7 +1832,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             if matches!(state.route, Route::PrDetail { .. }) {
                 if let Some(ref mut detail) = state.pr_detail {
-                    if detail.tab == 1 {
+                    if detail.tab == 3 {
                         detail.diff_scroll += 3;
                     } else {
                         detail.scroll += 3;
@@ -1894,7 +1905,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     false
                 }
             } else if let Some(ref mut detail) = state.pr_detail {
-                match try_move_subtab(detail.tab, delta, 3) {
+                match try_move_subtab(detail.tab, delta, 4) {
                     Some(new_tab) => {
                         detail.tab = new_tab;
                         false
@@ -2127,6 +2138,27 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                             ToastLevel::Warning,
                         );
                         return vec![];
+                    }
+                }
+                Some(ghtui_core::ModalKind::Confirm { ref title, .. })
+                    if title == "Change Base Branch" =>
+                {
+                    let base = state.input_buffer.trim().to_string();
+                    if base.is_empty() {
+                        state.push_toast(
+                            "Branch name cannot be empty".to_string(),
+                            ToastLevel::Warning,
+                        );
+                        return vec![];
+                    }
+                    if let (Some(repo), Some(detail)) = (&state.current_repo, &state.pr_detail) {
+                        vec![Command::ChangePrBase(
+                            repo.clone(),
+                            detail.detail.pr.number,
+                            base,
+                        )]
+                    } else {
+                        vec![]
                     }
                 }
                 _ => vec![],

@@ -89,13 +89,25 @@ impl GithubClient {
             "/repos/{}/{}/commits/{}/status",
             repo.owner, repo.name, pr.head_sha
         );
+        let commits_path = format!(
+            "/repos/{}/{}/pulls/{}/commits?per_page=100",
+            repo.owner, repo.name, number
+        );
 
-        let (reviews_body, comments_body, review_comments_body, checks_body, status_body) = tokio::join!(
+        let (
+            reviews_body,
+            comments_body,
+            review_comments_body,
+            checks_body,
+            status_body,
+            commits_body,
+        ) = tokio::join!(
             self.get(&reviews_path),
             self.get(&comments_path),
             self.get(&review_comments_path),
             self.get(&checks_path),
             self.get(&status_path),
+            self.get(&commits_path),
         );
 
         let reviews: Vec<ApiReview> = serde_json::from_str(&reviews_body?).unwrap_or_default();
@@ -136,12 +148,40 @@ impl GithubClient {
             }
         }
 
+        // Parse commits
+        let mut commits: Vec<PrCommit> = Vec::new();
+        if let Ok(body) = commits_body {
+            if let Ok(arr) = serde_json::from_str::<Vec<serde_json::Value>>(&body) {
+                for c in arr {
+                    commits.push(PrCommit {
+                        sha: c["sha"].as_str().unwrap_or("").to_string(),
+                        message: c["commit"]["message"]
+                            .as_str()
+                            .unwrap_or("")
+                            .lines()
+                            .next()
+                            .unwrap_or("")
+                            .to_string(),
+                        author: c["commit"]["author"]["name"]
+                            .as_str()
+                            .or_else(|| c["author"]["login"].as_str())
+                            .unwrap_or("unknown")
+                            .to_string(),
+                        date: c["commit"]["author"]["date"]
+                            .as_str()
+                            .and_then(|s| s.parse().ok()),
+                    });
+                }
+            }
+        }
+
         Ok(PullRequestDetail {
             pr,
             reviews: reviews.into_iter().map(|r| r.into()).collect(),
             comments,
             review_comments: review_comments.into_iter().map(|c| c.into()).collect(),
             checks,
+            commits,
         })
     }
 
@@ -287,6 +327,18 @@ impl GithubClient {
             total: result["total_count"].as_u64().map(|n| n as u32),
         };
         Ok((items, pagination))
+    }
+
+    pub async fn change_pull_base(
+        &self,
+        repo: &RepoId,
+        number: u64,
+        base: &str,
+    ) -> Result<(), ApiError> {
+        let path = format!("/repos/{}/{}/pulls/{}", repo.owner, repo.name, number);
+        let body = json!({ "base": base });
+        self.patch(&path, &body).await?;
+        Ok(())
     }
 
     pub async fn update_pull(
