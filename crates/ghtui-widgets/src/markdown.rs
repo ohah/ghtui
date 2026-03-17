@@ -1,6 +1,7 @@
 use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
+use unicode_width::UnicodeWidthStr;
 
 const TEXT_COLOR: Color = Color::Rgb(230, 237, 243);
 const HEADING_H1: Color = Color::Rgb(88, 166, 255);
@@ -253,7 +254,7 @@ fn render_table(rows: &[Vec<String>], lines: &mut Vec<Line<'static>>) {
     for row in rows {
         for (i, cell) in row.iter().enumerate() {
             if i < col_count {
-                widths[i] = widths[i].max(cell.chars().count());
+                widths[i] = widths[i].max(cell.width());
             }
         }
     }
@@ -276,7 +277,9 @@ fn render_table(rows: &[Vec<String>], lines: &mut Vec<Line<'static>>) {
         let mut spans = vec![Span::styled("  │", border_style)];
         for (ci, width) in widths.iter().enumerate() {
             let cell = row.get(ci).map(|s| s.as_str()).unwrap_or("");
-            let padded = format!(" {:<width$} ", cell, width = width);
+            let cell_w = cell.width();
+            let pad = width.saturating_sub(cell_w);
+            let padded = format!(" {}{} ", cell, " ".repeat(pad));
             let style = if ri == 0 { header_style } else { cell_style };
             spans.push(Span::styled(padded, style));
             spans.push(Span::styled("│", border_style));
