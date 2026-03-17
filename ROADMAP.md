@@ -58,6 +58,7 @@
 - [x] 페이지네이션 UI (n/p 키로 다음/이전)
 - [x] 이슈 상세 메타정보 (labels, assignees, milestone)
 - [x] 이슈 상세 스크롤 (j/k, PageUp/Down, 마우스)
+- [x] TextEditor 커서 지원 (방향키, Home/End, 중간 삽입/삭제)
 
 ## Phase 2 — Pull Requests 탭 완성
 

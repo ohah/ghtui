@@ -1,5 +1,6 @@
 pub mod command;
 pub mod config;
+pub mod editor;
 pub mod error;
 pub mod message;
 pub mod router;
