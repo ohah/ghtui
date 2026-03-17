@@ -2439,6 +2439,14 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::SearchOpen => {
+            // If already on search route, just toggle input mode
+            if matches!(state.route, Route::Search { .. }) {
+                if let Some(ref mut search) = state.search {
+                    search.input_mode = true;
+                    search.input_query.clear();
+                }
+                return vec![];
+            }
             let kind = state
                 .search
                 .as_ref()

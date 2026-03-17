@@ -67,14 +67,12 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 results.total_count
             );
 
-            let list = List::new(items)
-                .block(
-                    Block::default()
-                        .title(Span::styled(title, theme.text_bold()))
-                        .borders(Borders::ALL)
-                        .border_style(theme.border_style()),
-                )
-                .highlight_style(theme.selected());
+            let list = List::new(items).block(
+                Block::default()
+                    .title(Span::styled(title, theme.text_bold()))
+                    .borders(Borders::ALL)
+                    .border_style(theme.border_style()),
+            );
 
             let mut list_state = ListState::default();
             list_state.select(Some(search.selected));
@@ -187,8 +185,9 @@ fn render_result_item<'a>(
                 ));
             }
             if let Some(desc) = description {
-                let short = if desc.len() > 60 {
-                    format!(" — {}...", &desc[..57])
+                let short = if desc.chars().count() > 60 {
+                    let truncated: String = desc.chars().take(57).collect();
+                    format!(" — {}...", truncated)
                 } else {
                     format!(" — {}", desc)
                 };
@@ -225,8 +224,9 @@ fn render_result_item<'a>(
             path,
             fragment,
         } => {
-            let short_fragment = if fragment.len() > 80 {
-                format!("{}...", &fragment[..77])
+            let short_fragment = if fragment.chars().count() > 80 {
+                let truncated: String = fragment.chars().take(77).collect();
+                format!("{}...", truncated)
             } else {
                 fragment.clone()
             };
