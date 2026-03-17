@@ -8,7 +8,7 @@ pub mod theme;
 pub mod types;
 
 pub use command::Command;
-pub use config::AppConfig;
+pub use config::{AppConfig, GhAccount, list_gh_accounts};
 pub use error::GhtuiError;
 pub use message::{Message, ModalKind};
 pub use router::{PrTab, Route};

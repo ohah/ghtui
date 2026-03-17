@@ -20,6 +20,7 @@ pub fn render(frame: &mut Frame, area: Rect) {
         section("Global"),
         key_line("q / Ctrl-C", "Quit"),
         key_line("?", "Toggle help"),
+        key_line("S", "Switch account"),
         key_line("Esc", "Go back"),
         key_line("1/p", "Pull Requests"),
         key_line("2/i", "Issues"),

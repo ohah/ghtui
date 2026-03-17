@@ -1,3 +1,4 @@
+use crate::config::GhAccount;
 use crate::error::GhtuiError;
 use crate::router::Route;
 use crate::types::*;
@@ -7,6 +8,10 @@ pub enum Message {
     // Navigation
     Navigate(Route),
     Back,
+
+    // Account
+    AccountSwitch(GhAccount),
+    AccountSwitched(GhAccount),
 
     // PR
     PrListLoaded(Vec<PullRequest>, Pagination),
@@ -66,5 +71,6 @@ pub enum ModalKind {
     AddComment,
     SubmitReview,
     Confirm { title: String, message: String },
+    AccountSwitcher,
     Help,
 }

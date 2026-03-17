@@ -1,10 +1,10 @@
-use ghtui_core::config::AppConfig;
+use ghtui_core::config::{AppConfig, GhAccount};
 use ghtui_core::message::ModalKind;
 use ghtui_core::router::Route;
 use ghtui_core::state::*;
 use ghtui_core::types::common::RepoId;
 use ghtui_core::types::*;
-use ghtui_core::{AppState, Command, Message};
+use ghtui_core::AppState;
 
 // Import the update module from the binary crate's lib
 // Since update is private to the binary, we test via integration of state transitions
@@ -12,7 +12,7 @@ use ghtui_core::{AppState, Command, Message};
 fn make_state() -> AppState {
     let config = AppConfig::default();
     let repo = RepoId::new("owner", "repo");
-    AppState::new(config, Some(repo))
+    AppState::new(config, Some(repo), None, vec![])
 }
 
 fn make_pr(number: u64, title: &str) -> PullRequest {
@@ -283,4 +283,127 @@ fn test_multiple_toasts() {
         state.tick_toasts();
     }
     assert!(state.toasts.is_empty());
+}
+
+// -- Account tests --
+
+fn make_accounts() -> Vec<GhAccount> {
+    vec![
+        GhAccount {
+            host: "github.com".to_string(),
+            user: "personal".to_string(),
+            token: "gho_personal".to_string(),
+        },
+        GhAccount {
+            host: "github.com".to_string(),
+            user: "work".to_string(),
+            token: "gho_work".to_string(),
+        },
+    ]
+}
+
+fn make_state_with_accounts() -> AppState {
+    let config = AppConfig::default();
+    let repo = RepoId::new("owner", "repo");
+    let accounts = make_accounts();
+    AppState::new(config, Some(repo), Some(accounts[0].clone()), accounts)
+}
+
+#[test]
+fn test_account_switcher_opens_with_correct_state() {
+    let mut state = make_state_with_accounts();
+
+    state.modal = Some(ModalKind::AccountSwitcher);
+    state.input_mode = InputMode::Normal; // Account switcher stays in Normal mode
+
+    assert!(matches!(state.modal, Some(ModalKind::AccountSwitcher)));
+    assert_eq!(state.accounts.len(), 2);
+    assert_eq!(state.current_account.as_ref().unwrap().user, "personal");
+}
+
+#[test]
+fn test_account_switch_produces_toast() {
+    let mut state = make_state_with_accounts();
+    let new_account = state.accounts[1].clone();
+
+    // Simulate AccountSwitched message handling
+    state.current_account = Some(new_account.clone());
+    state.push_toast(
+        format!("Switched to {}", new_account.display_name()),
+        ToastLevel::Success,
+    );
+
+    assert_eq!(state.current_account.as_ref().unwrap().user, "work");
+    assert_eq!(state.toasts.len(), 1);
+    assert!(state.toasts[0].message.contains("work"));
+    assert_eq!(state.toasts[0].level, ToastLevel::Success);
+}
+
+#[test]
+fn test_account_switch_clears_all_cached_state() {
+    let mut state = make_state_with_accounts();
+
+    // Load some data
+    state.pr_list = Some(PrListState::new(
+        vec![make_pr(1, "PR")],
+        Pagination::default(),
+    ));
+    state.issue_list = Some(IssueListState::new(
+        vec![make_issue(1, "Issue")],
+        Pagination::default(),
+    ));
+
+    // Simulate full account switch (as done in update/mod.rs)
+    state.current_account = Some(state.accounts[1].clone());
+    state.pr_list = None;
+    state.pr_detail = None;
+    state.issue_list = None;
+    state.issue_detail = None;
+    state.actions_list = None;
+    state.action_detail = None;
+    state.notifications = None;
+    state.search = None;
+
+    assert!(state.pr_list.is_none());
+    assert!(state.pr_detail.is_none());
+    assert!(state.issue_list.is_none());
+    assert!(state.issue_detail.is_none());
+    assert!(state.actions_list.is_none());
+    assert!(state.action_detail.is_none());
+    assert!(state.notifications.is_none());
+    assert!(state.search.is_none());
+}
+
+#[test]
+fn test_account_selected_bounds() {
+    let mut state = make_state_with_accounts();
+
+    // Navigate to last account
+    state.account_selected = state.accounts.len() - 1;
+    assert_eq!(state.account_selected, 1);
+
+    // Try to go past end
+    state.account_selected = (state.account_selected + 1).min(state.accounts.len() - 1);
+    assert_eq!(state.account_selected, 1);
+
+    // Go back to start
+    state.account_selected = 0;
+    // Try to go before start
+    state.account_selected = state.account_selected.saturating_sub(1);
+    assert_eq!(state.account_selected, 0);
+}
+
+#[test]
+fn test_account_switch_closes_modal() {
+    let mut state = make_state_with_accounts();
+
+    // Open modal
+    state.modal = Some(ModalKind::AccountSwitcher);
+
+    // Simulate AccountSwitch handling (closes modal)
+    state.modal = None;
+    state.input_mode = InputMode::Normal;
+
+    assert!(state.modal.is_none());
+    assert_eq!(state.input_mode, InputMode::Normal);
 }

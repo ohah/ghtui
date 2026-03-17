@@ -1,3 +1,4 @@
+use crate::config::GhAccount;
 use crate::types::common::RepoId;
 use crate::types::*;
 
@@ -5,6 +6,9 @@ use crate::types::*;
 pub enum Command {
     None,
     Batch(Vec<Command>),
+
+    // Account
+    SwitchAccount(GhAccount),
 
     // PR
     FetchPrList(RepoId, PrFilters, u32),

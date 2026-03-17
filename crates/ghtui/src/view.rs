@@ -101,8 +101,12 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
 
     // Modal overlay
     if let Some(ref modal) = state.modal {
-        if matches!(modal, ModalKind::Help) {
-            views::help::render(frame, size);
+        match modal {
+            ModalKind::Help => views::help::render(frame, size),
+            ModalKind::AccountSwitcher => {
+                views::account_switcher::render(frame, state, size)
+            }
+            _ => {}
         }
     }
 }
@@ -246,6 +250,12 @@ fn render_footer(frame: &mut Frame, state: &AppState, theme: &Theme, area: Rect)
         ghtui_core::ThemeMode::Light => "Light",
     };
 
+    let account_display = state
+        .current_account
+        .as_ref()
+        .map(|a| format!(" @{} ", a.display_name()))
+        .unwrap_or_default();
+
     let line = Line::from(vec![
         mode_indicator,
         Span::raw(" "),
@@ -254,6 +264,11 @@ fn render_footer(frame: &mut Frame, state: &AppState, theme: &Theme, area: Rect)
         Span::styled(
             format!("[{}]", theme_mode),
             Style::default().fg(theme.fg_muted),
+        ),
+        Span::raw("  "),
+        Span::styled(
+            account_display,
+            Style::default().fg(theme.accent),
         ),
     ]);
 
