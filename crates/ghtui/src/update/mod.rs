@@ -2,7 +2,7 @@ use ghtui_core::router::Route;
 use ghtui_core::state::issue::InlineEditTarget;
 use ghtui_core::state::pr::PrInlineEditTarget;
 use ghtui_core::state::*;
-use ghtui_core::types::{IssueFilters, IssueState, PrFilters, PrState};
+use ghtui_core::types::{ActionsFilters, IssueFilters, IssueState, PrFilters, PrState};
 use ghtui_core::{AppState, Command, Message};
 
 pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
@@ -1934,9 +1934,16 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
 
         // Actions
-        Message::RunsLoaded(runs, pagination) => {
+        Message::RunsLoaded(runs, pagination, filters) => {
             state.loading.remove("actions_list");
-            state.actions_list = Some(ActionsListState::new(runs, pagination));
+            let old_workflows = state
+                .actions_list
+                .as_ref()
+                .map(|l| l.workflows.clone())
+                .unwrap_or_default();
+            let mut new_state = ActionsListState::with_filters(runs, pagination, filters);
+            new_state.workflows = old_workflows;
+            state.actions_list = Some(new_state);
             vec![]
         }
         Message::RunDetailLoaded(detail) => {
@@ -1959,6 +1966,148 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::RunRerun(run_id) => {
             state.push_toast(format!("Run #{} restarted", run_id), ToastLevel::Success);
             refresh_current_view(state)
+        }
+        Message::WorkflowsLoaded(workflows) => {
+            if let Some(ref mut list) = state.actions_list {
+                list.workflows = workflows;
+            }
+            vec![]
+        }
+        Message::ActionsToggleStatus => {
+            if let Some(ref repo) = state.current_repo {
+                let filters = if let Some(ref mut list) = state.actions_list {
+                    list.cycle_status();
+                    list.filters.clone()
+                } else {
+                    ActionsFilters::default()
+                };
+                state.loading.insert("actions_list".to_string());
+                vec![Command::FetchRuns(repo.clone(), filters, 1)]
+            } else {
+                vec![]
+            }
+        }
+        Message::ActionsCycleEvent => {
+            if let Some(ref repo) = state.current_repo {
+                let filters = if let Some(ref mut list) = state.actions_list {
+                    list.cycle_event();
+                    list.filters.clone()
+                } else {
+                    ActionsFilters::default()
+                };
+                state.loading.insert("actions_list".to_string());
+                vec![Command::FetchRuns(repo.clone(), filters, 1)]
+            } else {
+                vec![]
+            }
+        }
+        Message::ActionsNextPage => {
+            if let (Some(repo), Some(list)) = (&state.current_repo, &state.actions_list) {
+                if list.pagination.has_next {
+                    let next_page = list.pagination.page + 1;
+                    let filters = list.filters.clone();
+                    state.loading.insert("actions_list".to_string());
+                    vec![Command::FetchRuns(repo.clone(), filters, next_page)]
+                } else {
+                    vec![]
+                }
+            } else {
+                vec![]
+            }
+        }
+        Message::ActionsPrevPage => {
+            if let (Some(repo), Some(list)) = (&state.current_repo, &state.actions_list) {
+                if list.pagination.page > 1 {
+                    let prev_page = list.pagination.page - 1;
+                    let filters = list.filters.clone();
+                    state.loading.insert("actions_list".to_string());
+                    vec![Command::FetchRuns(repo.clone(), filters, prev_page)]
+                } else {
+                    vec![]
+                }
+            } else {
+                vec![]
+            }
+        }
+        Message::ActionsSearchStart => {
+            if let Some(ref mut list) = state.actions_list {
+                list.search_mode = true;
+                list.search_query.clear();
+            }
+            vec![]
+        }
+        Message::ActionsSearchInput(text) => {
+            if let Some(ref mut list) = state.actions_list {
+                if text == "\x08" {
+                    list.search_query.pop();
+                } else {
+                    list.search_query.push_str(&text);
+                }
+            }
+            vec![]
+        }
+        Message::ActionsSearchSubmit => {
+            if let (Some(list), Some(repo)) = (&mut state.actions_list, &state.current_repo) {
+                list.search_mode = false;
+                let query = list.search_query.clone();
+                if query.is_empty() {
+                    state.loading.insert("actions_list".to_string());
+                    vec![Command::FetchRuns(repo.clone(), list.filters.clone(), 1)]
+                } else {
+                    // Filter by branch name (closest to search for actions)
+                    let mut filters = list.filters.clone();
+                    filters.branch = Some(query);
+                    list.filters = filters.clone();
+                    state.loading.insert("actions_list".to_string());
+                    vec![Command::FetchRuns(repo.clone(), filters, 1)]
+                }
+            } else {
+                vec![]
+            }
+        }
+        Message::ActionsSearchCancel => {
+            if let Some(ref mut list) = state.actions_list {
+                list.search_mode = false;
+                list.search_query.clear();
+            }
+            vec![]
+        }
+        Message::ActionsFilterClear => {
+            if let Some(ref mut list) = state.actions_list {
+                list.filters = ActionsFilters::default();
+            }
+            if let Some(ref repo) = state.current_repo {
+                state.loading.insert("actions_list".to_string());
+                vec![Command::FetchRuns(
+                    repo.clone(),
+                    ActionsFilters::default(),
+                    1,
+                )]
+            } else {
+                vec![]
+            }
+        }
+        Message::ActionsSelectWorkflow(workflow_id) => {
+            if let Some(ref repo) = state.current_repo {
+                let filters = if let Some(ref mut list) = state.actions_list {
+                    list.select_workflow(workflow_id);
+                    list.filters.clone()
+                } else {
+                    ActionsFilters::default()
+                };
+                state.loading.insert("actions_list".to_string());
+                vec![Command::FetchRuns(repo.clone(), filters, 1)]
+            } else {
+                vec![]
+            }
+        }
+        Message::ActionsOpenInBrowser => {
+            if let Some(ref list) = state.actions_list {
+                if let Some(run) = list.selected_run() {
+                    return vec![Command::OpenInBrowser(run.html_url.clone())];
+                }
+            }
+            vec![]
         }
 
         // Notifications
@@ -2634,7 +2783,10 @@ fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command> {
         }
         Route::ActionsList { repo, filters } => {
             state.loading.insert("actions_list".to_string());
-            vec![Command::FetchRuns(repo.clone(), filters.clone(), 1)]
+            vec![
+                Command::FetchRuns(repo.clone(), filters.clone(), 1),
+                Command::FetchWorkflows(repo.clone()),
+            ]
         }
         Route::ActionDetail { repo, run_id } => {
             state.loading.insert("action_detail".to_string());

@@ -253,9 +253,8 @@ fn render_footer(frame: &mut Frame, state: &AppState, theme: &Theme, area: Rect)
     };
 
     let shortcuts = match &state.route {
-        Route::PrList { .. } | Route::IssueList { .. } | Route::ActionsList { .. } => {
-            "j/k:Navigate Enter:Open r:Refresh"
-        }
+        Route::PrList { .. } | Route::IssueList { .. } => "j/k:Navigate Enter:Open r:Refresh",
+        Route::ActionsList { .. } => "j/k:Nav s:Status e:Event /:Search n/p:Page o:Open F:Clear",
         Route::PrDetail { .. } => "Tab:Switch c:Comment m:Merge Esc:Back",
         Route::IssueDetail { .. } => "c:Comment Esc:Back",
         Route::Notifications => "j/k:Navigate Enter:Open",

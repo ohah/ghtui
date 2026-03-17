@@ -120,6 +120,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         Route::PrDetail { .. } => handle_pr_detail_keys(key, state),
         Route::IssueList { .. } => handle_issue_list_keys(key, state),
         Route::IssueDetail { .. } => handle_issue_detail_keys(key, state),
+        Route::ActionsList { .. } => handle_actions_list_keys(key, state),
         Route::ActionDetail { .. } | Route::JobLog { .. } => handle_action_detail_keys(key),
         Route::Security { .. } => handle_settings_keys(key),
         Route::Insights { .. } => handle_settings_keys(key),
@@ -166,6 +167,35 @@ fn handle_settings_keys(key: KeyEvent) -> Option<Message> {
         KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        _ => None,
+    }
+}
+
+fn handle_actions_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let search_mode = state.actions_list.as_ref().is_some_and(|l| l.search_mode);
+
+    if search_mode {
+        return match key.code {
+            KeyCode::Esc => Some(Message::ActionsSearchCancel),
+            KeyCode::Enter => Some(Message::ActionsSearchSubmit),
+            KeyCode::Char(c) => Some(Message::ActionsSearchInput(c.to_string())),
+            KeyCode::Backspace => Some(Message::ActionsSearchInput("\x08".to_string())),
+            _ => None,
+        };
+    }
+
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Enter => Some(Message::ListSelect(0)),
+        KeyCode::Char('r') => Some(Message::Tick),
+        KeyCode::Char('s') => Some(Message::ActionsToggleStatus),
+        KeyCode::Char('e') => Some(Message::ActionsCycleEvent),
+        KeyCode::Char('n') => Some(Message::ActionsNextPage),
+        KeyCode::Char('p') => Some(Message::ActionsPrevPage),
+        KeyCode::Char('/') => Some(Message::ActionsSearchStart),
+        KeyCode::Char('o') => Some(Message::ActionsOpenInBrowser),
+        KeyCode::Char('F') => Some(Message::ActionsFilterClear),
         _ => None,
     }
 }

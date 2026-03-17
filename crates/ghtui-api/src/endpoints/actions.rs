@@ -123,6 +123,18 @@ impl GithubClient {
         Ok(lines)
     }
 
+    pub async fn list_workflows(&self, repo: &RepoId) -> Result<Vec<Workflow>, ApiError> {
+        let path = format!(
+            "/repos/{}/{}/actions/workflows?per_page=100",
+            repo.owner, repo.name
+        );
+        let body = self.get(&path).await?;
+        let response: serde_json::Value = serde_json::from_str(&body)?;
+        let workflows: Vec<Workflow> =
+            serde_json::from_value(response["workflows"].clone()).unwrap_or_default();
+        Ok(workflows)
+    }
+
     pub async fn cancel_run(&self, repo: &RepoId, run_id: u64) -> Result<(), ApiError> {
         let path = format!(
             "/repos/{}/{}/actions/runs/{}/cancel",

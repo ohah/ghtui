@@ -281,7 +281,7 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
         // Actions
         Command::FetchRuns(repo, filters, page) => {
             match client.list_runs(&repo, &filters, page, 30).await {
-                Ok((runs, pagination)) => Message::RunsLoaded(runs, pagination),
+                Ok((runs, pagination)) => Message::RunsLoaded(runs, pagination, filters),
                 Err(e) => Message::Error(e.into()),
             }
         }
@@ -301,6 +301,10 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
         },
         Command::RerunRun(repo, run_id) => match client.rerun_run(&repo, run_id).await {
             Ok(()) => Message::RunRerun(run_id),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::FetchWorkflows(repo) => match client.list_workflows(&repo).await {
+            Ok(workflows) => Message::WorkflowsLoaded(workflows),
             Err(e) => Message::Error(e.into()),
         },
 

@@ -115,3 +115,69 @@ pub struct ActionsFilters {
     pub actor: Option<String>,
     pub workflow_id: Option<u64>,
 }
+
+impl ActionsFilters {
+    /// Cycle status filter: None → completed → in_progress → queued → failure → success → None
+    pub fn cycle_status(&mut self) {
+        self.status = match self.status.as_deref() {
+            None => Some("completed".to_string()),
+            Some("completed") => Some("in_progress".to_string()),
+            Some("in_progress") => Some("queued".to_string()),
+            Some("queued") => Some("failure".to_string()),
+            Some("failure") => Some("success".to_string()),
+            Some("success") => None,
+            _ => None,
+        };
+    }
+
+    pub fn status_display(&self) -> &str {
+        match self.status.as_deref() {
+            None => "All",
+            Some("completed") => "Completed",
+            Some("in_progress") => "In progress",
+            Some("queued") => "Queued",
+            Some("failure") => "Failure",
+            Some("success") => "Success",
+            _ => "All",
+        }
+    }
+
+    /// Cycle event filter: None → push → pull_request → schedule → workflow_dispatch → None
+    pub fn cycle_event(&mut self) {
+        self.event = match self.event.as_deref() {
+            None => Some("push".to_string()),
+            Some("push") => Some("pull_request".to_string()),
+            Some("pull_request") => Some("schedule".to_string()),
+            Some("schedule") => Some("workflow_dispatch".to_string()),
+            Some("workflow_dispatch") => None,
+            _ => None,
+        };
+    }
+
+    pub fn event_display(&self) -> &str {
+        match self.event.as_deref() {
+            None => "All events",
+            Some("push") => "push",
+            Some("pull_request") => "pull_request",
+            Some("schedule") => "schedule",
+            Some("workflow_dispatch") => "workflow_dispatch",
+            Some(_) => "All events",
+        }
+    }
+
+    pub fn has_active_filters(&self) -> bool {
+        self.status.is_some()
+            || self.branch.is_some()
+            || self.event.is_some()
+            || self.actor.is_some()
+            || self.workflow_id.is_some()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Workflow {
+    pub id: u64,
+    pub name: String,
+    pub path: String,
+    pub state: String,
+}
