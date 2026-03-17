@@ -307,13 +307,17 @@ impl GithubClient {
             })
             .collect();
 
-        let body = json!({
-            "event": input.event.as_str(),
-            "body": input.body,
-            "comments": comments,
-        });
+        let mut payload = serde_json::Map::new();
+        payload.insert("event".into(), json!(input.event.as_str()));
+        if let Some(ref b) = input.body {
+            payload.insert("body".into(), json!(b));
+        }
+        if !comments.is_empty() {
+            payload.insert("comments".into(), json!(comments));
+        }
 
-        self.post(&path, &body).await?;
+        self.post(&path, &serde_json::Value::Object(payload))
+            .await?;
         Ok(())
     }
 
