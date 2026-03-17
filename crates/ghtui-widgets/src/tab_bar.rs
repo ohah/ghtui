@@ -27,12 +27,15 @@ impl Widget for TabBar<'_> {
                         .fg(Color::White)
                         .add_modifier(Modifier::BOLD | Modifier::UNDERLINED)
                 } else {
-                    Style::default().fg(Color::DarkGray)
+                    Style::default().fg(Color::Rgb(139, 148, 158))
                 };
 
                 let mut result = vec![Span::styled(format!(" {} ", tab), style)];
                 if i < self.tabs.len() - 1 {
-                    result.push(Span::styled(" │ ", Style::default().fg(Color::DarkGray)));
+                    result.push(Span::styled(
+                        " │ ",
+                        Style::default().fg(Color::Rgb(110, 118, 129)),
+                    ));
                 }
                 result
             })

@@ -239,7 +239,7 @@ fn render_body_comments(
                 .fg(theme.accent)
                 .add_modifier(Modifier::BOLD)
         } else {
-            Style::default().fg(theme.fg_muted)
+            Style::default().fg(theme.fg_dim)
         }
     };
 
