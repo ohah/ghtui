@@ -322,163 +322,22 @@ fn render_body_comments(
 fn render_fullscreen_editor(
     frame: &mut Frame,
     detail_state: &ghtui_core::state::IssueDetailState,
-    theme: &ghtui_core::theme::Theme,
+    _theme: &ghtui_core::theme::Theme,
     area: Rect,
     title: &str,
 ) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(0), Constraint::Length(1)])
-        .split(area);
-
-    let editor = &detail_state.editor;
-    let total_lines = editor.line_count();
-
-    let mut lines: Vec<Line<'static>> = Vec::new();
-    for (i, line) in editor.lines.iter().enumerate() {
-        let is_cursor_line = i == editor.cursor_row;
-        let line_num_style = if is_cursor_line {
-            Style::default().fg(Color::Rgb(230, 237, 243))
-        } else {
-            Style::default().fg(Color::Rgb(110, 118, 129))
-        };
-
-        if is_cursor_line {
-            // Split line at cursor byte position
-            let col = editor.cursor_byte_col();
-            let before = &line[..col];
-            let after = &line[col..];
-            lines.push(Line::from(vec![
-                Span::styled(format!(" {:>3} ", i + 1), line_num_style),
-                Span::styled("│ ", Style::default().fg(Color::Rgb(48, 54, 61))),
-                Span::styled(
-                    before.to_string(),
-                    Style::default().fg(Color::Rgb(230, 237, 243)),
-                ),
-                Span::styled(
-                    "█",
-                    Style::default()
-                        .fg(Color::Rgb(88, 166, 255))
-                        .add_modifier(Modifier::SLOW_BLINK),
-                ),
-                Span::styled(
-                    after.to_string(),
-                    Style::default().fg(Color::Rgb(230, 237, 243)),
-                ),
-            ]));
-        } else {
-            lines.push(Line::from(vec![
-                Span::styled(format!(" {:>3} ", i + 1), line_num_style),
-                Span::styled("│ ", Style::default().fg(Color::Rgb(48, 54, 61))),
-                Span::styled(line.clone(), Style::default().fg(Color::Rgb(230, 237, 243))),
-            ]));
-        }
-    }
-
-    let editor = Paragraph::new(lines)
-        .block(
-            Block::default()
-                .title(title)
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(theme.accent))
-                .style(Style::default().bg(Color::Rgb(22, 27, 34))),
-        )
-        .wrap(Wrap { trim: false });
-    frame.render_widget(editor, chunks[0]);
-
-    // Status bar
-    let status = Line::from(vec![
-        Span::styled(
-            " Ctrl+Enter ",
-            Style::default()
-                .fg(Color::Rgb(13, 17, 23))
-                .bg(theme.success)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(" Submit  ", Style::default().fg(theme.fg_dim)),
-        Span::styled(
-            " Esc ",
-            Style::default()
-                .fg(Color::Rgb(13, 17, 23))
-                .bg(theme.warning)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(" Cancel  ", Style::default().fg(theme.fg_dim)),
-        Span::styled(
-            format!(" {} lines  (markdown) ", total_lines),
-            Style::default().fg(theme.fg_muted),
-        ),
-    ]);
-    let status_bar = Paragraph::new(status).style(Style::default().bg(theme.footer_bg));
-    frame.render_widget(status_bar, chunks[1]);
+    let widget = ghtui_widgets::EditorView::new(&detail_state.editor, title)
+        .status_hint("Ctrl+Enter: Submit  Esc: Cancel  (markdown)");
+    frame.render_widget(widget, area);
 }
 
 fn render_bottom_editor(
     frame: &mut Frame,
     detail_state: &ghtui_core::state::IssueDetailState,
-    theme: &ghtui_core::theme::Theme,
+    _theme: &ghtui_core::theme::Theme,
     area: Rect,
     title: &str,
 ) {
-    let mut lines: Vec<Line<'static>> = Vec::new();
-    let editor = &detail_state.editor;
-
-    for (i, line) in editor.lines.iter().enumerate() {
-        let is_cursor_line = i == editor.cursor_row;
-        if is_cursor_line {
-            let col = editor.cursor_byte_col();
-            let before = &line[..col];
-            let after = &line[col..];
-            lines.push(Line::from(vec![
-                Span::styled(
-                    format!("  {}", before),
-                    Style::default().fg(Color::Rgb(230, 237, 243)),
-                ),
-                Span::styled(
-                    "█",
-                    Style::default()
-                        .fg(Color::Rgb(88, 166, 255))
-                        .add_modifier(Modifier::SLOW_BLINK),
-                ),
-                Span::styled(
-                    after.to_string(),
-                    Style::default().fg(Color::Rgb(230, 237, 243)),
-                ),
-            ]));
-        } else {
-            lines.push(Line::styled(
-                format!("  {}", line),
-                Style::default().fg(Color::Rgb(230, 237, 243)),
-            ));
-        }
-    }
-
-    lines.push(Line::raw(""));
-    lines.push(Line::from(vec![
-        Span::styled(
-            "  Ctrl+Enter",
-            Style::default()
-                .fg(theme.success)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(": Submit  ", Style::default().fg(theme.fg_dim)),
-        Span::styled(
-            "Esc",
-            Style::default()
-                .fg(theme.warning)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(": Cancel", Style::default().fg(theme.fg_dim)),
-    ]));
-
-    let paragraph = Paragraph::new(lines)
-        .block(
-            Block::default()
-                .title(title)
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(theme.accent))
-                .style(Style::default().bg(Color::Rgb(22, 27, 34))),
-        )
-        .wrap(Wrap { trim: false });
-    frame.render_widget(paragraph, area);
+    let widget = ghtui_widgets::InlineEditorView::new(&detail_state.editor, title);
+    frame.render_widget(widget, area);
 }
