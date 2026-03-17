@@ -291,6 +291,37 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.input_mode = InputMode::Insert;
             vec![]
         }
+        Message::PrActionBarFocus => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.action_bar_focused = !detail.action_bar_focused;
+            }
+            vec![]
+        }
+        Message::PrActionBarLeft => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.action_bar_selected = detail.action_bar_selected.saturating_sub(1);
+            }
+            vec![]
+        }
+        Message::PrActionBarRight => {
+            if let Some(ref mut detail) = state.pr_detail {
+                let max = action_bar_count(&detail.detail.pr.state);
+                detail.action_bar_selected =
+                    (detail.action_bar_selected + 1).min(max.saturating_sub(1));
+            }
+            vec![]
+        }
+        Message::PrActionBarSelect => {
+            if let Some(ref detail) = state.pr_detail {
+                let msg =
+                    match action_bar_action(detail.action_bar_selected, &detail.detail.pr.state) {
+                        Some(m) => m,
+                        None => return vec![],
+                    };
+                return update(state, msg);
+            }
+            vec![]
+        }
         Message::PrChangeBase => {
             if let Some(ref detail) = state.pr_detail {
                 state.input_buffer = detail.detail.pr.base_ref.clone();
@@ -2796,4 +2827,30 @@ fn find_cursor_line_info(detail: &PrDetailState) -> Option<(String, u32)> {
         line += 1; // trailing empty
     }
     None
+}
+
+fn action_bar_count(pr_state: &ghtui_core::types::PrState) -> usize {
+    match pr_state {
+        ghtui_core::types::PrState::Open => 5, // Comment, Approve, Request, Merge, Close
+        ghtui_core::types::PrState::Closed => 1, // Reopen
+        ghtui_core::types::PrState::Merged => 0,
+    }
+}
+
+fn action_bar_action(index: usize, pr_state: &ghtui_core::types::PrState) -> Option<Message> {
+    match pr_state {
+        ghtui_core::types::PrState::Open => match index {
+            0 => Some(Message::PrStartComment),
+            1 => Some(Message::PrApprove),
+            2 => Some(Message::PrRequestChanges),
+            3 => Some(Message::ModalOpen(ghtui_core::ModalKind::MergePr)),
+            4 => Some(Message::PrToggleState),
+            _ => None,
+        },
+        ghtui_core::types::PrState::Closed => match index {
+            0 => Some(Message::PrToggleState),
+            _ => None,
+        },
+        ghtui_core::types::PrState::Merged => None,
+    }
 }

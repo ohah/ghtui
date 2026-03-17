@@ -92,6 +92,10 @@ pub enum Message {
     PrDiffTreeSelect,       // Select file in tree → jump to diff
     PrApprove,              // Approve PR
     PrRequestChanges,       // Request changes on PR
+    PrActionBarFocus,       // Toggle focus on action bar
+    PrActionBarLeft,        // Move left in action bar
+    PrActionBarRight,       // Move right in action bar
+    PrActionBarSelect,      // Execute selected action
     PrChangeBase,           // Change merge target branch
 
     // Issue

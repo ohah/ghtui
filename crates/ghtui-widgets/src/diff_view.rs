@@ -8,15 +8,21 @@ use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Paragraph, StatefulWidget, Widget};
+use unicode_width::UnicodeWidthStr;
 
 const BOX_PAD: &str = "          ";
 const BOX_INDENT: usize = 12; // BOX_PAD(10) + "│ "(2)
 
-/// ╭─ label ─────────╮  (border_style for box chars, label keeps its own style)
+/// Display width of spans (accounts for emoji, CJK, etc.)
+fn span_width(spans: &[Span]) -> usize {
+    spans.iter().map(|s| s.content.width()).sum()
+}
+
+/// ╭─ label ─────────╮
 fn box_top(label_spans: Vec<Span<'static>>, border: Style, width: usize) -> Line<'static> {
-    let content_width = width.saturating_sub(BOX_INDENT + 1); // -1 for ╮
-    let label_len: usize = label_spans.iter().map(|s| s.content.chars().count()).sum();
-    let fill = content_width.saturating_sub(label_len + 1);
+    let content_width = width.saturating_sub(BOX_INDENT + 1);
+    let label_w = span_width(&label_spans);
+    let fill = content_width.saturating_sub(label_w + 1);
     let mut spans = vec![Span::styled(format!("{}╭─", BOX_PAD), border)];
     spans.extend(label_spans);
     spans.push(Span::styled("─".repeat(fill), border));
@@ -24,10 +30,10 @@ fn box_top(label_spans: Vec<Span<'static>>, border: Style, width: usize) -> Line
     Line::from(spans)
 }
 
-/// │ content          │  (padded to width, border chars use border_style)
+/// │ content          │  (padded to align right border)
 fn box_mid(content: Vec<Span<'static>>, border: Style, width: usize) -> Line<'static> {
-    let content_width = width.saturating_sub(BOX_INDENT + 2); // -2 for " │"
-    let actual: usize = content.iter().map(|s| s.content.chars().count()).sum();
+    let content_width = width.saturating_sub(BOX_INDENT + 1); // space for │
+    let actual = span_width(&content);
     let padding = content_width.saturating_sub(actual);
     let mut result = vec![Span::styled(format!("{}│ ", BOX_PAD), border)];
     result.extend(content);
