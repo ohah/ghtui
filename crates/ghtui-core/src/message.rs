@@ -73,6 +73,13 @@ pub enum Message {
     PrAssigneeCancel,
     PrCollaboratorsLoaded(Vec<String>),
     PrAddReaction(String),
+    // PR diff navigation
+    PrDiffCursorDown,
+    PrDiffCursorUp,
+    PrDiffSelectDown,     // Shift+j/Down — extend selection
+    PrDiffSelectUp,       // Shift+k/Up — extend selection
+    PrDiffToggleCollapse, // Enter — fold/unfold file
+    PrDiffClearSelection, // Esc in diff
 
     // Issue
     IssueListLoaded(Vec<Issue>, Pagination, IssueFilters),

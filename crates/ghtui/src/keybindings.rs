@@ -82,8 +82,13 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         let issue_editing = state.issue_detail.as_ref().is_some_and(|d| d.is_editing());
         let pr_editing = state.pr_detail.as_ref().is_some_and(|d| d.is_editing());
         let pr_picker = state.pr_detail.as_ref().is_some_and(|d| d.has_picker());
+        let pr_diff_select = state
+            .pr_detail
+            .as_ref()
+            .is_some_and(|d| d.tab == 1 && d.diff_select_anchor.is_some());
         if (matches!(state.route, Route::IssueDetail { .. }) && issue_editing)
-            || (matches!(state.route, Route::PrDetail { .. }) && (pr_editing || pr_picker))
+            || (matches!(state.route, Route::PrDetail { .. })
+                && (pr_editing || pr_picker || pr_diff_select))
         {
             // Fall through to route-specific handler
         } else {
@@ -272,7 +277,30 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         return None;
     }
 
-    // Normal mode
+    // Check if we're on the diff tab
+    let on_diff_tab = state.pr_detail.as_ref().is_some_and(|d| d.tab == 1);
+
+    if on_diff_tab {
+        let shift = key.modifiers.contains(KeyModifiers::SHIFT);
+        return match key.code {
+            KeyCode::Tab => Some(Message::TabChanged(1)),
+            KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
+            KeyCode::Char('j') | KeyCode::Down if shift => Some(Message::PrDiffSelectDown),
+            KeyCode::Char('k') | KeyCode::Up if shift => Some(Message::PrDiffSelectUp),
+            KeyCode::Char('J') => Some(Message::PrDiffSelectDown),
+            KeyCode::Char('K') => Some(Message::PrDiffSelectUp),
+            KeyCode::Char('j') | KeyCode::Down => Some(Message::PrDiffCursorDown),
+            KeyCode::Char('k') | KeyCode::Up => Some(Message::PrDiffCursorUp),
+            KeyCode::Enter => Some(Message::PrDiffToggleCollapse),
+            KeyCode::Esc => Some(Message::PrDiffClearSelection),
+            KeyCode::PageDown => Some(Message::ScrollDown),
+            KeyCode::PageUp => Some(Message::ScrollUp),
+            KeyCode::Char('o') => Some(Message::PrOpenInBrowser),
+            _ => None,
+        };
+    }
+
+    // Normal mode (conversation/checks tabs)
     match key.code {
         KeyCode::Tab => Some(Message::TabChanged(1)),
         KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
