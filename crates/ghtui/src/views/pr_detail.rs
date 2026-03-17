@@ -520,6 +520,55 @@ fn render_conversation(
         ));
     }
 
+    // --- CI Status summary in conversation ---
+    if !detail.detail.checks.is_empty() {
+        lines.push(Line::raw(""));
+        let mut passed = 0usize;
+        let mut failed = 0usize;
+        let mut pending = 0usize;
+        for c in &detail.detail.checks {
+            match c.conclusion.as_deref() {
+                Some("success") => passed += 1,
+                Some("failure") | Some("cancelled") | Some("timed_out") => failed += 1,
+                _ => pending += 1,
+            }
+        }
+        let overall_icon = if failed > 0 {
+            Span::styled("  ✗ ", Style::default().fg(theme.danger))
+        } else if pending > 0 {
+            Span::styled("  ● ", Style::default().fg(theme.warning))
+        } else {
+            Span::styled("  ✓ ", Style::default().fg(theme.success))
+        };
+        let overall_text = if failed > 0 {
+            format!("{} failing, {} passing", failed, passed)
+        } else if pending > 0 {
+            format!("{} pending, {} passing", pending, passed)
+        } else {
+            format!("All {} checks passed", passed)
+        };
+        lines.push(Line::from(vec![
+            overall_icon,
+            Span::styled(
+                overall_text,
+                Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
+            ),
+        ]));
+        // Show individual checks
+        for check in &detail.detail.checks {
+            let icon = match check.conclusion.as_deref() {
+                Some("success") => Span::styled("    ✓ ", Style::default().fg(theme.success)),
+                Some("failure") => Span::styled("    ✗ ", Style::default().fg(theme.danger)),
+                _ => Span::styled("    ● ", Style::default().fg(theme.warning)),
+            };
+            lines.push(Line::from(vec![
+                icon,
+                Span::styled(check.name.clone(), Style::default().fg(theme.fg_dim)),
+            ]));
+        }
+        lines.push(Line::raw(""));
+    }
+
     let paragraph = Paragraph::new(lines)
         .style(theme.text())
         .block(
