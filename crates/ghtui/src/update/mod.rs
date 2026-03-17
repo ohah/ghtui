@@ -1,7 +1,8 @@
 use ghtui_core::router::Route;
 use ghtui_core::state::issue::InlineEditTarget;
+use ghtui_core::state::pr::PrInlineEditTarget;
 use ghtui_core::state::*;
-use ghtui_core::types::{IssueFilters, IssueState};
+use ghtui_core::types::{IssueFilters, IssueState, PrFilters, PrState};
 use ghtui_core::{AppState, Command, Message};
 
 pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
@@ -42,9 +43,9 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
 
         // PR
-        Message::PrListLoaded(prs, pagination) => {
+        Message::PrListLoaded(prs, pagination, filters) => {
             state.loading.remove("pr_list");
-            state.pr_list = Some(PrListState::new(prs, pagination));
+            state.pr_list = Some(PrListState::with_filters(prs, pagination, filters));
             vec![]
         }
         Message::PrDetailLoaded(detail) => {
@@ -61,7 +62,6 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::PrMerged(number) => {
             state.push_toast(format!("PR #{} merged!", number), ToastLevel::Success);
-            // Refresh the list
             refresh_current_view(state)
         }
         Message::PrClosed(number) => {
@@ -76,9 +76,573 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.push_toast(format!("PR #{} created!", number), ToastLevel::Success);
             refresh_current_view(state)
         }
+        Message::PrUpdated(number) => {
+            state.push_toast(format!("PR #{} updated", number), ToastLevel::Success);
+            refresh_current_view(state)
+        }
         Message::ReviewSubmitted => {
             state.push_toast("Review submitted".to_string(), ToastLevel::Success);
             refresh_current_view(state)
+        }
+        Message::PrToggleStateFilter => {
+            if let Some(ref repo) = state.current_repo {
+                let filters = if let Some(ref mut list) = state.pr_list {
+                    list.toggle_state_filter();
+                    list.filters.clone()
+                } else {
+                    PrFilters {
+                        state: Some(PrState::Closed),
+                        ..Default::default()
+                    }
+                };
+                state.loading.insert("pr_list".to_string());
+                vec![Command::FetchPrList(repo.clone(), filters, 1)]
+            } else {
+                vec![]
+            }
+        }
+        Message::PrSortCycle => {
+            if let Some(ref repo) = state.current_repo {
+                let filters = if let Some(ref mut list) = state.pr_list {
+                    list.cycle_sort();
+                    list.filters.clone()
+                } else {
+                    PrFilters::default()
+                };
+                state.loading.insert("pr_list".to_string());
+                vec![Command::FetchPrList(repo.clone(), filters, 1)]
+            } else {
+                vec![]
+            }
+        }
+        Message::PrNextPage => {
+            if let (Some(repo), Some(list)) = (&state.current_repo, &state.pr_list) {
+                if list.pagination.has_next {
+                    let next_page = list.pagination.page + 1;
+                    let filters = list.filters.clone();
+                    state.loading.insert("pr_list".to_string());
+                    vec![Command::FetchPrList(repo.clone(), filters, next_page)]
+                } else {
+                    vec![]
+                }
+            } else {
+                vec![]
+            }
+        }
+        Message::PrPrevPage => {
+            if let (Some(repo), Some(list)) = (&state.current_repo, &state.pr_list) {
+                if list.pagination.page > 1 {
+                    let prev_page = list.pagination.page - 1;
+                    let filters = list.filters.clone();
+                    state.loading.insert("pr_list".to_string());
+                    vec![Command::FetchPrList(repo.clone(), filters, prev_page)]
+                } else {
+                    vec![]
+                }
+            } else {
+                vec![]
+            }
+        }
+        Message::PrSearchStart => {
+            if let Some(ref mut list) = state.pr_list {
+                list.search_mode = true;
+                list.search_query.clear();
+            }
+            vec![]
+        }
+        Message::PrSearchInput(text) => {
+            if let Some(ref mut list) = state.pr_list {
+                if text == "\x08" {
+                    list.search_query.pop();
+                } else {
+                    list.search_query.push_str(&text);
+                }
+            }
+            vec![]
+        }
+        Message::PrSearchSubmit => {
+            if let (Some(list), Some(repo)) = (&mut state.pr_list, &state.current_repo) {
+                list.search_mode = false;
+                let query = list.search_query.clone();
+                if query.is_empty() {
+                    state.loading.insert("pr_list".to_string());
+                    vec![Command::FetchPrList(repo.clone(), list.filters.clone(), 1)]
+                } else {
+                    state.loading.insert("pr_list".to_string());
+                    vec![Command::SearchPulls(repo.clone(), query)]
+                }
+            } else {
+                vec![]
+            }
+        }
+        Message::PrSearchCancel => {
+            if let Some(ref mut list) = state.pr_list {
+                list.search_mode = false;
+                list.search_query.clear();
+            }
+            vec![]
+        }
+        Message::PrFilterByLabel(label) => {
+            if let Some(ref mut list) = state.pr_list {
+                list.filters.label = Some(label);
+            }
+            if let Some(ref repo) = state.current_repo {
+                if let Some(ref list) = state.pr_list {
+                    state.loading.insert("pr_list".to_string());
+                    return vec![Command::FetchPrList(repo.clone(), list.filters.clone(), 1)];
+                }
+            }
+            vec![]
+        }
+        Message::PrFilterByAuthor(author) => {
+            if let Some(ref mut list) = state.pr_list {
+                list.filters.author = Some(author);
+            }
+            if let Some(ref repo) = state.current_repo {
+                if let Some(ref list) = state.pr_list {
+                    state.loading.insert("pr_list".to_string());
+                    return vec![Command::FetchPrList(repo.clone(), list.filters.clone(), 1)];
+                }
+            }
+            vec![]
+        }
+        Message::PrFilterByAssignee(assignee) => {
+            if let Some(ref mut list) = state.pr_list {
+                list.filters.assignee = Some(assignee);
+            }
+            if let Some(ref repo) = state.current_repo {
+                if let Some(ref list) = state.pr_list {
+                    state.loading.insert("pr_list".to_string());
+                    return vec![Command::FetchPrList(repo.clone(), list.filters.clone(), 1)];
+                }
+            }
+            vec![]
+        }
+        Message::PrFilterClear => {
+            if let Some(ref mut list) = state.pr_list {
+                let state_filter = list.filters.state;
+                list.filters = PrFilters {
+                    state: state_filter,
+                    ..Default::default()
+                };
+            }
+            if let Some(ref repo) = state.current_repo {
+                if let Some(ref list) = state.pr_list {
+                    state.loading.insert("pr_list".to_string());
+                    return vec![Command::FetchPrList(repo.clone(), list.filters.clone(), 1)];
+                }
+            }
+            vec![]
+        }
+        // PR detail: close/reopen
+        Message::PrToggleState => {
+            if let Some(ref detail) = state.pr_detail {
+                if let Some(ref repo) = state.current_repo {
+                    let number = detail.detail.pr.number;
+                    return match detail.detail.pr.state {
+                        PrState::Open => vec![Command::ClosePr(repo.clone(), number)],
+                        PrState::Closed => vec![Command::ReopenPr(repo.clone(), number)],
+                        PrState::Merged => vec![], // Can't reopen merged
+                    };
+                }
+            }
+            vec![]
+        }
+        Message::PrOpenInBrowser => {
+            if let Some(ref detail) = state.pr_detail {
+                if let Some(ref repo) = state.current_repo {
+                    let url = format!(
+                        "https://github.com/{}/pull/{}",
+                        repo.full_name(),
+                        detail.detail.pr.number
+                    );
+                    return vec![Command::OpenInBrowser(url)];
+                }
+            }
+            vec![]
+        }
+        Message::PrDeleteComment => {
+            if let Some(ref detail) = state.pr_detail {
+                if let Some(idx) = detail.selected_comment() {
+                    if let Some(comment) = detail.detail.comments.get(idx) {
+                        if let Some(ref repo) = state.current_repo {
+                            return vec![Command::DeletePrComment(repo.clone(), comment.id)];
+                        }
+                    }
+                }
+            }
+            vec![]
+        }
+        // PR label picker
+        Message::PrLabelToggle => {
+            if let Some(ref repo) = state.current_repo {
+                state.loading.insert("repo_labels".to_string());
+                vec![Command::FetchRepoLabels(repo.clone())]
+            } else {
+                vec![]
+            }
+        }
+        Message::PrLabelsLoaded(labels) => {
+            state.loading.remove("repo_labels");
+            if let Some(ref mut detail) = state.pr_detail {
+                let current_labels: Vec<String> = detail
+                    .detail
+                    .pr
+                    .labels
+                    .iter()
+                    .map(|l| l.name.clone())
+                    .collect();
+                detail.label_picker = Some(ghtui_core::state::issue::LabelPickerState {
+                    available: labels,
+                    selected_names: current_labels,
+                    cursor: 0,
+                });
+            }
+            vec![]
+        }
+        Message::PrLabelSelect(idx) => {
+            if let Some(ref mut detail) = state.pr_detail {
+                if let Some(ref mut picker) = detail.label_picker {
+                    if let Some(label) = picker.available.get(idx) {
+                        let name = label.name.clone();
+                        if picker.selected_names.contains(&name) {
+                            picker.selected_names.retain(|n| n != &name);
+                        } else {
+                            picker.selected_names.push(name);
+                        }
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::PrLabelApply => {
+            if let Some(ref detail) = state.pr_detail {
+                if let (Some(picker), Some(repo)) = (&detail.label_picker, &state.current_repo) {
+                    let number = detail.detail.pr.number;
+                    let labels = picker.selected_names.clone();
+                    let cmds = vec![Command::SetPrLabels(repo.clone(), number, labels)];
+                    if let Some(ref mut detail) = state.pr_detail {
+                        detail.label_picker = None;
+                    }
+                    return cmds;
+                }
+            }
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.label_picker = None;
+            }
+            vec![]
+        }
+        Message::PrLabelCancel => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.label_picker = None;
+            }
+            vec![]
+        }
+        // PR assignee picker
+        Message::PrAssigneeToggle => {
+            if let Some(ref repo) = state.current_repo {
+                state.loading.insert("collaborators_picker".to_string());
+                vec![Command::FetchCollaboratorsForPicker(repo.clone())]
+            } else {
+                vec![]
+            }
+        }
+        Message::PrCollaboratorsLoaded(logins) => {
+            state.loading.remove("collaborators_picker");
+            if let Some(ref mut detail) = state.pr_detail {
+                let current: Vec<String> = detail
+                    .detail
+                    .pr
+                    .assignees
+                    .iter()
+                    .map(|a| a.login.clone())
+                    .collect();
+                detail.assignee_picker = Some(ghtui_core::state::issue::AssigneePickerState {
+                    available: logins,
+                    selected_names: current,
+                    cursor: 0,
+                });
+            }
+            vec![]
+        }
+        Message::PrAssigneeSelect(idx) => {
+            if let Some(ref mut detail) = state.pr_detail {
+                if let Some(ref mut picker) = detail.assignee_picker {
+                    if let Some(login) = picker.available.get(idx).cloned() {
+                        if picker.selected_names.contains(&login) {
+                            picker.selected_names.retain(|n| n != &login);
+                        } else {
+                            picker.selected_names.push(login);
+                        }
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::PrAssigneeApply => {
+            if let Some(ref detail) = state.pr_detail {
+                if let (Some(picker), Some(repo)) = (&detail.assignee_picker, &state.current_repo) {
+                    let number = detail.detail.pr.number;
+                    let assignees = picker.selected_names.clone();
+                    let cmds = vec![Command::SetPrAssignees(repo.clone(), number, assignees)];
+                    if let Some(ref mut detail) = state.pr_detail {
+                        detail.assignee_picker = None;
+                    }
+                    return cmds;
+                }
+            }
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.assignee_picker = None;
+            }
+            vec![]
+        }
+        Message::PrAssigneeCancel => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.assignee_picker = None;
+            }
+            vec![]
+        }
+        // PR reactions
+        Message::PrAddReaction(reaction) => {
+            if let Some(ref detail) = state.pr_detail {
+                if let Some(ref repo) = state.current_repo {
+                    use ghtui_core::state::pr::PrSection;
+                    match &detail.focus {
+                        PrSection::Body | PrSection::Title => {
+                            let number = detail.detail.pr.number;
+                            return vec![Command::AddReaction(
+                                repo.clone(),
+                                number,
+                                reaction,
+                                true,
+                            )];
+                        }
+                        PrSection::Comment(idx) => {
+                            if let Some(comment) = detail.detail.comments.get(*idx) {
+                                return vec![Command::AddReaction(
+                                    repo.clone(),
+                                    comment.id,
+                                    reaction,
+                                    false,
+                                )];
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            vec![]
+        }
+        // PR inline editing
+        Message::PrStartEditTitle => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.start_edit_title();
+            }
+            vec![]
+        }
+        Message::PrStartEditBody => {
+            if let Some(ref mut detail) = state.pr_detail {
+                use ghtui_core::state::pr::PrSection;
+                match &detail.focus {
+                    PrSection::Title => detail.start_edit_title(),
+                    PrSection::Body => detail.start_edit_body(),
+                    PrSection::Comment(idx) => detail.start_edit_comment(*idx),
+                    _ => {}
+                }
+            }
+            vec![]
+        }
+        Message::PrStartComment => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.start_new_comment();
+            }
+            vec![]
+        }
+        Message::PrStartReply => {
+            if let Some(ref mut detail) = state.pr_detail {
+                if let Some(idx) = detail.selected_comment() {
+                    detail.start_quote_reply(idx);
+                } else {
+                    detail.start_new_comment();
+                }
+            }
+            vec![]
+        }
+        Message::PrEditChar(c) => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.insert_char(c);
+            }
+            vec![]
+        }
+        Message::PrEditNewline => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.insert_newline();
+            }
+            vec![]
+        }
+        Message::PrEditBackspace => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.backspace();
+            }
+            vec![]
+        }
+        Message::PrEditCursorLeft => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.move_left();
+            }
+            vec![]
+        }
+        Message::PrEditCursorRight => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.move_right();
+            }
+            vec![]
+        }
+        Message::PrEditCursorUp => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.move_up();
+            }
+            vec![]
+        }
+        Message::PrEditCursorDown => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.move_down();
+            }
+            vec![]
+        }
+        Message::PrEditHome => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.move_home();
+            }
+            vec![]
+        }
+        Message::PrEditEnd => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.move_end();
+            }
+            vec![]
+        }
+        Message::PrEditDelete => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.delete();
+            }
+            vec![]
+        }
+        Message::PrEditTab => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.insert_tab();
+            }
+            vec![]
+        }
+        Message::PrEditWordLeft => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.move_word_left();
+            }
+            vec![]
+        }
+        Message::PrEditWordRight => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.move_word_right();
+            }
+            vec![]
+        }
+        Message::PrEditPageUp => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.page_up();
+            }
+            vec![]
+        }
+        Message::PrEditPageDown => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.page_down();
+            }
+            vec![]
+        }
+        Message::PrEditUndo => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.undo();
+            }
+            vec![]
+        }
+        Message::PrEditRedo => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor.redo();
+            }
+            vec![]
+        }
+        Message::PrEditSubmit => {
+            if let Some(ref detail) = state.pr_detail {
+                if let Some(ref repo) = state.current_repo {
+                    let cmds = match &detail.edit_target {
+                        Some(PrInlineEditTarget::PrTitle) => {
+                            let title = detail.editor_text().trim().to_string();
+                            let number = detail.detail.pr.number;
+                            if title.is_empty() {
+                                state.push_toast(
+                                    "Title cannot be empty".to_string(),
+                                    ToastLevel::Warning,
+                                );
+                                return vec![];
+                            }
+                            vec![Command::UpdatePr(repo.clone(), number, Some(title), None)]
+                        }
+                        Some(PrInlineEditTarget::PrBody) => {
+                            let body = detail.editor_text();
+                            let number = detail.detail.pr.number;
+                            vec![Command::UpdatePr(repo.clone(), number, None, Some(body))]
+                        }
+                        Some(PrInlineEditTarget::Comment(idx)) => {
+                            if let Some(comment) = detail.detail.comments.get(*idx) {
+                                let body = detail.editor_text();
+                                if body.trim().is_empty() {
+                                    state.push_toast(
+                                        "Comment cannot be empty".to_string(),
+                                        ToastLevel::Warning,
+                                    );
+                                    return vec![];
+                                }
+                                vec![Command::UpdatePrComment(
+                                    repo.clone(),
+                                    detail.detail.pr.number,
+                                    comment.id,
+                                    body,
+                                )]
+                            } else {
+                                vec![]
+                            }
+                        }
+                        Some(
+                            PrInlineEditTarget::NewComment | PrInlineEditTarget::QuoteReply(_),
+                        ) => {
+                            let body = detail.editor_text();
+                            if body.trim().is_empty() {
+                                state.push_toast(
+                                    "Comment cannot be empty".to_string(),
+                                    ToastLevel::Warning,
+                                );
+                                return vec![];
+                            }
+                            let number = detail.detail.pr.number;
+                            vec![Command::AddPrComment(repo.clone(), number, body)]
+                        }
+                        None => vec![],
+                    };
+                    if let Some(ref mut detail) = state.pr_detail {
+                        detail.cancel_edit();
+                    }
+                    return cmds;
+                }
+            }
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.cancel_edit();
+            }
+            vec![]
+        }
+        Message::PrEditCancel => {
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.cancel_edit();
+            }
+            vec![]
         }
 
         // Issues
@@ -363,6 +927,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::IssueLabelsLoaded(labels) => {
             state.loading.remove("repo_labels");
+            if matches!(state.route, Route::PrDetail { .. }) {
+                // Route to PR detail
+                return update(state, Message::PrLabelsLoaded(labels));
+            }
             if let Some(ref mut detail) = state.issue_detail {
                 let current_labels: Vec<String> = detail
                     .detail
@@ -429,6 +997,9 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::IssueCollaboratorsLoaded(logins) => {
             state.loading.remove("collaborators_picker");
+            if matches!(state.route, Route::PrDetail { .. }) {
+                return update(state, Message::PrCollaboratorsLoaded(logins));
+            }
             if let Some(ref mut detail) = state.issue_detail {
                 let current: Vec<String> = detail
                     .detail
@@ -1053,6 +1624,12 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     return vec![];
                 }
             }
+            if matches!(state.route, Route::PrDetail { .. }) {
+                if let Some(ref mut detail) = state.pr_detail {
+                    detail.scroll = detail.scroll.saturating_sub(3);
+                    return vec![];
+                }
+            }
             update(state, Message::ListSelect(usize::MAX))
         }
         Message::ScrollDown => {
@@ -1066,6 +1643,12 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             if matches!(state.route, Route::IssueDetail { .. }) {
                 if let Some(ref mut detail) = state.issue_detail {
+                    detail.scroll += 3;
+                    return vec![];
+                }
+            }
+            if matches!(state.route, Route::PrDetail { .. }) {
+                if let Some(ref mut detail) = state.pr_detail {
                     detail.scroll += 3;
                     return vec![];
                 }
@@ -1662,6 +2245,29 @@ fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Command> {
                         picker.cursor = (picker.cursor + 1).min(max);
                     }
                 } else if let Some(ref mut picker) = detail.milestone_picker {
+                    let max = picker.available.len().saturating_sub(1);
+                    if delta == usize::MAX {
+                        picker.cursor = picker.cursor.saturating_sub(1);
+                    } else if delta > 0 {
+                        picker.cursor = (picker.cursor + 1).min(max);
+                    }
+                } else if delta == usize::MAX {
+                    detail.focus_prev();
+                } else if delta > 0 {
+                    detail.focus_next();
+                }
+            }
+        }
+        Route::PrDetail { .. } => {
+            if let Some(ref mut detail) = state.pr_detail {
+                if let Some(ref mut picker) = detail.label_picker {
+                    let max = picker.available.len().saturating_sub(1);
+                    if delta == usize::MAX {
+                        picker.cursor = picker.cursor.saturating_sub(1);
+                    } else if delta > 0 {
+                        picker.cursor = (picker.cursor + 1).min(max);
+                    }
+                } else if let Some(ref mut picker) = detail.assignee_picker {
                     let max = picker.available.len().saturating_sub(1);
                     if delta == usize::MAX {
                         picker.cursor = picker.cursor.saturating_sub(1);

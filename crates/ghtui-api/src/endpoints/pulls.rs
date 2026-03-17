@@ -210,6 +210,62 @@ impl GithubClient {
         Ok(())
     }
 
+    pub async fn search_pulls(
+        &self,
+        repo: &RepoId,
+        query: &str,
+    ) -> Result<(Vec<PullRequest>, Pagination), ApiError> {
+        let search_query = format!("repo:{}/{} is:pr {}", repo.owner, repo.name, query);
+        let encoded: String = search_query
+            .chars()
+            .map(|c| match c {
+                ' ' => "+".to_string(),
+                '/' => "%2F".to_string(),
+                ':' => "%3A".to_string(),
+                '#' => "%23".to_string(),
+                _ => c.to_string(),
+            })
+            .collect();
+        let path = format!("/search/issues?q={}&per_page=30", encoded);
+        let body = self.get(&path).await?;
+        let result: serde_json::Value = serde_json::from_str(&body)?;
+        let items = result["items"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| serde_json::from_value::<PullRequest>(v.clone()).ok())
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        let pagination = Pagination {
+            page: 1,
+            per_page: 30,
+            has_next: false,
+            total: result["total_count"].as_u64().map(|n| n as u32),
+        };
+        Ok((items, pagination))
+    }
+
+    pub async fn update_pull(
+        &self,
+        repo: &RepoId,
+        number: u64,
+        title: Option<&str>,
+        body: Option<&str>,
+    ) -> Result<(), ApiError> {
+        let path = format!("/repos/{}/{}/pulls/{}", repo.owner, repo.name, number);
+        let mut update = serde_json::Map::new();
+        if let Some(t) = title {
+            update.insert("title".into(), json!(t));
+        }
+        if let Some(b) = body {
+            update.insert("body".into(), json!(b));
+        }
+        self.patch(&path, &serde_json::Value::Object(update))
+            .await?;
+        Ok(())
+    }
+
     pub async fn add_pr_comment(
         &self,
         repo: &RepoId,
