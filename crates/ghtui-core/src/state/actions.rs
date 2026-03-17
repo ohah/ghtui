@@ -129,6 +129,10 @@ pub struct ActionDetailState {
     pub pending_deployments: Vec<PendingDeployment>,
     /// Workflow file content (YAML)
     pub workflow_file: Option<String>,
+    /// Tick counter for log polling (fetch every N ticks)
+    pub log_poll_counter: u32,
+    /// Whether the selected job is actively running (enables log polling)
+    pub log_streaming: bool,
 }
 
 impl ActionDetailState {
@@ -149,6 +153,8 @@ impl ActionDetailState {
             artifacts: Vec::new(),
             pending_deployments: Vec::new(),
             workflow_file: None,
+            log_poll_counter: 0,
+            log_streaming: false,
         }
     }
 
