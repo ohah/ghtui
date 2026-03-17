@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use ratatui::text::Line;
+
 use crate::types::{ActionsFilters, LogLine, Pagination, Workflow, WorkflowRun, WorkflowRunDetail};
 
 #[derive(Debug)]
@@ -73,8 +75,30 @@ impl ActionsListState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActionDetailFocus {
     Jobs,
-    Steps,
     Log,
+    ActionBar,
+}
+
+/// Action bar items (typed, not stringly).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActionBarItem {
+    Cancel,
+    Rerun,
+    RerunFailed,
+    Delete,
+    OpenInBrowser,
+}
+
+impl ActionBarItem {
+    pub fn label(&self) -> &'static str {
+        match self {
+            ActionBarItem::Cancel => "Cancel",
+            ActionBarItem::Rerun => "Re-run",
+            ActionBarItem::RerunFailed => "Re-run failed",
+            ActionBarItem::Delete => "Delete",
+            ActionBarItem::OpenInBrowser => "Open in browser",
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -82,55 +106,65 @@ pub struct ActionDetailState {
     pub detail: WorkflowRunDetail,
     pub selected_job: usize,
     pub log: Option<Vec<LogLine>>,
+    /// Pre-parsed ANSI log lines for rendering (parsed once on load).
+    pub parsed_log: Option<Vec<Line<'static>>>,
     pub log_scroll: usize,
     pub auto_scroll: bool,
     /// Which steps are collapsed (by step number). Expanded by default.
     pub collapsed_steps: HashSet<u32>,
+    /// Whether all steps for the selected job are collapsed.
+    pub steps_collapsed: bool,
     /// Current focus area
     pub focus: ActionDetailFocus,
-    /// Action bar: focused?
-    pub action_bar_focused: bool,
     /// Action bar: selected action index
     pub action_bar_selected: usize,
+    /// Cached action bar items (computed on state change).
+    pub action_bar_items: Vec<ActionBarItem>,
 }
 
 impl ActionDetailState {
     pub fn new(detail: WorkflowRunDetail) -> Self {
+        let items = Self::compute_action_bar_items(&detail);
         Self {
             detail,
             selected_job: 0,
             log: None,
+            parsed_log: None,
             log_scroll: 0,
             auto_scroll: true,
             collapsed_steps: HashSet::new(),
+            steps_collapsed: false,
             focus: ActionDetailFocus::Jobs,
-            action_bar_focused: false,
             action_bar_selected: 0,
+            action_bar_items: items,
         }
     }
 
-    /// Toggle collapse state of a step
-    pub fn toggle_step(&mut self, step_number: u32) {
-        if !self.collapsed_steps.remove(&step_number) {
-            self.collapsed_steps.insert(step_number);
-        }
+    /// Set log and pre-parse ANSI sequences.
+    pub fn set_log(&mut self, lines: Vec<LogLine>) {
+        let parsed: Vec<Line<'static>> = lines
+            .iter()
+            .map(|l| crate::ansi::parse_ansi_line(&l.content))
+            .collect();
+        self.parsed_log = Some(parsed);
+        self.log = Some(lines);
     }
 
-    /// Check if a step is collapsed
-    pub fn is_step_collapsed(&self, step_number: u32) -> bool {
-        self.collapsed_steps.contains(&step_number)
+    /// Toggle collapse state of all steps for the selected job.
+    pub fn toggle_steps_collapsed(&mut self) {
+        self.steps_collapsed = !self.steps_collapsed;
     }
 
-    /// Get available action bar items based on run state
-    pub fn action_bar_items(&self) -> Vec<&'static str> {
+    /// Compute available action bar items based on run state.
+    fn compute_action_bar_items(detail: &WorkflowRunDetail) -> Vec<ActionBarItem> {
         let mut items = Vec::new();
-        let run = &self.detail.run;
+        let run = &detail.run;
 
         match run.status {
             Some(crate::types::RunStatus::InProgress)
             | Some(crate::types::RunStatus::Queued)
             | Some(crate::types::RunStatus::Waiting) => {
-                items.push("Cancel");
+                items.push(ActionBarItem::Cancel);
             }
             _ => {}
         }
@@ -138,19 +172,37 @@ impl ActionDetailState {
         match run.conclusion {
             Some(crate::types::RunConclusion::Failure)
             | Some(crate::types::RunConclusion::Cancelled) => {
-                items.push("Re-run");
-                items.push("Re-run failed");
-            }
-            Some(crate::types::RunConclusion::Success) => {
-                items.push("Re-run");
+                items.push(ActionBarItem::Rerun);
+                items.push(ActionBarItem::RerunFailed);
             }
             _ => {
-                items.push("Re-run");
+                items.push(ActionBarItem::Rerun);
             }
         }
 
-        items.push("Delete");
-        items.push("Open in browser");
+        items.push(ActionBarItem::Delete);
+        items.push(ActionBarItem::OpenInBrowser);
         items
+    }
+}
+
+/// Format a duration between two optional timestamps.
+pub fn format_duration(
+    start: Option<chrono::DateTime<chrono::Utc>>,
+    end: Option<chrono::DateTime<chrono::Utc>>,
+) -> String {
+    match (start, end) {
+        (Some(s), Some(e)) => {
+            let secs = (e - s).num_seconds();
+            if secs >= 60 {
+                format!("{}m{}s", secs / 60, secs % 60)
+            } else if secs > 0 {
+                format!("{}s", secs)
+            } else {
+                String::new()
+            }
+        }
+        (Some(_), None) => "running...".to_string(),
+        _ => String::new(),
     }
 }

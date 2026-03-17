@@ -1,4 +1,5 @@
 use ghtui_core::router::Route;
+use ghtui_core::state::actions::ActionBarItem;
 use ghtui_core::state::issue::InlineEditTarget;
 use ghtui_core::state::pr::PrInlineEditTarget;
 use ghtui_core::state::*;
@@ -1955,7 +1956,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.loading.remove("job_log");
             if let Some(ref mut detail) = state.action_detail {
                 let _ = job_id;
-                detail.log = Some(lines);
+                detail.set_log(lines);
             }
             vec![]
         }
@@ -2109,9 +2110,9 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
-        Message::ActionDetailToggleStep(step_number) => {
+        Message::ActionDetailToggleStep(_) => {
             if let Some(ref mut detail) = state.action_detail {
-                detail.toggle_step(step_number);
+                detail.toggle_steps_collapsed();
             }
             vec![]
         }
@@ -2129,7 +2130,11 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::ActionDetailActionBarFocus => {
             if let Some(ref mut detail) = state.action_detail {
-                detail.action_bar_focused = !detail.action_bar_focused;
+                detail.focus = if detail.focus == ActionDetailFocus::ActionBar {
+                    ActionDetailFocus::Jobs
+                } else {
+                    ActionDetailFocus::ActionBar
+                };
             }
             vec![]
         }
@@ -2141,27 +2146,32 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::ActionDetailActionBarRight => {
             if let Some(ref mut detail) = state.action_detail {
-                let max = detail.action_bar_items().len().saturating_sub(1);
+                let max = detail.action_bar_items.len().saturating_sub(1);
                 detail.action_bar_selected = (detail.action_bar_selected + 1).min(max);
             }
             vec![]
         }
         Message::ActionDetailActionBarSelect => {
             if let (Some(detail), Some(repo)) = (&state.action_detail, &state.current_repo) {
-                let items = detail.action_bar_items();
                 let run_id = detail.detail.run.id;
-                let action = items.get(detail.action_bar_selected).copied();
+                let action = detail.action_bar_items.get(detail.action_bar_selected);
                 match action {
-                    Some("Cancel") => return vec![Command::CancelRun(repo.clone(), run_id)],
-                    Some("Re-run") => return vec![Command::RerunRun(repo.clone(), run_id)],
-                    Some("Re-run failed") => {
+                    Some(ActionBarItem::Cancel) => {
+                        return vec![Command::CancelRun(repo.clone(), run_id)];
+                    }
+                    Some(ActionBarItem::Rerun) => {
+                        return vec![Command::RerunRun(repo.clone(), run_id)];
+                    }
+                    Some(ActionBarItem::RerunFailed) => {
                         return vec![Command::RerunFailedJobs(repo.clone(), run_id)];
                     }
-                    Some("Delete") => return vec![Command::DeleteRun(repo.clone(), run_id)],
-                    Some("Open in browser") => {
+                    Some(ActionBarItem::Delete) => {
+                        return vec![Command::DeleteRun(repo.clone(), run_id)];
+                    }
+                    Some(ActionBarItem::OpenInBrowser) => {
                         return vec![Command::OpenInBrowser(detail.detail.run.html_url.clone())];
                     }
-                    _ => {}
+                    None => {}
                 }
             }
             vec![]

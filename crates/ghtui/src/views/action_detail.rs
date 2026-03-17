@@ -1,6 +1,6 @@
 use ghtui_core::AppState;
-use ghtui_core::ansi::parse_ansi_line;
 use ghtui_core::state::ActionDetailFocus;
+use ghtui_core::state::actions::format_duration;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
@@ -118,32 +118,8 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
             let is_selected_job = job_idx == detail.selected_job;
 
             // Job header
-            let icon = match &job.conclusion {
-                Some(ghtui_core::types::RunConclusion::Success) => {
-                    Span::styled(" ✓ ", Style::default().fg(theme.success))
-                }
-                Some(ghtui_core::types::RunConclusion::Failure) => {
-                    Span::styled(" ✗ ", Style::default().fg(theme.danger))
-                }
-                Some(ghtui_core::types::RunConclusion::Cancelled) => {
-                    Span::styled(" ◌ ", Style::default().fg(theme.fg_muted))
-                }
-                _ => Span::styled(" ● ", Style::default().fg(theme.warning)),
-            };
-
-            // Duration
-            let duration = match (job.started_at, job.completed_at) {
-                (Some(start), Some(end)) => {
-                    let secs = (end - start).num_seconds();
-                    if secs >= 60 {
-                        format!(" {}m{}s", secs / 60, secs % 60)
-                    } else {
-                        format!(" {}s", secs)
-                    }
-                }
-                (Some(_), None) => " running...".to_string(),
-                _ => String::new(),
-            };
+            let icon = conclusion_icon(&job.conclusion, theme);
+            let duration = format_duration(job.started_at, job.completed_at);
 
             let job_style = if is_selected_job && jobs_focused {
                 theme.selected()
@@ -155,18 +131,18 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 theme.text()
             };
 
-            items.push(ListItem::new(Line::from(vec![
-                icon,
-                Span::styled(&job.name, job_style),
-                Span::styled(duration, Style::default().fg(theme.fg_dim)),
-            ])));
+            let mut job_spans = vec![icon, Span::styled(&job.name, job_style)];
+            if !duration.is_empty() {
+                job_spans.push(Span::styled(
+                    format!(" {}", duration),
+                    Style::default().fg(theme.fg_dim),
+                ));
+            }
+            items.push(ListItem::new(Line::from(job_spans)));
 
-            // Steps (shown for selected job)
-            if is_selected_job {
+            // Steps (shown for selected job, unless collapsed)
+            if is_selected_job && !detail.steps_collapsed {
                 for step in &job.steps {
-                    let collapsed = detail.is_step_collapsed(step.number);
-                    let fold_icon = if collapsed { "▸" } else { "▾" };
-
                     let step_icon = match step.conclusion.as_deref() {
                         Some("success") => Span::styled("  ✓ ", Style::default().fg(theme.success)),
                         Some("failure") => Span::styled("  ✗ ", Style::default().fg(theme.danger)),
@@ -176,30 +152,25 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                         _ => Span::styled("  ● ", Style::default().fg(theme.warning)),
                     };
 
-                    let step_duration = match (step.started_at, step.completed_at) {
-                        (Some(start), Some(end)) => {
-                            let secs = (end - start).num_seconds();
-                            if secs >= 60 {
-                                format!(" {}m{}s", secs / 60, secs % 60)
-                            } else if secs > 0 {
-                                format!(" {}s", secs)
-                            } else {
-                                String::new()
-                            }
-                        }
-                        _ => String::new(),
-                    };
-
-                    items.push(ListItem::new(Line::from(vec![
-                        Span::styled(
-                            format!("  {} ", fold_icon),
-                            Style::default().fg(theme.fg_dim),
-                        ),
+                    let step_dur = format_duration(step.started_at, step.completed_at);
+                    let mut step_spans = vec![
+                        Span::styled("    ", Style::default()),
                         step_icon,
                         Span::styled(&step.name, Style::default().fg(theme.fg_muted)),
-                        Span::styled(step_duration, Style::default().fg(theme.fg_dim)),
-                    ])));
+                    ];
+                    if !step_dur.is_empty() {
+                        step_spans.push(Span::styled(
+                            format!(" {}", step_dur),
+                            Style::default().fg(theme.fg_dim),
+                        ));
+                    }
+                    items.push(ListItem::new(Line::from(step_spans)));
                 }
+            } else if is_selected_job && detail.steps_collapsed {
+                items.push(ListItem::new(Line::from(vec![Span::styled(
+                    format!("    ▸ {} steps collapsed", job.steps.len()),
+                    Style::default().fg(theme.fg_dim),
+                )])));
             }
             items
         })
@@ -211,13 +182,17 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         theme.border_style()
     };
 
+    let fold_hint = if detail.steps_collapsed {
+        " [l:expand]"
+    } else {
+        " [h:fold]"
+    };
+    let jobs_title = format!(" Jobs ({}){} ", detail.detail.jobs.len(), fold_hint);
+
     let jobs_list = List::new(job_items)
         .block(
             Block::default()
-                .title(Span::styled(
-                    format!(" Jobs ({}) ", detail.detail.jobs.len()),
-                    theme.text_bold(),
-                ))
+                .title(Span::styled(jobs_title, theme.text_bold()))
                 .borders(Borders::ALL)
                 .border_style(jobs_border),
         )
@@ -227,7 +202,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     jobs_state.select(Some(detail.selected_job));
     frame.render_stateful_widget(jobs_list, chunks[1], &mut jobs_state);
 
-    // Log with ANSI color
+    // Log — use pre-parsed ANSI lines (no per-frame parsing)
     let log_focused = detail.focus == ActionDetailFocus::Log;
     let log_border = if log_focused {
         Style::default().fg(theme.accent)
@@ -235,16 +210,11 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         theme.border_style()
     };
 
-    if let Some(ref log) = detail.log {
-        let log_lines: Vec<Line> = log
-            .iter()
-            .map(|line| parse_ansi_line(&line.content))
-            .collect();
-
-        let total_lines = log_lines.len();
+    if let Some(ref parsed) = detail.parsed_log {
+        let total_lines = parsed.len();
         let log_title = format!(" Log ({} lines) ", total_lines);
 
-        let log_paragraph = Paragraph::new(log_lines)
+        let log_paragraph = Paragraph::new(parsed.clone())
             .style(theme.text())
             .block(
                 Block::default()
@@ -275,17 +245,36 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     render_action_bar(frame, detail, theme, chunks[3]);
 }
 
+fn conclusion_icon<'a>(
+    conclusion: &Option<ghtui_core::types::RunConclusion>,
+    theme: &ghtui_core::Theme,
+) -> Span<'a> {
+    match conclusion {
+        Some(ghtui_core::types::RunConclusion::Success) => {
+            Span::styled(" ✓ ", Style::default().fg(theme.success))
+        }
+        Some(ghtui_core::types::RunConclusion::Failure) => {
+            Span::styled(" ✗ ", Style::default().fg(theme.danger))
+        }
+        Some(ghtui_core::types::RunConclusion::Cancelled) => {
+            Span::styled(" ◌ ", Style::default().fg(theme.fg_muted))
+        }
+        _ => Span::styled(" ● ", Style::default().fg(theme.warning)),
+    }
+}
+
 fn render_action_bar(
     frame: &mut Frame,
     detail: &ghtui_core::state::ActionDetailState,
     theme: &ghtui_core::Theme,
     area: Rect,
 ) {
-    let items = detail.action_bar_items();
+    let items = &detail.action_bar_items;
+    let is_focused = detail.focus == ActionDetailFocus::ActionBar;
     let mut spans = vec![Span::styled(" ", Style::default())];
 
     for (i, item) in items.iter().enumerate() {
-        let is_selected = detail.action_bar_focused && i == detail.action_bar_selected;
+        let is_selected = is_focused && i == detail.action_bar_selected;
         let style = if is_selected {
             Style::default()
                 .fg(theme.bg)
@@ -295,7 +284,7 @@ fn render_action_bar(
             Style::default().fg(theme.fg_dim)
         };
 
-        spans.push(Span::styled(format!(" {} ", item), style));
+        spans.push(Span::styled(format!(" {} ", item.label()), style));
         if i < items.len() - 1 {
             spans.push(Span::styled(" │ ", Style::default().fg(theme.fg_dim)));
         }
