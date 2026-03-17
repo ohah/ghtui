@@ -250,6 +250,8 @@ pub enum Message {
     CommitActivityLoaded(Vec<insights::CommitActivity>),
     TrafficClonesLoaded(insights::TrafficClones),
     TrafficViewsLoaded(insights::TrafficViews),
+    CodeFrequencyLoaded(Vec<insights::CodeFrequency>),
+    ForksLoaded(Vec<insights::Fork>),
 
     // Security
     DependabotAlertsLoaded(Vec<security::DependabotAlert>),

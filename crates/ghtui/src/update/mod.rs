@@ -2429,6 +2429,20 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::CodeFrequencyLoaded(freq) => {
+            state.loading.remove("code_frequency");
+            if let Some(ref mut ins) = state.insights {
+                ins.code_frequency = freq;
+            }
+            vec![]
+        }
+        Message::ForksLoaded(forks) => {
+            state.loading.remove("forks");
+            if let Some(ref mut ins) = state.insights {
+                ins.forks = forks;
+            }
+            vec![]
+        }
 
         // Search
         Message::SearchResults(results) => {
@@ -3298,11 +3312,15 @@ fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command> {
             state.loading.insert("commit_activity".to_string());
             state.loading.insert("traffic_clones".to_string());
             state.loading.insert("traffic_views".to_string());
+            state.loading.insert("code_frequency".to_string());
+            state.loading.insert("forks".to_string());
             vec![
                 Command::FetchContributorStats(repo.clone()),
                 Command::FetchCommitActivity(repo.clone()),
                 Command::FetchTrafficClones(repo.clone()),
                 Command::FetchTrafficViews(repo.clone()),
+                Command::FetchCodeFrequency(repo.clone()),
+                Command::FetchForks(repo.clone()),
             ]
         }
         Route::Settings { repo } => {

@@ -89,6 +89,8 @@ pub enum Command {
     FetchCommitActivity(RepoId),
     FetchTrafficClones(RepoId),
     FetchTrafficViews(RepoId),
+    FetchCodeFrequency(RepoId),
+    FetchForks(RepoId),
 
     // Security
     FetchDependabotAlerts(RepoId),

@@ -205,14 +205,14 @@
 - [x] 브라우저에서 열기 (`o`)
 - [ ] Security advisories (보류 — API 별도)
 
-## Phase 7 — Insights 탭 나머지
+## Phase 7 — Insights 탭 ✅ 완성
 
-- [x] Contributors API (커밋 수, additions/deletions)
-- [x] 커밋 활동 그래프 (ascii chart)
-- [x] 트래픽 (clones, views)
-- [ ] Code frequency
-- [ ] Dependency graph
-- [ ] Forks 네트워크
+- [x] Contributors API (커밋 수, additions/deletions, 바 차트)
+- [x] 커밋 활동 그래프 (ascii chart, 최근 26주)
+- [x] 트래픽 (clones, views, 일별 카운트)
+- [x] Code Frequency (additions/deletions 주간 바 차트, 최근 26주)
+- [x] Forks 네트워크 (★ 카운트, owner, 이름)
+- [ ] Dependency graph (보류 — SBOM API 별도)
 
 ## Phase 8 — Settings 탭 완성 (읽기 → 수정 가능)
 
