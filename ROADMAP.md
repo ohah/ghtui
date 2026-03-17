@@ -90,20 +90,33 @@
 - [x] Diff/Conversation 탭별 독립 스크롤
 - [x] Diff race condition 수정 (detail 로드 후 diff fetch)
 
-### Phase 2-2 남은 기능
+### Phase 2-2 완료 (Diff 리뷰 + UI 강화)
+- [x] 인라인 리뷰 코멘트 표시 (diff에 ╭─│─╰ 박스로 표시)
+- [x] 인라인 리뷰 코멘트 작성 (Enter on code line → 에디터 → Ctrl+Enter)
+- [x] Suggestion 삽입 (Ctrl+S → ```` ```suggestion ```` 템플릿)
+- [x] Suggestion 렌더링 (💡 아이콘 + 초록 하이라이트)
+- [x] 파일 트리 패널 (`f` 토글, Tab 포커스 전환, Enter 파일 점프)
+- [x] 파일 접기/펼치기 (`h`/`l`/Enter on header)
+- [x] 탭 이름 변경 (Conversation/Commits/Checks/Files changed)
+- [x] 탭 카운트 뱃지 (Commits(N), Checks(N), Files changed(N))
+- [x] Commits 탭 (SHA, 메시지, 작성자, 날짜)
+- [x] Base branch 변경 (`b` → 모달)
+- [x] Approve (`A`), Request changes (`R` → 모달)
+- [x] 하단 액션 바 (키보드 네비게이션: ←/→ 선택, Enter 실행)
+- [x] 리뷰어 중복 제거 (사용자별 최신 리뷰만 표시)
+- [x] Unicode width 박스 정렬 수정
+
+### Phase 2-3 남은 기능
 - [ ] PR 생성 UI (모달 폼)
 - [ ] Draft 토글
 - [ ] Auto-merge 활성화
 - [ ] Side-by-side diff 모드
-- [ ] 인라인 코멘트 작성 (선택 범위에 코멘트)
-- [ ] Suggested changes 보기/적용
 - [ ] 리뷰 스레드 resolve/unresolve
 - [ ] 리뷰어 추가/제거
 - [ ] Milestone 설정
 - [ ] Linked issues
-- [ ] 파일 트리 in diff
 - [ ] 파일별 Viewed 체크
-- [ ] 타임라인 이벤트
+- [ ] PR Conversation 타임라인 이벤트
 
 ## Phase 3 — Actions 탭 완성
 
