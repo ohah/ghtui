@@ -1,4 +1,5 @@
 pub mod actions;
+pub mod insights;
 pub mod issues;
 pub mod notifications;
 pub mod pulls;

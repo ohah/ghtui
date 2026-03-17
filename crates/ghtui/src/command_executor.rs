@@ -127,6 +127,24 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Err(e) => Message::Error(e.into()),
         },
 
+        // Insights
+        Command::FetchContributorStats(repo) => match client.get_contributor_stats(&repo).await {
+            Ok(stats) => Message::ContributorStatsLoaded(stats),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::FetchCommitActivity(repo) => match client.get_commit_activity(&repo).await {
+            Ok(activity) => Message::CommitActivityLoaded(activity),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::FetchTrafficClones(repo) => match client.get_traffic_clones(&repo).await {
+            Ok(clones) => Message::TrafficClonesLoaded(clones),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::FetchTrafficViews(repo) => match client.get_traffic_views(&repo).await {
+            Ok(views) => Message::TrafficViewsLoaded(views),
+            Err(e) => Message::Error(e.into()),
+        },
+
         // Security
         Command::FetchDependabotAlerts(repo) => match client.list_dependabot_alerts(&repo).await {
             Ok(alerts) => Message::DependabotAlertsLoaded(alerts),

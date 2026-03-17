@@ -20,6 +20,6 @@ tracing-subscriber.workspace = true
 dirs.workspace = true
 open.workspace = true
 arboard.workspace = true
+chrono.workspace = true
 
 [dev-dependencies]
-chrono.workspace = true

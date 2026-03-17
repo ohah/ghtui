@@ -65,6 +65,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
             | Route::ActionDetail { .. }
             | Route::JobLog { .. }
             | Route::Security { .. }
+            | Route::Insights { .. }
             | Route::Settings { .. }
     );
     if !in_detail {
@@ -91,6 +92,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         Route::PrDetail { .. } => handle_pr_detail_keys(key),
         Route::IssueDetail { .. } => handle_issue_detail_keys(key),
         Route::Security { .. } => handle_settings_keys(key),
+        Route::Insights { .. } => handle_settings_keys(key),
         Route::Settings { .. } => handle_settings_keys(key),
         _ => handle_list_keys(key),
     }
