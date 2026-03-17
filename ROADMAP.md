@@ -7,9 +7,9 @@
 | # | 탭 | API | 뷰 | 주요 기능 |
 |---|---|---|---|---|
 | 1 | Code | - | dashboard.rs | 레포 소개 + README placeholder (파일 브라우저 미구현) |
-| 2 | Issues | ✅ | issue_list, issue_detail | 목록, 상세, 닫기/열기 |
+| 2 | Issues | ✅ | issue_list, issue_detail | **Phase 1 완료** — 목록(카드UI), 상세(섹션포커스), CRUD, 필터/검색/정렬, 라벨/Assignee/Milestone, 리액션, 타임라인, 핀/잠금/이전 |
 | 3 | Pull requests | ✅ | pr_list, pr_detail | 목록, 상세(Conversation/Diff/Checks), 머지, 리뷰 |
-| 4 | Actions | ✅ | actions_list, action_detail | 워크플로우 목록, 잡 선택, 로그 뷰어, 취소/재실행 |
+| 4 | Actions | ✅ | actions_list, action_detail | 워크플로우 목록, 잡 선택, 로그 뷰어(스크롤), 취소/재실행 |
 | 5 | Security | ✅ | security.rs | Dependabot, Code Scanning, Secret Scanning (read-only) |
 | 6 | Insights | ✅ | insights.rs | Contributors, Commit Activity, Traffic (read-only) |
 | 7 | Settings | ✅ | settings.rs | 일반설정, 브랜치 보호, Collaborators (read-only) |
@@ -18,50 +18,50 @@
 
 - Cargo workspace (ghtui, ghtui-api, ghtui-core, ghtui-widgets)
 - Elm architecture (Message → update → Command → API → Message)
-- GitHub API 클라이언트 (인증, LRU 캐시, rate limit)
+- GitHub REST API 클라이언트 (인증, LRU 캐시, rate limit, 쓰기 후 캐시 무효화)
+- **GitHub GraphQL API 클라이언트** (pinIssue, transferIssue 등 mutation 지원)
 - GitHub Primer 기반 테마 (Dark / Light, `t`키 토글)
 - Tab / Shift-Tab / 1-7 탭 네비게이션 (서브탭 overflow → 글로벌 탭 이동)
-- diff 파서, 마크다운 렌더러
+- diff 파서, 마크다운 렌더러 (GitHub Primer 색상, 이미지→링크 표시)
 - Notifications API + 뷰, Search API
-- 멀티 계정 지원 (gh CLI hosts.yml, `S`키 전환)
+- 멀티 계정 지원 (gh CLI hosts.yml, gh 2.40+ 멀티계정, `S`키 전환)
 - 마우스 지원 (클릭으로 탭/리스트 선택, 스크롤)
-- GitHub Actions CI (check, test, clippy, fmt)
+- **TextEditor** (커서 추적, 방향키, 단어이동, Undo/Redo, 뷰포트 스크롤)
+- **EditorView / InlineEditorView 위젯** (재사용 가능한 에디터 컴포넌트)
+- GitHub Actions CI (check, test, clippy, fmt, RUSTFLAGS=-Dwarnings)
 - rustfmt + clippy 설정
 
 ---
 
-## Phase 1 — Issues 탭 완성
+## Phase 1 — Issues 탭 ✅ 완성
 
-현재 되는 것: 목록(open/closed 토글), 상세(메타정보+스크롤), 닫기/열기, 이슈 생성, 제목/본문 편집, 코멘트 CRUD, 인용 답글, 페이지네이션
+**28/28 항목 완료**
 
-- [x] 필터 UI (open/closed 토글 — `s`키)
-- [x] 필터 UI (author/label/assignee — API 파라미터, `F`키로 초기화)
-- [x] 정렬 UI (`o`키로 Newest/Updated/Comments 순환)
-- [x] 이슈 검색 (`/`키 → 검색어 입력 → Enter)
-- [x] 이슈 생성 UI (모달 폼 — `c`키, Ctrl+Enter 제출)
-- [x] 이슈 제목 편집 (`T`키 — 헤더 인라인 편집, Enter 제출)
-- [x] 이슈 본문 편집 (`e`키 — 전체화면 에디터, 라인번호 표시)
-- [x] 코멘트 추가 (`c`키 — 하단 패널)
-- [x] 코멘트 편집 (`e`키 — 코멘트 선택 시 하단 패널)
-- [x] 인용 답글 (`r`키 — 코멘트 선택 시 quote reply)
-- [x] 코멘트 삭제 (`d`키 — 코멘트 포커스 시)
-- [x] 라벨 추가/제거 (`l`키 → 라벨 피커 → Space:토글 → s:적용)
-- [x] Assignee 추가/제거 (`a`키 → 어사인 피커)
-- [x] 이슈 닫기/열기 (`x`키)
-- [x] 브라우저에서 열기 (`o`키)
-- [x] 섹션 포커스 (j/k로 Title→Labels→Assignees→Body→Comments 이동)
-- [x] Milestone 설정 (`m`키 → 마일스톤 피커)
-- [x] 리액션 (`+`/`-`키로 👍👎 빠른 추가, 이슈/코멘트 모두)
-- [x] 타임라인 이벤트 (labeled, assigned, closed, renamed 등 표시)
-- [x] 교차 참조 (타임라인에서 cross-referenced 이벤트 표시)
-- [x] 이슈 잠금/해제 (`L`키 — Shift+L)
-- [x] 이슈 핀/해제 (`P`키 — GraphQL pinIssue/unpinIssue mutation)
-- [x] 이슈 이전 (`X`키 — GraphQL transferIssue mutation)
-- [x] 이슈 템플릿 (Contents API로 `.github/ISSUE_TEMPLATE` 조회)
-- [x] 페이지네이션 UI (n/p 키로 다음/이전)
-- [x] 이슈 상세 메타정보 (labels, assignees, milestone)
-- [x] 이슈 상세 스크롤 (j/k, PageUp/Down, 마우스)
-- [x] TextEditor 커서 지원 (방향키, Home/End, 중간 삽입/삭제)
+### 리스트 기능
+- [x] 필터 UI — open/closed 토글 (`s`), author/label/assignee (API 파라미터)
+- [x] 정렬 UI — Newest/Updated/Comments 순환 (`o`)
+- [x] 이슈 검색 (`/` → 검색어 → Enter, GitHub Search API)
+- [x] 페이지네이션 (`n`/`p` 다음/이전)
+- [x] 이슈 생성 (모달 `c`, Ctrl+Enter 제출)
+- [x] 핀된 이슈 카드 UI (상단 2열 카드, 📌 아이콘, GraphQL 조회)
+- [x] 필터 초기화 (`Shift+F`)
+
+### 상세 기능 (섹션 포커스: j/k로 Title→Labels→Assignees→Body→Comments)
+- [x] 제목 편집 (`e` on Title — 헤더 인라인, Enter 제출)
+- [x] 본문 편집 (`e` on Body — 전체화면 에디터, 라인번호)
+- [x] 코멘트 추가/편집/삭제/인용답글 (`c`/`e`/`d`/`r`)
+- [x] 라벨 추가/제거 (`l` → 피커 → Space:토글 → s:적용)
+- [x] Assignee 추가/제거 (`a` → 피커)
+- [x] Milestone 설정 (`m` → 피커)
+- [x] 리액션 (`+`/`-` 빠른 👍👎, 이슈/코멘트 모두)
+- [x] 타임라인 이벤트 (labeled, assigned, closed, renamed, cross-referenced 등)
+- [x] 이슈 닫기/열기 (`x`)
+- [x] 이슈 잠금/해제 (`Shift+L`)
+- [x] 이슈 핀/해제 (`Shift+P` — GraphQL mutation)
+- [x] 이슈 이전 (`Shift+X` — GraphQL transferIssue)
+- [x] 이슈 템플릿 (Contents API `.github/ISSUE_TEMPLATE` 조회)
+- [x] 브라우저에서 열기 (`o`)
+- [x] TextEditor 커서 (방향키, Home/End, Ctrl+←/→, Undo/Redo)
 
 ## Phase 2 — Pull Requests 탭 완성
 
@@ -185,6 +185,7 @@
 ## Phase 12 — 고급 기능
 
 - [x] 멀티 계정 지원 (gh CLI hosts.yml)
+- [x] GraphQL API 지원 (pinIssue, transferIssue 등)
 - [ ] GitHub Enterprise Server 지원
 - [ ] 멀티 레포 대시보드
 - [ ] Discussions 탭
