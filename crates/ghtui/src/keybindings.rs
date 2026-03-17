@@ -49,11 +49,9 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         KeyCode::Char('2') => return Some(Message::GlobalTabSelect(1)), // Issues
         KeyCode::Char('3') => return Some(Message::GlobalTabSelect(2)), // Pull requests
         KeyCode::Char('4') => return Some(Message::GlobalTabSelect(3)), // Actions
-        KeyCode::Char('5') => return Some(Message::GlobalTabSelect(4)), // Projects
-        KeyCode::Char('6') => return Some(Message::GlobalTabSelect(5)), // Wiki
-        KeyCode::Char('7') => return Some(Message::GlobalTabSelect(6)), // Security
-        KeyCode::Char('8') => return Some(Message::GlobalTabSelect(7)), // Insights
-        KeyCode::Char('9') => return Some(Message::GlobalTabSelect(8)), // Settings
+        KeyCode::Char('5') => return Some(Message::GlobalTabSelect(4)), // Security
+        KeyCode::Char('6') => return Some(Message::GlobalTabSelect(5)), // Insights
+        KeyCode::Char('7') => return Some(Message::GlobalTabSelect(6)), // Settings
         _ => {}
     }
 

@@ -49,20 +49,6 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
             views::action_detail::render(frame, state, content_area)
         }
         Route::Notifications => views::notifications::render(frame, state, content_area),
-        Route::Projects { .. } => views::placeholder::render(
-            frame,
-            state,
-            content_area,
-            "Projects",
-            "Project boards and planning tools",
-        ),
-        Route::Wiki { .. } => views::placeholder::render(
-            frame,
-            state,
-            content_area,
-            "Wiki",
-            "Documentation and wiki pages",
-        ),
         Route::Security { .. } => views::security::render(frame, state, content_area),
         Route::Insights { .. } => views::insights::render(frame, state, content_area),
         Route::Settings { .. } => views::settings::render(frame, state, content_area),
