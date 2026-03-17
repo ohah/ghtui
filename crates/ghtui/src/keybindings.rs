@@ -404,6 +404,7 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         KeyCode::Char('r') => Some(Message::PrStartReply),
         KeyCode::Char('l') => Some(Message::PrLabelToggle),
         KeyCode::Char('a') => Some(Message::PrAssigneeToggle),
+        KeyCode::Char('v') => Some(Message::PrReviewerToggle),
         KeyCode::Char('m') => Some(Message::ModalOpen(ModalKind::MergePr)),
         KeyCode::Char('d') => Some(Message::PrDeleteComment),
         KeyCode::Char('x') => Some(Message::PrToggleState),

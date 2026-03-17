@@ -103,6 +103,13 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             }
         }
 
+        Command::SetPrReviewers(repo, number, reviewers) => {
+            match client.request_reviewers(&repo, number, &reviewers).await {
+                Ok(()) => Message::PrUpdated(number),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+
         // Issues
         Command::FetchIssueList(repo, filters, page) => {
             match client.list_issues(&repo, &filters, page, 30).await {

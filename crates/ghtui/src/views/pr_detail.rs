@@ -434,6 +434,30 @@ fn render_conversation(
     lines.push(Line::styled("─".repeat(50), theme.border_style()));
 
     // --- Comments ---
+    // --- Timeline events ---
+    if !detail.detail.timeline.is_empty() {
+        lines.push(Line::raw(""));
+        for event in &detail.detail.timeline {
+            if event.event == "commented" {
+                continue;
+            }
+            let time = event
+                .created_at
+                .map(|t| t.format("%m/%d %H:%M").to_string())
+                .unwrap_or_default();
+            lines.push(Line::from(vec![
+                Span::styled(
+                    format!("  {} ", event.icon()),
+                    Style::default().fg(theme.fg_dim),
+                ),
+                Span::styled(event.display(), Style::default().fg(theme.fg_muted)),
+                Span::styled(format!("  {}", time), Style::default().fg(theme.fg_dim)),
+            ]));
+        }
+        lines.push(Line::raw(""));
+        lines.push(Line::styled("─".repeat(50), theme.border_style()));
+    }
+
     let comment_count = detail.detail.comments.len();
     lines.push(Line::raw(""));
     lines.push(Line::styled(

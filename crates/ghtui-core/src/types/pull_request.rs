@@ -173,6 +173,7 @@ pub struct PullRequestDetail {
     pub comments: Vec<PrComment>,
     pub review_comments: Vec<ReviewComment>,
     pub checks: Vec<CheckStatus>,
+    pub timeline: Vec<super::issue::TimelineEvent>,
     pub commits: Vec<PrCommit>,
 }
 

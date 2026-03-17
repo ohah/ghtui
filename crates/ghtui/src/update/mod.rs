@@ -489,6 +489,30 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        // PR reviewer (modal input)
+        Message::PrReviewerToggle => {
+            let current = state
+                .pr_detail
+                .as_ref()
+                .map(|d| {
+                    d.detail
+                        .pr
+                        .requested_reviewers
+                        .iter()
+                        .map(|u| u.login.clone())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                })
+                .unwrap_or_default();
+            state.input_buffer = current;
+            state.modal = Some(ghtui_core::ModalKind::Confirm {
+                title: "Request Reviewers".to_string(),
+                message: "Enter reviewer logins (comma-separated):".to_string(),
+            });
+            state.input_mode = InputMode::Insert;
+            vec![]
+        }
+        Message::PrReviewerApply | Message::PrReviewerCancel => vec![],
         // PR reactions
         Message::PrAddReaction(reaction) => {
             if let Some(ref detail) = state.pr_detail {
@@ -2251,6 +2275,57 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         vec![]
                     }
                 }
+                Some(ghtui_core::ModalKind::CreatePr) => {
+                    let input = state.input_buffer.clone();
+                    let mut lines = input.splitn(3, '\n');
+                    let title = lines.next().unwrap_or("").trim().to_string();
+                    let base = lines.next().unwrap_or("main").trim().to_string();
+                    let body = lines.next().unwrap_or("").trim().to_string();
+                    if title.is_empty() {
+                        state.push_toast("Title cannot be empty".to_string(), ToastLevel::Warning);
+                        return vec![];
+                    }
+                    if let Some(ref repo) = state.current_repo {
+                        // Get current branch as head
+                        let head = state
+                            .pr_list
+                            .as_ref()
+                            .and_then(|_| None) // no branch info in list
+                            .unwrap_or_else(|| "HEAD".to_string());
+                        let base = if base.is_empty() {
+                            "main".to_string()
+                        } else {
+                            base
+                        };
+                        let pr_input = ghtui_core::types::CreatePrInput {
+                            title,
+                            body,
+                            head,
+                            base,
+                            draft: false,
+                        };
+                        vec![Command::CreatePr(repo.clone(), pr_input)]
+                    } else {
+                        vec![]
+                    }
+                }
+                Some(ghtui_core::ModalKind::MergePr) => {
+                    let method_str = state.input_buffer.trim().to_lowercase();
+                    let method = match method_str.as_str() {
+                        "merge" => ghtui_core::types::MergeMethod::Merge,
+                        "squash" => ghtui_core::types::MergeMethod::Squash,
+                        _ => ghtui_core::types::MergeMethod::Rebase, // default
+                    };
+                    if let (Some(repo), Some(detail)) = (&state.current_repo, &state.pr_detail) {
+                        vec![Command::MergePr(
+                            repo.clone(),
+                            detail.detail.pr.number,
+                            method,
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
                 Some(ghtui_core::ModalKind::Confirm { ref title, .. })
                     if title == "Transfer Issue" =>
                 {
@@ -2294,6 +2369,28 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                             repo.clone(),
                             detail.detail.pr.number,
                             input,
+                        )]
+                    } else {
+                        vec![]
+                    }
+                }
+                Some(ghtui_core::ModalKind::Confirm { ref title, .. })
+                    if title == "Request Reviewers" =>
+                {
+                    let input = state.input_buffer.trim().to_string();
+                    if input.is_empty() {
+                        return vec![];
+                    }
+                    let reviewers: Vec<String> = input
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect();
+                    if let (Some(repo), Some(detail)) = (&state.current_repo, &state.pr_detail) {
+                        vec![Command::SetPrReviewers(
+                            repo.clone(),
+                            detail.detail.pr.number,
+                            reviewers,
                         )]
                     } else {
                         vec![]
