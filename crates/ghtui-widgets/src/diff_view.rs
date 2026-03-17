@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use ghtui_core::theme::Theme;
 use ghtui_core::types::{DiffFile, DiffFileStatus, DiffLineKind};
 use ratatui::buffer::Buffer;
@@ -6,34 +8,90 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Paragraph, StatefulWidget, Widget};
 
+/// Identifies a renderable line in the diff view
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DiffLineId {
+    Summary,                   // summary header / file list
+    FileHeader(usize),         // file index
+    HunkHeader(usize, usize),  // file, hunk
+    Code(usize, usize, usize), // file, hunk, line
+}
+
 #[derive(Debug, Default)]
 pub struct DiffViewState {
     pub scroll: usize,
-    pub current_file: usize,
+    pub cursor: usize,      // cursor position in rendered line list
+    pub total_lines: usize, // total rendered lines (set during render)
     pub show_all_files: bool,
+    pub collapsed_files: HashSet<usize>, // file indices that are collapsed
+    pub select_anchor: Option<usize>,    // anchor for shift+move selection
+    // Mapping from rendered line index to DiffLineId (populated during render)
+    pub line_ids: Vec<DiffLineId>,
 }
 
 impl DiffViewState {
-    pub fn scroll_down(&mut self, amount: usize) {
-        self.scroll = self.scroll.saturating_add(amount);
-    }
-
-    pub fn scroll_up(&mut self, amount: usize) {
-        self.scroll = self.scroll.saturating_sub(amount);
-    }
-
-    pub fn next_file(&mut self, total: usize) {
-        if self.current_file < total.saturating_sub(1) {
-            self.current_file += 1;
-            self.scroll = 0;
+    pub fn cursor_down(&mut self) {
+        if self.cursor < self.total_lines.saturating_sub(1) {
+            self.cursor += 1;
         }
     }
 
-    pub fn prev_file(&mut self, total: usize) {
-        if total > 0 && self.current_file > 0 {
-            self.current_file -= 1;
-            self.scroll = 0;
+    pub fn cursor_up(&mut self) {
+        self.cursor = self.cursor.saturating_sub(1);
+    }
+
+    pub fn cursor_down_select(&mut self) {
+        if self.select_anchor.is_none() {
+            self.select_anchor = Some(self.cursor);
         }
+        self.cursor_down();
+    }
+
+    pub fn cursor_up_select(&mut self) {
+        if self.select_anchor.is_none() {
+            self.select_anchor = Some(self.cursor);
+        }
+        self.cursor_up();
+    }
+
+    pub fn clear_selection(&mut self) {
+        self.select_anchor = None;
+    }
+
+    /// Returns (start, end) inclusive range of selected lines
+    pub fn selection_range(&self) -> Option<(usize, usize)> {
+        self.select_anchor.map(|anchor| {
+            let start = anchor.min(self.cursor);
+            let end = anchor.max(self.cursor);
+            (start, end)
+        })
+    }
+
+    pub fn toggle_file_collapse(&mut self) {
+        if let Some(id) = self.line_ids.get(self.cursor) {
+            let file_idx = match id {
+                DiffLineId::FileHeader(f) => Some(*f),
+                DiffLineId::HunkHeader(f, _) => Some(*f),
+                DiffLineId::Code(f, _, _) => Some(*f),
+                _ => None,
+            };
+            if let Some(idx) = file_idx {
+                if self.collapsed_files.contains(&idx) {
+                    self.collapsed_files.remove(&idx);
+                } else {
+                    self.collapsed_files.insert(idx);
+                }
+            }
+        }
+    }
+
+    pub fn page_down(&mut self, page_size: usize) {
+        let target = self.cursor + page_size;
+        self.cursor = target.min(self.total_lines.saturating_sub(1));
+    }
+
+    pub fn page_up(&mut self, page_size: usize) {
+        self.cursor = self.cursor.saturating_sub(page_size);
     }
 }
 
@@ -57,9 +115,12 @@ impl<'a> DiffView<'a> {
         self
     }
 
-    fn render_file_summary(&self) -> Vec<Line<'static>> {
-        let mut lines = Vec::new();
-
+    fn render_file_summary(
+        &self,
+        lines: &mut Vec<Line<'static>>,
+        line_ids: &mut Vec<DiffLineId>,
+        state: &DiffViewState,
+    ) {
         let total_adds: u32 = self.files.iter().map(|f| f.additions).sum();
         let total_dels: u32 = self.files.iter().map(|f| f.deletions).sum();
         let theme = self.theme;
@@ -78,11 +139,21 @@ impl<'a> DiffView<'a> {
                 format!("  -{}", total_dels),
                 Style::default().fg(theme.diff_remove_fg),
             ),
+            Span::styled(
+                "  (Enter:fold  j/k:move  J/K:select)",
+                Style::default().fg(theme.fg_muted),
+            ),
         ]));
+        line_ids.push(DiffLineId::Summary);
+
         lines.push(Line::raw(""));
+        line_ids.push(DiffLineId::Summary);
 
         // File list with bar chart
-        for file in self.files {
+        for (fi, file) in self.files.iter().enumerate() {
+            let collapsed = state.collapsed_files.contains(&fi);
+            let fold_icon = if collapsed { "▸ " } else { "▾ " };
+
             let status_icon = match file.status {
                 DiffFileStatus::Added => Span::styled("A ", Style::default().fg(theme.diff_add_fg)),
                 DiffFileStatus::Removed => {
@@ -92,7 +163,6 @@ impl<'a> DiffView<'a> {
                 DiffFileStatus::Renamed => Span::styled("R ", Style::default().fg(theme.info)),
             };
 
-            // Change bar: █ blocks for additions (green) and deletions (red)
             let total_changes = file.additions + file.deletions;
             let bar_width = 20u32;
             let (add_blocks, del_blocks) = if total_changes > 0 {
@@ -104,7 +174,7 @@ impl<'a> DiffView<'a> {
             };
 
             let mut spans = vec![
-                Span::styled(" ", Style::default()),
+                Span::styled(fold_icon, Style::default().fg(theme.fg_dim)),
                 status_icon,
                 Span::styled(
                     format!("{:<40} ", file.filename),
@@ -130,15 +200,23 @@ impl<'a> DiffView<'a> {
             }
 
             lines.push(Line::from(spans));
+            line_ids.push(DiffLineId::Summary);
         }
 
         lines.push(Line::raw(""));
-        lines
+        line_ids.push(DiffLineId::Summary);
     }
 
-    fn render_file_diff(&self, file: &DiffFile) -> Vec<Line<'static>> {
-        let mut lines = Vec::new();
+    fn render_file_diff(
+        &self,
+        file: &DiffFile,
+        file_idx: usize,
+        lines: &mut Vec<Line<'static>>,
+        line_ids: &mut Vec<DiffLineId>,
+        state: &DiffViewState,
+    ) {
         let theme = self.theme;
+        let collapsed = state.collapsed_files.contains(&file_idx);
 
         // File header bar
         let status_label = match file.status {
@@ -154,7 +232,13 @@ impl<'a> DiffView<'a> {
             DiffFileStatus::Renamed => theme.info,
         };
 
+        let fold_icon = if collapsed { "▸" } else { "▾" };
+
         lines.push(Line::from(vec![
+            Span::styled(
+                format!(" {} ", fold_icon),
+                Style::default().fg(theme.fg_dim),
+            ),
             Span::styled(
                 status_label,
                 Style::default()
@@ -174,8 +258,13 @@ impl<'a> DiffView<'a> {
                 Style::default().fg(theme.fg_dim).bg(theme.bg_subtle),
             ),
         ]));
+        line_ids.push(DiffLineId::FileHeader(file_idx));
 
-        for hunk in &file.hunks {
+        if collapsed {
+            return;
+        }
+
+        for (hi, hunk) in file.hunks.iter().enumerate() {
             // Hunk header
             lines.push(Line::styled(
                 format!(" {}", hunk.header),
@@ -184,8 +273,9 @@ impl<'a> DiffView<'a> {
                     .bg(theme.bg_subtle)
                     .add_modifier(Modifier::ITALIC),
             ));
+            line_ids.push(DiffLineId::HunkHeader(file_idx, hi));
 
-            for diff_line in &hunk.lines {
+            for (li, diff_line) in hunk.lines.iter().enumerate() {
                 let old_ln = diff_line
                     .old_line
                     .map(|n| format!("{:>4}", n))
@@ -243,11 +333,12 @@ impl<'a> DiffView<'a> {
                         ));
                     }
                 }
+                line_ids.push(DiffLineId::Code(file_idx, hi, li));
             }
         }
 
         lines.push(Line::raw(""));
-        lines
+        line_ids.push(DiffLineId::Summary);
     }
 }
 
@@ -255,27 +346,66 @@ impl StatefulWidget for DiffView<'_> {
     type State = DiffViewState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let mut all_lines = Vec::new();
+        let theme = self.theme;
+        let mut all_lines: Vec<Line<'static>> = Vec::new();
+        let mut line_ids: Vec<DiffLineId> = Vec::new();
 
-        if state.show_all_files || self.files.len() <= 1 {
-            all_lines.extend(self.render_file_summary());
-            for file in self.files {
-                all_lines.extend(self.render_file_diff(file));
-            }
-        } else if let Some(file) = self.files.get(state.current_file) {
-            all_lines.extend(self.render_file_summary());
-            all_lines.extend(self.render_file_diff(file));
+        // Build all lines
+        self.render_file_summary(&mut all_lines, &mut line_ids, state);
+        for (fi, file) in self.files.iter().enumerate() {
+            self.render_file_diff(file, fi, &mut all_lines, &mut line_ids, state);
         }
 
-        // Clamp scroll
-        let content_height = area.height.saturating_sub(2) as usize; // account for block borders
+        state.total_lines = all_lines.len();
+        state.line_ids = line_ids;
+
+        // Clamp cursor
+        if state.cursor >= state.total_lines {
+            state.cursor = state.total_lines.saturating_sub(1);
+        }
+
+        // Auto-scroll to keep cursor visible
+        let content_height = area.height.saturating_sub(2) as usize;
+        if content_height > 0 {
+            if state.cursor < state.scroll {
+                state.scroll = state.cursor;
+            } else if state.cursor >= state.scroll + content_height {
+                state.scroll = state.cursor - content_height + 1;
+            }
+        }
+
         let max_scroll = all_lines.len().saturating_sub(content_height);
         state.scroll = state.scroll.min(max_scroll);
 
+        // Get selection range
+        let selection = state.selection_range();
+
+        // Apply cursor and selection highlighting
         let visible: Vec<Line> = all_lines
             .into_iter()
+            .enumerate()
             .skip(state.scroll)
             .take(area.height as usize)
+            .map(|(idx, line)| {
+                let is_cursor = idx == state.cursor;
+                let is_selected = selection
+                    .map(|(s, e)| idx >= s && idx <= e)
+                    .unwrap_or(false);
+
+                if is_cursor {
+                    // Cursor line: highlight with selection bg + bold marker
+                    let mut spans = vec![Span::styled("▌", Style::default().fg(theme.accent))];
+                    spans.extend(line.spans);
+                    Line::from(spans).style(Style::default().bg(theme.selection_bg))
+                } else if is_selected {
+                    // Selected range: subtle highlight
+                    let mut spans = vec![Span::styled("│", Style::default().fg(theme.accent))];
+                    spans.extend(line.spans);
+                    Line::from(spans).style(Style::default().bg(theme.bg_overlay))
+                } else {
+                    line
+                }
+            })
             .collect();
 
         let paragraph = Paragraph::new(visible);

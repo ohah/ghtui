@@ -455,14 +455,17 @@ fn render_diff_tab(
     if let Some(ref files) = detail.diff {
         let mut diff_state = ghtui_widgets::DiffViewState {
             scroll: detail.diff_scroll,
+            cursor: detail.diff_cursor,
             show_all_files: true,
+            collapsed_files: detail.diff_collapsed.clone(),
+            select_anchor: detail.diff_select_anchor,
             ..Default::default()
         };
         let diff_view = ghtui_widgets::DiffView::new(files, theme).block(
             Block::default()
                 .borders(Borders::ALL)
                 .border_style(theme.border_style())
-                .title(" Diff "),
+                .title(" Diff (j/k:move  J/K:select  Enter:fold) "),
         );
         frame.render_stateful_widget(diff_view, area, &mut diff_state);
     } else {

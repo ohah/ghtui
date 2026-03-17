@@ -79,15 +79,25 @@
 - [x] 섹션 포커스 네비게이션 (Title→Labels→Assignees→Body→Comments)
 - [x] 필터 초기화 (`Shift+F`)
 
+### Phase 2-1.5 완료 (Diff/Checks 강화)
+- [x] Checks 탭 실제 데이터 조회 (check-runs + commit status API)
+- [x] Checks 요약 (passed/failed/pending 카운트)
+- [x] Diff 테마 색상 (GitHub Primer diff_add/remove/hunk)
+- [x] Diff 파일 요약 (변경 바차트, 파일 상태 뱃지)
+- [x] Diff 라인 커서 (`j`/`k`로 라인별 이동, 커서 하이라이트)
+- [x] Diff 블록 선택 (`J`/`K` 또는 `Shift+j/k`로 범위 선택)
+- [x] Diff 파일 접기/펼치기 (`Enter`로 토글, ▸/▾ 아이콘)
+- [x] Diff/Conversation 탭별 독립 스크롤
+- [x] Diff race condition 수정 (detail 로드 후 diff fetch)
+
 ### Phase 2-2 남은 기능
 - [ ] PR 생성 UI (모달 폼)
 - [ ] Draft 토글
 - [ ] Auto-merge 활성화
 - [ ] Side-by-side diff 모드
-- [ ] 인라인 코멘트 작성
+- [ ] 인라인 코멘트 작성 (선택 범위에 코멘트)
 - [ ] Suggested changes 보기/적용
 - [ ] 리뷰 스레드 resolve/unresolve
-- [ ] Checks/CI 상태 데이터 연동
 - [ ] 리뷰어 추가/제거
 - [ ] Milestone 설정
 - [ ] Linked issues

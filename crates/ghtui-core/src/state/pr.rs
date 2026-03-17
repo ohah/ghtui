@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::editor::TextEditor;
 use crate::types::{DiffFile, Pagination, PrFilters, PrState, PullRequest, PullRequestDetail};
 
@@ -122,8 +124,11 @@ pub enum PrInlineEditTarget {
 pub struct PrDetailState {
     pub detail: PullRequestDetail,
     pub diff: Option<Vec<DiffFile>>,
-    pub scroll: usize,      // conversation scroll
-    pub diff_scroll: usize, // diff tab scroll
+    pub scroll: usize,                     // conversation scroll
+    pub diff_scroll: usize,                // diff tab scroll offset
+    pub diff_cursor: usize,                // diff line cursor position
+    pub diff_select_anchor: Option<usize>, // shift+move selection anchor
+    pub diff_collapsed: HashSet<usize>,    // collapsed file indices
     pub tab: usize,
     pub comment_input: String,
     pub focus: PrSection,
@@ -141,6 +146,9 @@ impl PrDetailState {
             diff: None,
             scroll: 0,
             diff_scroll: 0,
+            diff_cursor: 0,
+            diff_select_anchor: None,
+            diff_collapsed: HashSet::new(),
             tab: 0,
             comment_input: String::new(),
             focus: PrSection::Title,
