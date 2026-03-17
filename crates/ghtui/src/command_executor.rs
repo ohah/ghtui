@@ -317,6 +317,51 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Ok(workflows) => Message::WorkflowsLoaded(workflows),
             Err(e) => Message::Error(e.into()),
         },
+        Command::FetchRunArtifacts(repo, run_id) => {
+            match client.list_run_artifacts(&repo, run_id).await {
+                Ok(artifacts) => Message::ArtifactsLoaded(artifacts),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::DownloadArtifact(repo, artifact_id, name) => {
+            match client.download_artifact(&repo, artifact_id).await {
+                Ok(url) => Message::ArtifactDownloaded(name, url),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::DispatchWorkflow(repo, workflow_id, git_ref, inputs) => {
+            match client
+                .dispatch_workflow(&repo, workflow_id, &git_ref, &inputs)
+                .await
+            {
+                Ok(()) => Message::WorkflowDispatched,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::FetchWorkflowFile(repo, path) => {
+            match client.get_workflow_file(&repo, &path).await {
+                Ok(content) => Message::WorkflowFileLoaded(content),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::FetchPendingDeployments(repo, run_id) => {
+            match client.list_pending_deployments(&repo, run_id).await {
+                Ok(deployments) => Message::PendingDeploymentsLoaded(deployments),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::ApproveDeployment(repo, run_id, env_ids) => {
+            match client.approve_deployment(&repo, run_id, &env_ids).await {
+                Ok(()) => Message::DeploymentApproved,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::RejectDeployment(repo, run_id, env_ids) => {
+            match client.reject_deployment(&repo, run_id, &env_ids).await {
+                Ok(()) => Message::DeploymentRejected,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
 
         // Notifications
         Command::FetchNotifications(filters) => match client.list_notifications(&filters).await {

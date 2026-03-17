@@ -39,11 +39,17 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     };
 
-    // Layout: header(3) + jobs(40%) + log(rest) + action_bar(1)
+    // Dynamic header height: 3 base + 1 per artifact line + 1 for deployments
+    let has_artifacts = !detail.artifacts.is_empty();
+    let has_deployments = !detail.pending_deployments.is_empty();
+    let extra_lines = if has_artifacts { 1 } else { 0 } + if has_deployments { 1 } else { 0 };
+    let header_height = 3 + extra_lines as u16;
+
+    // Layout: header + jobs(40%) + log(rest) + action_bar(1)
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),
+            Constraint::Length(header_height),
             Constraint::Percentage(40),
             Constraint::Min(0),
             Constraint::Length(1),
@@ -66,7 +72,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         _ => "unknown".to_string(),
     };
 
-    let header_lines = vec![
+    let mut header_lines = vec![
         Line::from(vec![
             Span::styled(" ● ", Style::default().fg(status_color)),
             Span::styled(run.name.as_deref().unwrap_or("Unknown"), theme.text_bold()),
@@ -96,6 +102,37 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
             ),
         ]),
     ];
+
+    // Artifacts line
+    if has_artifacts {
+        let artifact_names: Vec<&str> = detail.artifacts.iter().map(|a| a.name.as_str()).collect();
+        let total_size: u64 = detail.artifacts.iter().map(|a| a.size_in_bytes).sum();
+        let size_str = format_size(total_size);
+        header_lines.push(Line::from(vec![
+            Span::styled(
+                format!(" Artifacts ({}): ", detail.artifacts.len()),
+                Style::default().fg(theme.fg_dim),
+            ),
+            Span::styled(artifact_names.join(", "), Style::default().fg(theme.accent)),
+            Span::styled(
+                format!(" ({})", size_str),
+                Style::default().fg(theme.fg_muted),
+            ),
+        ]));
+    }
+
+    // Pending deployments line
+    if has_deployments {
+        let env_names: Vec<&str> = detail
+            .pending_deployments
+            .iter()
+            .map(|d| d.environment.name.as_str())
+            .collect();
+        header_lines.push(Line::from(vec![
+            Span::styled(" ⏳ Pending: ", Style::default().fg(theme.warning)),
+            Span::styled(env_names.join(", "), Style::default().fg(theme.accent)),
+        ]));
+    }
 
     let header = Paragraph::new(header_lines)
         .style(Style::default().bg(theme.bg))
@@ -293,4 +330,16 @@ fn render_action_bar(
     let line = Line::from(spans);
     let paragraph = Paragraph::new(line).style(Style::default().bg(theme.footer_bg));
     frame.render_widget(paragraph, area);
+}
+
+fn format_size(bytes: u64) -> String {
+    if bytes >= 1_073_741_824 {
+        format!("{:.1} GB", bytes as f64 / 1_073_741_824.0)
+    } else if bytes >= 1_048_576 {
+        format!("{:.1} MB", bytes as f64 / 1_048_576.0)
+    } else if bytes >= 1024 {
+        format!("{:.1} KB", bytes as f64 / 1024.0)
+    } else {
+        format!("{} B", bytes)
+    }
 }

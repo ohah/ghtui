@@ -2,7 +2,10 @@ use std::collections::HashSet;
 
 use ratatui::text::Line;
 
-use crate::types::{ActionsFilters, LogLine, Pagination, Workflow, WorkflowRun, WorkflowRunDetail};
+use crate::types::{
+    ActionsFilters, Artifact, LogLine, Pagination, PendingDeployment, Workflow, WorkflowRun,
+    WorkflowRunDetail,
+};
 
 #[derive(Debug)]
 pub struct ActionsListState {
@@ -120,6 +123,12 @@ pub struct ActionDetailState {
     pub action_bar_selected: usize,
     /// Cached action bar items (computed on state change).
     pub action_bar_items: Vec<ActionBarItem>,
+    /// Artifacts for this run
+    pub artifacts: Vec<Artifact>,
+    /// Pending deployments
+    pub pending_deployments: Vec<PendingDeployment>,
+    /// Workflow file content (YAML)
+    pub workflow_file: Option<String>,
 }
 
 impl ActionDetailState {
@@ -137,6 +146,9 @@ impl ActionDetailState {
             focus: ActionDetailFocus::Jobs,
             action_bar_selected: 0,
             action_bar_items: items,
+            artifacts: Vec::new(),
+            pending_deployments: Vec::new(),
+            workflow_file: None,
         }
     }
 

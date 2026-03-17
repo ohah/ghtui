@@ -170,4 +170,145 @@ impl GithubClient {
         self.delete(&path).await?;
         Ok(())
     }
+
+    pub async fn list_run_artifacts(
+        &self,
+        repo: &RepoId,
+        run_id: u64,
+    ) -> Result<Vec<Artifact>, ApiError> {
+        let path = format!(
+            "/repos/{}/{}/actions/runs/{}/artifacts",
+            repo.owner, repo.name, run_id
+        );
+        let body = self.get(&path).await?;
+        let response: serde_json::Value = serde_json::from_str(&body)?;
+        let artifacts: Vec<Artifact> =
+            serde_json::from_value(response["artifacts"].clone()).unwrap_or_default();
+        Ok(artifacts)
+    }
+
+    pub async fn download_artifact(
+        &self,
+        repo: &RepoId,
+        artifact_id: u64,
+    ) -> Result<String, ApiError> {
+        let path = format!(
+            "/repos/{}/{}/actions/artifacts/{}/zip",
+            repo.owner, repo.name, artifact_id
+        );
+        let url = self.url(&path);
+        let response = self.http.get(&url).send().await?;
+
+        if response.status().is_redirection() {
+            let redirect_url = response
+                .headers()
+                .get("location")
+                .and_then(|v| v.to_str().ok())
+                .ok_or(ApiError::Other("No redirect URL for artifact".into()))?
+                .to_string();
+            Ok(redirect_url)
+        } else if response.status().is_success() {
+            // Direct download - return URL itself
+            Ok(url)
+        } else {
+            let status = response.status().as_u16();
+            let body = response.text().await?;
+            Err(ApiError::GitHub {
+                status,
+                message: body,
+            })
+        }
+    }
+
+    pub async fn dispatch_workflow(
+        &self,
+        repo: &RepoId,
+        workflow_id: u64,
+        git_ref: &str,
+        inputs: &serde_json::Value,
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/actions/workflows/{}/dispatches",
+            repo.owner, repo.name, workflow_id
+        );
+        let body = serde_json::json!({
+            "ref": git_ref,
+            "inputs": inputs,
+        });
+        self.post(&path, &body).await?;
+        Ok(())
+    }
+
+    pub async fn get_workflow_file(
+        &self,
+        repo: &RepoId,
+        workflow_path: &str,
+    ) -> Result<String, ApiError> {
+        // Use Contents API to get the workflow YAML file
+        let path = format!(
+            "/repos/{}/{}/contents/{}",
+            repo.owner, repo.name, workflow_path
+        );
+        let body = self.get(&path).await?;
+        let response: serde_json::Value = serde_json::from_str(&body)?;
+        let content = response["content"].as_str().unwrap_or("").replace('\n', "");
+        // Base64 decode
+        use base64::Engine;
+        let decoded = base64::engine::general_purpose::STANDARD
+            .decode(&content)
+            .map_err(|e| ApiError::Other(format!("Base64 decode error: {}", e)))?;
+        String::from_utf8(decoded).map_err(|e| ApiError::Other(format!("UTF-8 error: {}", e)))
+    }
+
+    pub async fn list_pending_deployments(
+        &self,
+        repo: &RepoId,
+        run_id: u64,
+    ) -> Result<Vec<PendingDeployment>, ApiError> {
+        let path = format!(
+            "/repos/{}/{}/actions/runs/{}/pending_deployments",
+            repo.owner, repo.name, run_id
+        );
+        let body = self.get(&path).await?;
+        let deployments: Vec<PendingDeployment> = serde_json::from_str(&body)?;
+        Ok(deployments)
+    }
+
+    pub async fn approve_deployment(
+        &self,
+        repo: &RepoId,
+        run_id: u64,
+        environment_ids: &[u64],
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/actions/runs/{}/pending_deployments",
+            repo.owner, repo.name, run_id
+        );
+        let body = serde_json::json!({
+            "environment_ids": environment_ids,
+            "state": "approved",
+            "comment": "",
+        });
+        self.post(&path, &body).await?;
+        Ok(())
+    }
+
+    pub async fn reject_deployment(
+        &self,
+        repo: &RepoId,
+        run_id: u64,
+        environment_ids: &[u64],
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/actions/runs/{}/pending_deployments",
+            repo.owner, repo.name, run_id
+        );
+        let body = serde_json::json!({
+            "environment_ids": environment_ids,
+            "state": "rejected",
+            "comment": "",
+        });
+        self.post(&path, &body).await?;
+        Ok(())
+    }
 }
