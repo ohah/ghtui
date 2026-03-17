@@ -19,15 +19,14 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<Message> {
 }
 
 fn handle_insert_mode(key: KeyEvent) -> Option<Message> {
+    let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     match key.code {
         KeyCode::Esc => Some(Message::ModalClose),
-        KeyCode::Enter => {
-            if key.modifiers.contains(KeyModifiers::CONTROL) {
-                Some(Message::ModalSubmit)
-            } else {
-                Some(Message::InputChanged("\n".to_string()))
-            }
-        }
+        // Ctrl+Enter: submit (various terminal encodings)
+        KeyCode::Enter if ctrl => Some(Message::ModalSubmit),
+        KeyCode::Char('j') if ctrl => Some(Message::ModalSubmit),
+        KeyCode::Char('m') if ctrl => Some(Message::ModalSubmit),
+        KeyCode::Enter => Some(Message::InputChanged("\n".to_string())),
         KeyCode::Char(c) => Some(Message::InputChanged(c.to_string())),
         KeyCode::Backspace => Some(Message::InputChanged("\x08".to_string())),
         _ => None,
@@ -225,6 +224,8 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         return match key.code {
             KeyCode::Esc => Some(Message::PrEditCancel),
             KeyCode::Enter if ctrl || is_title_edit => Some(Message::PrEditSubmit),
+            KeyCode::Char('j') if ctrl => Some(Message::PrEditSubmit),
+            KeyCode::Char('m') if ctrl => Some(Message::PrEditSubmit),
             KeyCode::Enter => Some(Message::PrEditNewline),
             KeyCode::Char('z') if ctrl => Some(Message::PrEditUndo),
             KeyCode::Char('y') if ctrl => Some(Message::PrEditRedo),
@@ -295,7 +296,10 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
             return match key.code {
                 KeyCode::Esc => Some(Message::PrDiffCommentCancel),
+                // Ctrl+Enter: submit (various terminal encodings)
                 KeyCode::Enter if ctrl => Some(Message::PrDiffCommentSubmit),
+                KeyCode::Char('j') if ctrl => Some(Message::PrDiffCommentSubmit),
+                KeyCode::Char('m') if ctrl => Some(Message::PrDiffCommentSubmit),
                 KeyCode::Char('s') if ctrl => Some(Message::PrDiffInsertSuggestion),
                 KeyCode::Enter => Some(Message::PrEditNewline),
                 KeyCode::Char(c) => Some(Message::PrEditChar(c)),
@@ -400,6 +404,8 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         return match key.code {
             KeyCode::Esc => Some(Message::IssueEditCancel),
             KeyCode::Enter if ctrl || is_title_edit => Some(Message::IssueEditSubmit),
+            KeyCode::Char('j') if ctrl => Some(Message::IssueEditSubmit),
+            KeyCode::Char('m') if ctrl => Some(Message::IssueEditSubmit),
             KeyCode::Enter => Some(Message::IssueEditNewline),
             // Ctrl+Z/Y undo/redo
             KeyCode::Char('z') if ctrl => Some(Message::IssueEditUndo),
