@@ -122,15 +122,19 @@
 - [x] 전체화면 에디터 (모달→전체화면, 라인번호, 테마 색상, 컬러 버튼)
 - [x] Confirm 모달 렌더링 (base 변경/request changes 등)
 
-### Phase 2-5 남은 기능
-- [ ] Draft 토글
+### Phase 2-5 완료 (Draft/Milestone/Reactions)
+- [x] Draft 토글 (`D` — GraphQL convertPullRequestToDraft/markReadyForReview)
+- [x] Milestone 설정 (`M` → 피커)
+- [x] PR 코멘트 리액션 표시 (이모지)
+- [x] Suggestion에 현재 코드 자동 삽입
+- [x] 리뷰 코멘트 422 에러 수정
+
+### Phase 2-6 남은 기능
 - [ ] Auto-merge 활성화
 - [ ] Side-by-side diff 모드
 - [ ] 리뷰 스레드 resolve/unresolve
-- [ ] Milestone 설정
 - [ ] Linked issues
 - [ ] 파일별 Viewed 체크
-- [ ] Suggestion에 선택 코드 자동 삽입
 
 ## Phase 3 — Actions 탭 완성
 

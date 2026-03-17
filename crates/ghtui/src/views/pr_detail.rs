@@ -115,6 +115,10 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         render_assignee_picker(frame, picker, theme, area);
         return;
     }
+    if let Some(ref picker) = detail_state.milestone_picker {
+        crate::views::issue_detail::render_milestone_picker_shared(frame, picker, theme, area);
+        return;
+    }
 
     // === Bottom editor for comments ===
     if is_comment_editing {

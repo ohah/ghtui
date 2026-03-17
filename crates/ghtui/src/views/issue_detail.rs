@@ -88,7 +88,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     }
     if let Some(ref picker) = detail_state.milestone_picker {
-        render_milestone_picker(frame, picker, theme, area);
+        render_milestone_picker_shared(frame, picker, theme, area);
         return;
     }
 
@@ -576,7 +576,7 @@ fn render_assignee_picker(
     frame.render_widget(list, popup_area);
 }
 
-fn render_milestone_picker(
+pub fn render_milestone_picker_shared(
     frame: &mut Frame,
     picker: &ghtui_core::state::issue::MilestonePickerState,
     theme: &ghtui_core::theme::Theme,

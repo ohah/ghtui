@@ -286,6 +286,20 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
                     _ => None,
                 };
             }
+            if detail.milestone_picker.is_some() {
+                return match key.code {
+                    KeyCode::Esc => Some(Message::PrMilestoneCancel),
+                    KeyCode::Enter | KeyCode::Char(' ') => detail
+                        .milestone_picker
+                        .as_ref()
+                        .map(|p| Message::PrMilestoneSelect(p.cursor)),
+                    KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+                    KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+                    KeyCode::Char('s') => Some(Message::PrMilestoneApply),
+                    KeyCode::Char('0') => Some(Message::PrMilestoneClear),
+                    _ => None,
+                };
+            }
         }
         return None;
     }
@@ -410,6 +424,8 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         KeyCode::Char('x') => Some(Message::PrToggleState),
         KeyCode::Char('A') => Some(Message::PrApprove),
         KeyCode::Char('R') => Some(Message::PrRequestChanges),
+        KeyCode::Char('D') => Some(Message::PrDraftToggle),
+        KeyCode::Char('M') => Some(Message::PrMilestoneToggle),
         KeyCode::Char('b') => Some(Message::PrChangeBase),
         KeyCode::Char('o') => Some(Message::PrOpenInBrowser),
         KeyCode::Char('+') => Some(Message::PrAddReaction("+1".to_string())),
