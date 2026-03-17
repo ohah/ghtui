@@ -504,6 +504,15 @@ fn render_conversation(
         }
         lines.push(Line::from(hdr));
         lines.extend(render_markdown(&comment.body));
+        if let Some(ref reactions) = comment.reactions {
+            let summary = reactions.summary();
+            if !summary.is_empty() {
+                lines.push(Line::styled(
+                    format!("  {}", summary),
+                    Style::default().fg(theme.fg_dim),
+                ));
+            }
+        }
         lines.push(Line::styled("─".repeat(50), theme.border_style()));
     }
 
