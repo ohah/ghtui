@@ -39,6 +39,7 @@ pub enum Message {
     IssueSearchStart,
     IssueLockToggle,
     IssuePinToggle,
+    IssuePinnedNumbersLoaded(Vec<u64>),
     IssueSearchInput(String),
     IssueSearchSubmit,
     IssueSearchCancel,

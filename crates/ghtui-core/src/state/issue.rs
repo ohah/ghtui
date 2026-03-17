@@ -11,6 +11,7 @@ pub struct IssueListState {
     pub filters: IssueFilters,
     pub search_mode: bool,
     pub search_query: String,
+    pub pinned_numbers: Vec<u64>,
 }
 
 /// Label picker state for issue detail
@@ -64,6 +65,7 @@ impl IssueListState {
             filters: IssueFilters::default(),
             search_mode: false,
             search_query: String::new(),
+            pinned_numbers: Vec::new(),
         }
     }
 
@@ -76,6 +78,7 @@ impl IssueListState {
             filters,
             search_mode: false,
             search_query: String::new(),
+            pinned_numbers: Vec::new(),
         }
     }
 

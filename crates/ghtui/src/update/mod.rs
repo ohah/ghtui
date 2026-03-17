@@ -85,6 +85,17 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::IssueListLoaded(issues, pagination, filters) => {
             state.loading.remove("issue_list");
             state.issue_list = Some(IssueListState::with_filters(issues, pagination, filters));
+            // Also fetch pinned issue numbers
+            if let Some(ref repo) = state.current_repo {
+                vec![Command::FetchPinnedIssues(repo.clone())]
+            } else {
+                vec![]
+            }
+        }
+        Message::IssuePinnedNumbersLoaded(numbers) => {
+            if let Some(ref mut list) = state.issue_list {
+                list.pinned_numbers = numbers;
+            }
             vec![]
         }
         Message::IssueDetailLoaded(detail) => {

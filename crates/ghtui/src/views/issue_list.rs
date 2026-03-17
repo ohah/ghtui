@@ -128,12 +128,19 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         .map(|(i, issue)| {
             let is_selected = i == list_state.selected;
 
+            let is_pinned = list_state.pinned_numbers.contains(&issue.number);
+            let pin_icon = if is_pinned {
+                Span::styled("📌", Style::default().fg(theme.warning))
+            } else {
+                Span::raw("  ")
+            };
+
             let state_icon = match issue.state {
                 ghtui_core::types::IssueState::Open => {
-                    Span::styled(" ● ", Style::default().fg(theme.success))
+                    Span::styled("● ", Style::default().fg(theme.success))
                 }
                 ghtui_core::types::IssueState::Closed => {
-                    Span::styled(" ● ", Style::default().fg(theme.done))
+                    Span::styled("● ", Style::default().fg(theme.done))
                 }
             };
 
@@ -144,6 +151,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
             };
 
             let mut spans = vec![
+                pin_icon,
                 state_icon,
                 Span::styled(issue.title.clone(), title_style),
                 Span::styled(
