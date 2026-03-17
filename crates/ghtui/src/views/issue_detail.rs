@@ -127,7 +127,7 @@ fn render_header(
     if is_title_editing {
         let editor = &detail_state.editor;
         let line = editor.lines.first().map(|s| s.as_str()).unwrap_or("");
-        let col = editor.cursor_col.min(line.len());
+        let col = editor.cursor_byte_col();
         let before = &line[..col];
         let after = &line[col..];
 
@@ -344,8 +344,8 @@ fn render_fullscreen_editor(
         };
 
         if is_cursor_line {
-            // Split line at cursor position to insert cursor
-            let col = editor.cursor_col.min(line.len());
+            // Split line at cursor byte position
+            let col = editor.cursor_byte_col();
             let before = &line[..col];
             let after = &line[col..];
             lines.push(Line::from(vec![
@@ -426,7 +426,7 @@ fn render_bottom_editor(
     for (i, line) in editor.lines.iter().enumerate() {
         let is_cursor_line = i == editor.cursor_row;
         if is_cursor_line {
-            let col = editor.cursor_col.min(line.len());
+            let col = editor.cursor_byte_col();
             let before = &line[..col];
             let after = &line[col..];
             lines.push(Line::from(vec![

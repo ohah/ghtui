@@ -1,9 +1,10 @@
 /// Simple text editor with cursor position tracking.
+/// cursor_col is a **character index** (not byte index).
 #[derive(Debug, Clone)]
 pub struct TextEditor {
     pub lines: Vec<String>,
     pub cursor_row: usize,
-    pub cursor_col: usize,
+    pub cursor_col: usize, // character index, not byte index
 }
 
 impl Default for TextEditor {
@@ -14,6 +15,19 @@ impl Default for TextEditor {
             cursor_col: 0,
         }
     }
+}
+
+/// Convert character index to byte index in a string.
+fn char_to_byte(s: &str, char_idx: usize) -> usize {
+    s.char_indices()
+        .nth(char_idx)
+        .map(|(i, _)| i)
+        .unwrap_or(s.len())
+}
+
+/// Count characters in a string.
+fn char_count(s: &str) -> usize {
+    s.chars().count()
 }
 
 impl TextEditor {
@@ -28,7 +42,7 @@ impl TextEditor {
             text.split('\n').map(String::from).collect()
         };
         let cursor_row = lines.len().saturating_sub(1);
-        let cursor_col = lines.last().map(|l| l.len()).unwrap_or(0);
+        let cursor_col = lines.last().map(|l| char_count(l)).unwrap_or(0);
         Self {
             lines,
             cursor_row,
@@ -46,17 +60,19 @@ impl TextEditor {
             return;
         }
         if let Some(line) = self.lines.get_mut(self.cursor_row) {
-            let col = self.cursor_col.min(line.len());
-            line.insert(col, c);
+            let col = self.cursor_col.min(char_count(line));
+            let byte_idx = char_to_byte(line, col);
+            line.insert(byte_idx, c);
             self.cursor_col = col + 1;
         }
     }
 
     pub fn insert_newline(&mut self) {
         if let Some(line) = self.lines.get_mut(self.cursor_row) {
-            let col = self.cursor_col.min(line.len());
-            let rest = line[col..].to_string();
-            line.truncate(col);
+            let col = self.cursor_col.min(char_count(line));
+            let byte_idx = char_to_byte(line, col);
+            let rest = line[byte_idx..].to_string();
+            line.truncate(byte_idx);
             self.cursor_row += 1;
             self.lines.insert(self.cursor_row, rest);
             self.cursor_col = 0;
@@ -66,9 +82,11 @@ impl TextEditor {
     pub fn backspace(&mut self) {
         if self.cursor_col > 0 {
             if let Some(line) = self.lines.get_mut(self.cursor_row) {
-                let col = self.cursor_col.min(line.len());
+                let col = self.cursor_col.min(char_count(line));
                 if col > 0 {
-                    line.remove(col - 1);
+                    let byte_start = char_to_byte(line, col - 1);
+                    let byte_end = char_to_byte(line, col);
+                    line.drain(byte_start..byte_end);
                     self.cursor_col = col - 1;
                 }
             }
@@ -77,7 +95,7 @@ impl TextEditor {
             let current = self.lines.remove(self.cursor_row);
             self.cursor_row -= 1;
             if let Some(prev) = self.lines.get_mut(self.cursor_row) {
-                self.cursor_col = prev.len();
+                self.cursor_col = char_count(prev);
                 prev.push_str(&current);
             }
         }
@@ -88,7 +106,7 @@ impl TextEditor {
             self.cursor_col -= 1;
         } else if self.cursor_row > 0 {
             self.cursor_row -= 1;
-            self.cursor_col = self.lines[self.cursor_row].len();
+            self.cursor_col = char_count(&self.lines[self.cursor_row]);
         }
     }
 
@@ -96,7 +114,7 @@ impl TextEditor {
         let line_len = self
             .lines
             .get(self.cursor_row)
-            .map(|l| l.len())
+            .map(|l| char_count(l))
             .unwrap_or(0);
         if self.cursor_col < line_len {
             self.cursor_col += 1;
@@ -109,7 +127,7 @@ impl TextEditor {
     pub fn move_up(&mut self) {
         if self.cursor_row > 0 {
             self.cursor_row -= 1;
-            let line_len = self.lines[self.cursor_row].len();
+            let line_len = char_count(&self.lines[self.cursor_row]);
             self.cursor_col = self.cursor_col.min(line_len);
         }
     }
@@ -117,7 +135,7 @@ impl TextEditor {
     pub fn move_down(&mut self) {
         if self.cursor_row < self.lines.len() - 1 {
             self.cursor_row += 1;
-            let line_len = self.lines[self.cursor_row].len();
+            let line_len = char_count(&self.lines[self.cursor_row]);
             self.cursor_col = self.cursor_col.min(line_len);
         }
     }
@@ -128,7 +146,7 @@ impl TextEditor {
 
     pub fn move_end(&mut self) {
         if let Some(line) = self.lines.get(self.cursor_row) {
-            self.cursor_col = line.len();
+            self.cursor_col = char_count(line);
         }
     }
 
@@ -138,6 +156,14 @@ impl TextEditor {
 
     pub fn is_empty(&self) -> bool {
         self.lines.len() == 1 && self.lines[0].is_empty()
+    }
+
+    /// Get byte index of cursor in current line (for rendering split).
+    pub fn cursor_byte_col(&self) -> usize {
+        self.lines
+            .get(self.cursor_row)
+            .map(|l| char_to_byte(l, self.cursor_col.min(char_count(l))))
+            .unwrap_or(0)
     }
 }
 
@@ -227,5 +253,45 @@ mod tests {
         assert_eq!(editor.cursor_col, 2);
         editor.move_down();
         assert_eq!(editor.cursor_row, 1);
+    }
+
+    #[test]
+    fn test_unicode_insert() {
+        let mut editor = TextEditor::new();
+        editor.insert_char('한');
+        editor.insert_char('글');
+        assert_eq!(editor.content(), "한글");
+        assert_eq!(editor.cursor_col, 2);
+    }
+
+    #[test]
+    fn test_unicode_backspace() {
+        let mut editor = TextEditor::from_string("한글테스트");
+        assert_eq!(editor.cursor_col, 5);
+        editor.backspace();
+        assert_eq!(editor.content(), "한글테스");
+        assert_eq!(editor.cursor_col, 4);
+        editor.cursor_col = 2;
+        editor.backspace();
+        assert_eq!(editor.content(), "한테스");
+        assert_eq!(editor.cursor_col, 1);
+    }
+
+    #[test]
+    fn test_unicode_insert_middle() {
+        let mut editor = TextEditor::from_string("한글");
+        editor.cursor_col = 1;
+        editor.insert_char('국');
+        assert_eq!(editor.content(), "한국글");
+        assert_eq!(editor.cursor_col, 2);
+    }
+
+    #[test]
+    fn test_backspace_at_start_does_nothing() {
+        let mut editor = TextEditor::from_string("hello");
+        editor.cursor_col = 0;
+        editor.cursor_row = 0;
+        editor.backspace();
+        assert_eq!(editor.content(), "hello");
     }
 }
