@@ -100,6 +100,10 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Ok(()) => Message::IssueUpdated(number),
             Err(e) => Message::Error(e.into()),
         },
+        Command::FetchPinnedIssues(repo) => match client.get_pinned_issue_numbers(&repo).await {
+            Ok(numbers) => Message::IssuePinnedNumbersLoaded(numbers),
+            Err(_) => Message::IssuePinnedNumbersLoaded(Vec::new()),
+        },
         Command::CreateIssue(repo, input) => match client.create_issue(&repo, &input).await {
             Ok(number) => Message::IssueCreated(number),
             Err(e) => Message::Error(e.into()),

@@ -367,6 +367,39 @@ impl GithubClient {
         Ok(())
     }
 
+    /// Get pinned issue numbers via GraphQL.
+    pub async fn get_pinned_issue_numbers(&self, repo: &RepoId) -> Result<Vec<u64>, ApiError> {
+        let query = r#"
+            query($owner: String!, $name: String!) {
+                repository(owner: $owner, name: $name) {
+                    pinnedIssues(first: 10) {
+                        nodes { issue { number } }
+                    }
+                }
+            }
+        "#;
+        let variables = json!({
+            "owner": repo.owner,
+            "name": repo.name,
+        });
+        match self.graphql(query, variables).await {
+            Ok(result) => {
+                let numbers = result
+                    .pointer("/data/repository/pinnedIssues/nodes")
+                    .and_then(|v| v.as_array())
+                    .map(|nodes| {
+                        nodes
+                            .iter()
+                            .filter_map(|n| n.pointer("/issue/number").and_then(|v| v.as_u64()))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                Ok(numbers)
+            }
+            Err(_) => Ok(Vec::new()), // Graceful fallback
+        }
+    }
+
     /// Get the GraphQL node ID for an issue (needed for mutations).
     pub async fn get_issue_node_id(&self, repo: &RepoId, number: u64) -> Result<String, ApiError> {
         let query = r#"

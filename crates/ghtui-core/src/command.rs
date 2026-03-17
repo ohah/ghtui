@@ -30,6 +30,7 @@ pub enum Command {
     UnlockIssue(RepoId, u64),
     PinIssue(RepoId, u64),
     UnpinIssue(RepoId, u64),
+    FetchPinnedIssues(RepoId),
     UpdateIssue(RepoId, u64, Option<String>, Option<String>), // repo, number, title, body
     SetIssueLabels(RepoId, u64, Vec<String>),
     SetIssueAssignees(RepoId, u64, Vec<String>),
