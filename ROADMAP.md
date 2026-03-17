@@ -165,6 +165,12 @@
 ### Phase 3-4 완료 (실시간 로그)
 - [x] 실시간 로그 스트리밍 (in_progress 잡 감지 → 5초 폴링 → auto-scroll)
 - [x] LIVE 인디케이터 표시
+- [x] Actions list에서 Cancel(`x`)/Re-run(`R`) 직접 실행
+
+### Phase 3-5 미완 (UI 보강 필요)
+- [ ] 워크플로우 사이드바 (왼쪽에 워크플로우 목록, 파일트리 UI처럼)
+- [ ] Workflow dispatch 파라미터 입력 UI (inputs 동적 폼)
+- [ ] Artifact 다운로드 진행 표시
 
 ## Phase 4 — Notifications ✅ 완성
 
@@ -204,14 +210,36 @@
 - [ ] Dependency graph
 - [ ] Forks 네트워크
 
-## Phase 8 — Settings 탭 나머지
+## Phase 8 — Settings 탭 완성 (읽기 → 수정 가능)
 
-- [x] Repository API (read-only 우선)
-- [x] 일반 설정 (이름, description, visibility)
+현재: read-only (General 표시, Branch Protection 보기, Collaborators 목록)
+
+### 8-1 일반 설정 수정 (PATCH /repos)
+- [x] 일반 설정 보기 (이름, description, visibility, features)
+- [ ] description 인라인 수정 (`e`)
+- [ ] visibility 토글 (public/private)
+- [ ] default branch 변경
+- [ ] features 토글 (issues/projects/wiki/discussions)
+- [ ] archived 토글
+- [ ] topics 편집
+
+### 8-2 Branch Protection
 - [x] 브랜치 보호 규칙 보기
+- [ ] 보호 규칙 상세 보기 (Enter)
+- [ ] 규칙 수정 (PUT /repos/{owner}/{repo}/branches/{branch}/protection)
+- [ ] 규칙 삭제
+
+### 8-3 Collaborators
 - [x] Collaborators 목록
-- [ ] Webhooks 목록
-- [ ] Deploy keys
+- [ ] Collaborator 초대 (PUT /repos/{owner}/{repo}/collaborators/{username})
+- [ ] Collaborator 제거 (DELETE)
+- [ ] 권한 변경
+
+### 8-4 추가 탭
+- [ ] Webhooks 목록 (GET /repos/{owner}/{repo}/hooks)
+- [ ] Webhook 상세/수정
+- [ ] Deploy keys 목록 (GET /repos/{owner}/{repo}/keys)
+- [ ] Deploy key 추가/삭제
 
 ## Phase 9 — Code 탭 (작업량 최대)
 
