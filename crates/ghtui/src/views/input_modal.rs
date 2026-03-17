@@ -39,7 +39,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, title: &str, hint
 
     lines.push(Line::raw(""));
     lines.push(Line::styled(
-        " Ctrl+Enter: Submit  |  Esc: Cancel ".to_string(),
+        " Ctrl+S: Submit  |  Esc: Cancel ".to_string(),
         Style::default().fg(Color::DarkGray),
     ));
 
