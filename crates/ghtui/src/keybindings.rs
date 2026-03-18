@@ -261,14 +261,14 @@ fn handle_insights_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         return match key.code {
             KeyCode::Char('j') | KeyCode::Down => Some(Message::TabChanged(1)),
             KeyCode::Char('k') | KeyCode::Up => Some(Message::TabChanged(usize::MAX)),
-            KeyCode::Enter | KeyCode::Tab | KeyCode::BackTab => Some(Message::InsightsSidebarFocus),
+            KeyCode::Enter | KeyCode::Tab => Some(Message::InsightsSidebarFocus), // → content
             _ => None,
         };
     }
 
     // Content focused
     match key.code {
-        KeyCode::Tab | KeyCode::BackTab | KeyCode::Esc => Some(Message::InsightsSidebarFocus),
+        KeyCode::BackTab | KeyCode::Esc => Some(Message::InsightsSidebarFocus), // ← sidebar
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
         KeyCode::PageDown => Some(Message::ScrollDown),
@@ -295,14 +295,14 @@ fn handle_security_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         return match key.code {
             KeyCode::Char('j') | KeyCode::Down => Some(Message::TabChanged(1)),
             KeyCode::Char('k') | KeyCode::Up => Some(Message::TabChanged(usize::MAX)),
-            KeyCode::Enter | KeyCode::Tab | KeyCode::BackTab => Some(Message::SecuritySidebarFocus),
+            KeyCode::Enter | KeyCode::Tab => Some(Message::SecuritySidebarFocus), // → content
             _ => None,
         };
     }
 
     // Content focused
     match key.code {
-        KeyCode::Tab | KeyCode::BackTab | KeyCode::Esc => Some(Message::SecuritySidebarFocus),
+        KeyCode::BackTab | KeyCode::Esc => Some(Message::SecuritySidebarFocus), // ← sidebar
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
         KeyCode::Enter => Some(Message::SecurityToggleDetail),
@@ -380,7 +380,7 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             KeyCode::Char('c') => Some(Message::CodeToggleCommits),
             KeyCode::Esc => Some(Message::CodeToggleCommits),
             KeyCode::Char('b') => Some(Message::CodeOpenRefPicker),
-            KeyCode::Tab | KeyCode::BackTab => Some(Message::CodeSidebarFocus),
+            KeyCode::Tab => Some(Message::CodeSidebarFocus), // → content
             _ => None,
         };
     }
@@ -394,7 +394,7 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             KeyCode::Backspace | KeyCode::Char('h') | KeyCode::Left => {
                 Some(Message::CodeNavigateBack)
             }
-            KeyCode::Tab | KeyCode::BackTab => Some(Message::CodeSidebarFocus),
+            KeyCode::Tab => Some(Message::CodeSidebarFocus), // → content
             KeyCode::Char('b') => Some(Message::CodeOpenRefPicker),
             KeyCode::Char('c') => Some(Message::CodeToggleCommits),
             _ => None,
@@ -407,7 +407,7 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
         KeyCode::PageDown => Some(Message::ScrollDown),
         KeyCode::PageUp => Some(Message::ScrollUp),
-        KeyCode::Tab | KeyCode::BackTab | KeyCode::Esc => Some(Message::CodeSidebarFocus),
+        KeyCode::BackTab | KeyCode::Esc => Some(Message::CodeSidebarFocus), // ← sidebar
         KeyCode::Backspace => Some(Message::CodeNavigateBack),
         KeyCode::Char('b') => Some(Message::CodeOpenRefPicker),
         KeyCode::Char('c') => Some(Message::CodeToggleCommits),
@@ -442,7 +442,7 @@ fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         return match key.code {
             KeyCode::Char('j') | KeyCode::Down => Some(Message::TabChanged(1)),
             KeyCode::Char('k') | KeyCode::Up => Some(Message::TabChanged(usize::MAX)),
-            KeyCode::Enter | KeyCode::Tab | KeyCode::BackTab => Some(Message::SettingsSidebarFocus),
+            KeyCode::Enter | KeyCode::Tab => Some(Message::SettingsSidebarFocus), // → content
             _ => None,
         };
     }
@@ -456,8 +456,8 @@ fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     let on_deploy_keys = current_tab == 4;
 
     match key.code {
-        // Tab / Esc go back to sidebar
-        KeyCode::Tab | KeyCode::BackTab | KeyCode::Esc => Some(Message::SettingsSidebarFocus),
+        // BackTab / Esc go back to sidebar
+        KeyCode::BackTab | KeyCode::Esc => Some(Message::SettingsSidebarFocus), // ← sidebar
         // j/k navigate items in content
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
@@ -540,7 +540,7 @@ fn handle_actions_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
             KeyCode::Enter => Some(Message::ActionsWorkflowSidebarSelect),
             KeyCode::Char('w') => Some(Message::ActionsToggleWorkflowSidebar),
             KeyCode::Char('d') => Some(Message::ActionsDispatchOpen),
-            KeyCode::Tab | KeyCode::BackTab => Some(Message::ActionsToggleWorkflowSidebar),
+            KeyCode::Tab => Some(Message::ActionsToggleWorkflowSidebar), // → run list
             KeyCode::Esc => Some(Message::ActionsToggleWorkflowSidebar),
             _ => None,
         };
