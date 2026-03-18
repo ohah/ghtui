@@ -75,11 +75,13 @@ pub(crate) fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command
             let clean_path = path.trim_matches('/').to_string();
             state.code = Some(ghtui_core::state::CodeViewState::new(git_ref.clone()));
             state.loading.insert("code_contents".to_string());
-            vec![Command::FetchContents(
-                repo.clone(),
-                clean_path,
-                git_ref.clone(),
-            )]
+            state.loading.insert("code_branches".to_string());
+            state.loading.insert("code_tags".to_string());
+            vec![
+                Command::FetchContents(repo.clone(), clean_path, git_ref.clone()),
+                Command::FetchBranches(repo.clone()),
+                Command::FetchTags(repo.clone()),
+            ]
         }
         Route::Security { repo } => {
             state.security = Some(SecurityState::new());
@@ -375,15 +377,28 @@ pub(crate) fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Comm
         }
         Route::Code { .. } => {
             if let Some(ref mut code) = state.code {
-                if code.sidebar_focused {
+                // Ref picker navigation
+                if code.ref_picker_open {
+                    if delta == usize::MAX {
+                        code.ref_picker_prev();
+                    } else if delta > 0 {
+                        code.ref_picker_next();
+                    }
+                } else if code.sidebar_focused {
                     if delta == usize::MAX {
                         code.select_prev();
                     } else if delta > 0 {
                         code.select_next();
                     }
                 } else {
-                    // Content focused: scroll file content
-                    if delta == usize::MAX {
+                    // Content focused: scroll file content or commit detail
+                    if code.commit_detail.is_some() {
+                        if delta == usize::MAX {
+                            code.commit_scroll = code.commit_scroll.saturating_sub(1);
+                        } else if delta > 0 {
+                            code.commit_scroll += 1;
+                        }
+                    } else if delta == usize::MAX {
                         code.scroll = code.scroll.saturating_sub(1);
                     } else if delta > 0 {
                         code.scroll += 1;

@@ -316,6 +316,16 @@ pub enum Message {
     CodeNavigateInto,               // Enter on dir -> navigate into; on file -> view
     CodeNavigateBack,               // Backspace/Esc -> go up
     CodeSidebarFocus,               // Toggle sidebar/content focus
+    CodeBranchesLoaded(Vec<String>),
+    CodeTagsLoaded(Vec<String>),
+    CodeOpenRefPicker,
+    CodeCloseRefPicker,
+    CodeSelectRef,
+    CodeCommitsLoaded(Vec<crate::types::code::CommitEntry>),
+    CodeCommitDetailLoaded(Box<crate::types::code::CommitDetail>),
+    CodeToggleCommits,
+    CodeOpenCommitDetail,
+    CodeCloseCommitDetail,
 
     // Mouse
     ScrollUp,

@@ -271,11 +271,48 @@ fn handle_security_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
 }
 
 fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
-    let sidebar_focused = state
-        .code
-        .as_ref()
-        .map(|c| c.sidebar_focused)
-        .unwrap_or(true);
+    let code = state.code.as_ref();
+    let sidebar_focused = code.map(|c| c.sidebar_focused).unwrap_or(true);
+    let ref_picker_open = code.is_some_and(|c| c.ref_picker_open);
+    let show_commits = code.is_some_and(|c| c.show_commits);
+    let has_commit_detail = code.is_some_and(|c| c.commit_detail.is_some());
+
+    // Ref picker mode
+    if ref_picker_open {
+        return match key.code {
+            KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+            KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+            KeyCode::Enter => Some(Message::CodeSelectRef),
+            KeyCode::Esc => Some(Message::CodeCloseRefPicker),
+            _ => None,
+        };
+    }
+
+    // Commit detail view
+    if has_commit_detail {
+        return match key.code {
+            KeyCode::Esc | KeyCode::Backspace => Some(Message::CodeCloseCommitDetail),
+            KeyCode::Char('j') | KeyCode::Down => Some(Message::ScrollDown),
+            KeyCode::Char('k') | KeyCode::Up => Some(Message::ScrollUp),
+            KeyCode::PageDown => Some(Message::ScrollDown),
+            KeyCode::PageUp => Some(Message::ScrollUp),
+            _ => None,
+        };
+    }
+
+    // Commit list mode
+    if show_commits && sidebar_focused {
+        return match key.code {
+            KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+            KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+            KeyCode::Enter => Some(Message::CodeOpenCommitDetail),
+            KeyCode::Char('c') => Some(Message::CodeToggleCommits),
+            KeyCode::Esc => Some(Message::CodeToggleCommits),
+            KeyCode::Char('b') => Some(Message::CodeOpenRefPicker),
+            KeyCode::Tab => Some(Message::CodeSidebarFocus),
+            _ => None,
+        };
+    }
 
     if sidebar_focused {
         // File tree focused
@@ -287,6 +324,8 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
                 Some(Message::CodeNavigateBack)
             }
             KeyCode::Tab => Some(Message::CodeSidebarFocus),
+            KeyCode::Char('b') => Some(Message::CodeOpenRefPicker),
+            KeyCode::Char('c') => Some(Message::CodeToggleCommits),
             _ => None,
         };
     }
@@ -299,6 +338,8 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         KeyCode::PageUp => Some(Message::ScrollUp),
         KeyCode::Tab | KeyCode::Esc => Some(Message::CodeSidebarFocus),
         KeyCode::Backspace => Some(Message::CodeNavigateBack),
+        KeyCode::Char('b') => Some(Message::CodeOpenRefPicker),
+        KeyCode::Char('c') => Some(Message::CodeToggleCommits),
         _ => None,
     }
 }

@@ -520,6 +520,24 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             // No README found — not an error, just no content
             Message::Tick
         }
+        Command::FetchBranches(repo) => match client.list_branches(&repo).await {
+            Ok(branches) => Message::CodeBranchesLoaded(branches),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::FetchTags(repo) => match client.list_tags(&repo).await {
+            Ok(tags) => Message::CodeTagsLoaded(tags),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::FetchCommits(repo, git_ref, path, per_page) => {
+            match client.list_commits(&repo, &git_ref, &path, per_page).await {
+                Ok(commits) => Message::CodeCommitsLoaded(commits),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::FetchCommitDetail(repo, sha) => match client.get_commit(&repo, &sha).await {
+            Ok(detail) => Message::CodeCommitDetailLoaded(Box::new(detail)),
+            Err(e) => Message::Error(e.into()),
+        },
 
         // Settings
         Command::FetchRepoSettings(repo) => match client.get_repo(&repo).await {

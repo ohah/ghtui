@@ -109,6 +109,10 @@ pub enum Command {
     FetchContents(RepoId, String, String), // repo, path, git_ref
     FetchFileContent(RepoId, String, String), // repo, path, git_ref
     FetchReadme(RepoId, String),           // repo, git_ref
+    FetchBranches(RepoId),
+    FetchTags(RepoId),
+    FetchCommits(RepoId, String, String, u32), // repo, git_ref, path, per_page
+    FetchCommitDetail(RepoId, String),         // repo, sha
 
     // Settings
     FetchRepoSettings(RepoId),
