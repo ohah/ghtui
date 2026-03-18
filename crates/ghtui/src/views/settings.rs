@@ -1,10 +1,11 @@
 use super::components;
 use ghtui_core::AppState;
+use ghtui_core::state::settings::SettingsFieldType;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap};
 
 pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     let theme = &state.theme;
@@ -67,6 +68,11 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         3 => render_webhooks(frame, state, content_area),
         4 => render_deploy_keys(frame, state, content_area),
         _ => {}
+    }
+
+    // Form overlay
+    if settings.form.is_some() {
+        render_settings_form(frame, state, area);
     }
 }
 
@@ -325,7 +331,7 @@ fn render_branch_protections(frame: &mut Frame, state: &AppState, area: Rect) {
     let list = List::new(items).block(
         Block::default()
             .title(format!(
-                " Branch Protection ({}) [d:delete e:enforce admins] ",
+                " Branch Protection ({}) [c:create e:edit d:delete E:enforce admins] ",
                 settings.branch_protections.len()
             ))
             .borders(Borders::ALL)
@@ -419,7 +425,7 @@ fn render_collaborators(frame: &mut Frame, state: &AppState, area: Rect) {
     let list = List::new(items).block(
         Block::default()
             .title(format!(
-                " Collaborators ({}) [d:remove] ",
+                " Collaborators ({}) [c:add d:remove] ",
                 settings.collaborators.len()
             ))
             .borders(Borders::ALL)
@@ -525,7 +531,7 @@ fn render_webhooks(frame: &mut Frame, state: &AppState, area: Rect) {
     let list = List::new(items).block(
         Block::default()
             .title(format!(
-                " Webhooks ({}) [d:delete a:toggle] ",
+                " Webhooks ({}) [c:create e:edit d:delete a:toggle] ",
                 settings.webhooks.len()
             ))
             .borders(Borders::ALL)
@@ -606,11 +612,96 @@ fn render_deploy_keys(frame: &mut Frame, state: &AppState, area: Rect) {
     let list = List::new(items).block(
         Block::default()
             .title(format!(
-                " Deploy Keys ({}) [d:delete] ",
+                " Deploy Keys ({}) [c:create d:delete] ",
                 settings.deploy_keys.len()
             ))
             .borders(Borders::ALL)
             .border_style(border_style),
     );
     frame.render_widget(list, area);
+}
+
+fn render_settings_form(frame: &mut Frame, state: &AppState, area: Rect) {
+    let theme = &state.theme;
+    let settings = state.settings.as_ref().unwrap();
+    let form = settings.form.as_ref().unwrap();
+
+    let field_count = form.fields.len();
+    // title(1) + border(2) + fields + blank + hint
+    let height = (field_count as u16 + 5).min(area.height.saturating_sub(4));
+    let width = 60u16.min(area.width.saturating_sub(4));
+    let popup_area = components::centered_rect(width, height, area);
+
+    frame.render_widget(Clear, popup_area);
+
+    let mut lines: Vec<Line<'static>> = Vec::new();
+
+    for (i, field) in form.fields.iter().enumerate() {
+        let is_focused = i == form.focused_field;
+        let prefix = if is_focused { " > " } else { "   " };
+
+        let label_style = if is_focused {
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(theme.fg_muted)
+        };
+
+        let value_display = if form.editing && is_focused {
+            format!("{}_", form.edit_buffer)
+        } else {
+            match &field.field_type {
+                SettingsFieldType::Bool => {
+                    if field.value == "true" {
+                        "[x]".to_string()
+                    } else {
+                        "[ ]".to_string()
+                    }
+                }
+                SettingsFieldType::Select(_) => format!("< {} >", field.value),
+                SettingsFieldType::Text => {
+                    if field.value.is_empty() {
+                        "(empty)".to_string()
+                    } else {
+                        field.value.clone()
+                    }
+                }
+            }
+        };
+
+        let value_style = if is_focused {
+            Style::default().fg(theme.fg)
+        } else {
+            Style::default().fg(theme.fg_dim)
+        };
+
+        let required_marker = if field.required { "*" } else { " " };
+
+        lines.push(Line::from(vec![
+            Span::styled(prefix.to_string(), label_style),
+            Span::styled(
+                format!("{:<28}{}", field.label, required_marker),
+                label_style,
+            ),
+            Span::styled(value_display, value_style),
+        ]));
+    }
+
+    lines.push(Line::raw(""));
+    lines.push(Line::from(vec![Span::styled(
+        "   j/k:move  Enter:edit/toggle  Ctrl+S:submit  Esc:cancel",
+        Style::default().fg(theme.fg_dim),
+    )]));
+
+    let title = format!(" {} ", form.title());
+    let paragraph = Paragraph::new(lines).block(
+        Block::default()
+            .title(title)
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(theme.accent))
+            .style(Style::default().bg(theme.bg)),
+    );
+
+    frame.render_widget(paragraph, popup_area);
 }

@@ -251,15 +251,11 @@ impl Widget for EditorView<'_> {
                                     ));
                                 }
                                 // Overlay cursor on the character at this position
-                                let (cursor_ch, ch_end) =
-                                    cursor_char_at(text, safe_offset);
+                                let (cursor_ch, ch_end) = cursor_char_at(text, safe_offset);
                                 spans.push(Span::styled(cursor_ch, cursor_style));
                                 cursor_inserted = true;
                                 if ch_end < span_len {
-                                    spans.push(Span::styled(
-                                        text[ch_end..].to_string(),
-                                        s.style,
-                                    ));
+                                    spans.push(Span::styled(text[ch_end..].to_string(), s.style));
                                 }
                             } else {
                                 spans.push(Span::styled(s.content.to_string(), s.style));

@@ -3243,6 +3243,253 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
 
+        // Settings form messages
+        Message::SettingsFormOpen(kind) => {
+            use ghtui_core::state::settings::{SettingsFormKind, SettingsFormState};
+            if let Some(ref mut settings) = state.settings {
+                let form = match &kind {
+                    SettingsFormKind::CreateBranchProtection => {
+                        SettingsFormState::branch_protection_create()
+                    }
+                    SettingsFormKind::EditBranchProtection(pattern) => {
+                        if let Some(bp) = settings
+                            .branch_protections
+                            .iter()
+                            .find(|b| &b.pattern == pattern)
+                        {
+                            SettingsFormState::branch_protection_edit(bp)
+                        } else {
+                            return vec![];
+                        }
+                    }
+                    SettingsFormKind::AddCollaborator => SettingsFormState::add_collaborator(),
+                    SettingsFormKind::CreateWebhook => SettingsFormState::create_webhook(),
+                    SettingsFormKind::EditWebhook(id) => {
+                        if let Some(hook) = settings.webhooks.iter().find(|h| h.id == *id) {
+                            SettingsFormState::edit_webhook(hook)
+                        } else {
+                            return vec![];
+                        }
+                    }
+                    SettingsFormKind::CreateDeployKey => SettingsFormState::create_deploy_key(),
+                };
+                settings.form = Some(form);
+            }
+            vec![]
+        }
+        Message::SettingsFormClose => {
+            if let Some(ref mut settings) = state.settings {
+                settings.form = None;
+            }
+            vec![]
+        }
+        Message::SettingsFormFieldNext => {
+            if let Some(ref mut settings) = state.settings {
+                if let Some(ref mut form) = settings.form {
+                    if form.focused_field + 1 < form.fields.len() {
+                        form.focused_field += 1;
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::SettingsFormFieldPrev => {
+            if let Some(ref mut settings) = state.settings {
+                if let Some(ref mut form) = settings.form {
+                    form.focused_field = form.focused_field.saturating_sub(1);
+                }
+            }
+            vec![]
+        }
+        Message::SettingsFormEditStart => {
+            use ghtui_core::state::settings::SettingsFieldType;
+            if let Some(ref mut settings) = state.settings {
+                if let Some(ref mut form) = settings.form {
+                    let field = &mut form.fields[form.focused_field];
+                    match &field.field_type {
+                        SettingsFieldType::Text => {
+                            form.edit_buffer = field.value.clone();
+                            form.editing = true;
+                        }
+                        SettingsFieldType::Bool => {
+                            field.value = if field.value == "true" {
+                                "false".into()
+                            } else {
+                                "true".into()
+                            };
+                        }
+                        SettingsFieldType::Select(options) => {
+                            if let Some(idx) = options.iter().position(|o| o == &field.value) {
+                                field.value = options[(idx + 1) % options.len()].clone();
+                            } else if let Some(first) = options.first() {
+                                field.value = first.clone();
+                            }
+                        }
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::SettingsFormEditChar(c) => {
+            if let Some(ref mut settings) = state.settings {
+                if let Some(ref mut form) = settings.form {
+                    if form.editing {
+                        form.edit_buffer.push(c);
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::SettingsFormEditBackspace => {
+            if let Some(ref mut settings) = state.settings {
+                if let Some(ref mut form) = settings.form {
+                    if form.editing {
+                        form.edit_buffer.pop();
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::SettingsFormEditDone => {
+            if let Some(ref mut settings) = state.settings {
+                if let Some(ref mut form) = settings.form {
+                    if form.editing {
+                        form.fields[form.focused_field].value = form.edit_buffer.clone();
+                        form.editing = false;
+                        form.edit_buffer.clear();
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::SettingsFormSubmit => {
+            use ghtui_core::state::settings::SettingsFormKind;
+            if let (Some(settings), Some(repo)) = (&mut state.settings, &state.current_repo) {
+                let form = match settings.form.take() {
+                    Some(f) => f,
+                    None => return vec![],
+                };
+                let repo = repo.clone();
+                let fields = &form.fields;
+                let get = |i: usize| fields[i].value.clone();
+                let get_bool = |i: usize| fields[i].value == "true";
+
+                match form.kind {
+                    SettingsFormKind::CreateBranchProtection
+                    | SettingsFormKind::EditBranchProtection(_) => {
+                        let branch = get(0);
+                        if branch.is_empty() {
+                            state.push_toast("Branch name is required".into(), ToastLevel::Warning);
+                            return vec![];
+                        }
+                        let reviews_count: u32 = get(4).parse().unwrap_or(0);
+                        let mut body = serde_json::json!({
+                            "enforce_admins": get_bool(3),
+                            "required_pull_request_reviews": null,
+                            "required_status_checks": null,
+                            "restrictions": null,
+                        });
+                        // Status checks
+                        let strict = get_bool(1);
+                        let contexts_str = get(2);
+                        let contexts: Vec<&str> = contexts_str
+                            .split(',')
+                            .map(|s| s.trim())
+                            .filter(|s| !s.is_empty())
+                            .collect();
+                        if strict || !contexts.is_empty() {
+                            body["required_status_checks"] = serde_json::json!({
+                                "strict": strict,
+                                "contexts": contexts,
+                            });
+                        }
+                        // PR reviews
+                        if reviews_count > 0 || get_bool(5) || get_bool(6) {
+                            body["required_pull_request_reviews"] = serde_json::json!({
+                                "required_approving_review_count": reviews_count,
+                                "dismiss_stale_reviews": get_bool(5),
+                                "require_code_owner_reviews": get_bool(6),
+                            });
+                        }
+                        state.push_toast(
+                            format!("Saving protection for '{}'...", branch),
+                            ToastLevel::Info,
+                        );
+                        let cmd = if matches!(form.kind, SettingsFormKind::CreateBranchProtection) {
+                            Command::CreateBranchProtection(repo, branch, body)
+                        } else {
+                            Command::UpdateBranchProtection(repo, branch, body)
+                        };
+                        return vec![cmd];
+                    }
+                    SettingsFormKind::AddCollaborator => {
+                        let username = get(0);
+                        let permission = get(1);
+                        if username.is_empty() {
+                            state.push_toast("Username is required".into(), ToastLevel::Warning);
+                            return vec![];
+                        }
+                        state.push_toast(
+                            format!("Adding collaborator @{}...", username),
+                            ToastLevel::Info,
+                        );
+                        return vec![Command::AddCollaborator(repo, username, permission)];
+                    }
+                    SettingsFormKind::CreateWebhook | SettingsFormKind::EditWebhook(_) => {
+                        let url = get(0);
+                        if url.is_empty() {
+                            state.push_toast("URL is required".into(), ToastLevel::Warning);
+                            return vec![];
+                        }
+                        let content_type = get(1);
+                        let events: Vec<String> = get(2)
+                            .split(',')
+                            .map(|s| s.trim().to_string())
+                            .filter(|s| !s.is_empty())
+                            .collect();
+                        let active = get_bool(3);
+                        let body = serde_json::json!({
+                            "config": {
+                                "url": url,
+                                "content_type": content_type,
+                            },
+                            "events": events,
+                            "active": active,
+                        });
+                        state.push_toast("Saving webhook...".into(), ToastLevel::Info);
+                        return match form.kind {
+                            SettingsFormKind::CreateWebhook => {
+                                vec![Command::CreateWebhook(repo, body)]
+                            }
+                            SettingsFormKind::EditWebhook(id) => {
+                                vec![Command::UpdateWebhook(repo, id, body)]
+                            }
+                            _ => unreachable!(),
+                        };
+                    }
+                    SettingsFormKind::CreateDeployKey => {
+                        let title = get(0);
+                        let key = get(1);
+                        if title.is_empty() || key.is_empty() {
+                            state.push_toast(
+                                "Title and key are required".into(),
+                                ToastLevel::Warning,
+                            );
+                            return vec![];
+                        }
+                        let body = serde_json::json!({
+                            "title": title,
+                            "key": key,
+                            "read_only": get_bool(2),
+                        });
+                        state.push_toast("Creating deploy key...".into(), ToastLevel::Info);
+                        return vec![Command::CreateDeployKey(repo, body)];
+                    }
+                }
+            }
+            vec![]
+        }
+
         // Mouse click
         Message::MouseClick(_col, row) => {
             // Row 0 = repo header, Row 1 = tab bar, Row 2+ = content

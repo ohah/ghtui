@@ -308,6 +308,16 @@ pub enum Message {
     SettingsDeleteBranchProtection, // Delete selected branch protection rule
     SettingsToggleBranchEnforceAdmins, // Toggle enforce_admins on selected rule
     SettingsItemUpdated(usize), // tab index: 1=branch, 2=collaborators, 3=webhooks, 4=deploy_keys
+    // Settings forms (create/edit modal)
+    SettingsFormOpen(crate::state::settings::SettingsFormKind),
+    SettingsFormClose,
+    SettingsFormFieldNext,
+    SettingsFormFieldPrev,
+    SettingsFormEditStart, // Enter on field: text→edit, bool→toggle, select→cycle
+    SettingsFormEditChar(char),
+    SettingsFormEditBackspace,
+    SettingsFormEditDone,
+    SettingsFormSubmit, // Ctrl+S
 
     // Code tab
     CodeTreeLoaded(Vec<crate::types::code::TreeNode>),

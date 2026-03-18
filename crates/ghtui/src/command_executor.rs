@@ -639,6 +639,47 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             }
         }
 
+        Command::CreateBranchProtection(repo, branch, body) => {
+            match client
+                .create_or_update_branch_protection(&repo, &branch, &body)
+                .await
+            {
+                Ok(()) => Message::SettingsItemUpdated(1),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::UpdateBranchProtection(repo, branch, body) => {
+            match client
+                .create_or_update_branch_protection(&repo, &branch, &body)
+                .await
+            {
+                Ok(()) => Message::SettingsItemUpdated(1),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::AddCollaborator(repo, username, permission) => {
+            match client.add_collaborator(&repo, &username, &permission).await {
+                Ok(()) => Message::SettingsItemUpdated(2),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::CreateWebhook(repo, body) => match client.create_webhook(&repo, &body).await {
+            Ok(()) => Message::SettingsItemUpdated(3),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::UpdateWebhook(repo, hook_id, body) => {
+            match client.update_webhook(&repo, hook_id, &body).await {
+                Ok(()) => Message::SettingsItemUpdated(3),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::CreateDeployKey(repo, body) => {
+            match client.create_deploy_key(&repo, &body).await {
+                Ok(()) => Message::SettingsItemUpdated(4),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+
         // Discussions
         Command::FetchDiscussions(repo) => match client.list_discussions(&repo).await {
             Ok(discussions) => Message::DiscussionsLoaded(discussions),
