@@ -270,6 +270,7 @@ fn handle_insights_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
 
     // Content focused
     match key.code {
+        KeyCode::Tab => Some(Message::GlobalTabNext), // → 다음 글로벌 탭
         KeyCode::BackTab | KeyCode::Esc => Some(Message::InsightsSidebarFocus), // ← sidebar
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
@@ -305,6 +306,7 @@ fn handle_security_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
 
     // Content focused
     match key.code {
+        KeyCode::Tab => Some(Message::GlobalTabNext), // → 다음 글로벌 탭
         KeyCode::BackTab | KeyCode::Esc => Some(Message::SecuritySidebarFocus), // ← sidebar
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
@@ -445,11 +447,12 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
 
     // Content focused: scroll + edit
     match key.code {
+        KeyCode::Tab => Some(Message::GlobalTabNext), // → 다음 글로벌 탭
+        KeyCode::BackTab | KeyCode::Esc => Some(Message::CodeSidebarFocus), // ← sidebar
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
         KeyCode::PageDown => Some(Message::ScrollDown),
         KeyCode::PageUp => Some(Message::ScrollUp),
-        KeyCode::BackTab | KeyCode::Esc => Some(Message::CodeSidebarFocus), // ← sidebar
         KeyCode::Backspace => Some(Message::CodeNavigateBack),
         KeyCode::Char('b') => Some(Message::CodeOpenRefPicker),
         KeyCode::Char('c') => Some(Message::CodeToggleCommits),
@@ -499,7 +502,7 @@ fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     let on_deploy_keys = current_tab == 4;
 
     match key.code {
-        // BackTab / Esc go back to sidebar
+        KeyCode::Tab => Some(Message::GlobalTabNext), // → 다음 글로벌 탭
         KeyCode::BackTab | KeyCode::Esc => Some(Message::SettingsSidebarFocus), // ← sidebar
         // j/k navigate items in content
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
