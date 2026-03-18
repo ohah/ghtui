@@ -211,34 +211,55 @@ impl Widget for EditorView<'_> {
 
                 if let Some(hl) = self.highlighted.and_then(|h| h.get(i)) {
                     if !hl.is_empty() {
-                        // Render highlighted spans with cursor block inserted at byte_col
-                        let mut byte_pos: usize = 0;
+                        // Adjust byte_col for tab expansion: each \t in source
+                        // before cursor becomes 4 spaces in highlighted spans
+                        let adjusted_col = {
+                            let src = &line[..byte_col.min(line.len())];
+                            let tab_count = src.chars().filter(|&c| c == '\t').count();
+                            byte_col + tab_count * 3 // each tab: 1 byte → 4 bytes (+3)
+                        };
+
+                        // Render highlighted spans with cursor block inserted
+                        let mut display_pos: usize = 0;
                         let mut cursor_inserted = false;
                         for s in hl {
                             let span_len = s.content.len();
-                            let span_start = byte_pos;
-                            let span_end = byte_pos + span_len;
+                            let span_end = display_pos + span_len;
 
-                            if !cursor_inserted && byte_col >= span_start && byte_col <= span_end {
-                                // Cursor falls within (or at boundary of) this span
-                                let offset = byte_col - span_start;
+                            if !cursor_inserted
+                                && adjusted_col >= display_pos
+                                && adjusted_col <= span_end
+                            {
+                                let offset = adjusted_col - display_pos;
                                 let text = s.content.as_ref();
-                                if offset > 0 {
-                                    spans.push(Span::styled(text[..offset].to_string(), s.style));
+                                // Ensure offset is on a char boundary
+                                let safe_offset = text
+                                    .char_indices()
+                                    .map(|(i, _)| i)
+                                    .chain(std::iter::once(text.len()))
+                                    .find(|&i| i >= offset)
+                                    .unwrap_or(text.len());
+                                if safe_offset > 0 {
+                                    spans.push(Span::styled(
+                                        text[..safe_offset].to_string(),
+                                        s.style,
+                                    ));
                                 }
                                 spans.push(cursor_span.clone());
                                 cursor_inserted = true;
-                                if offset < span_len {
-                                    spans.push(Span::styled(text[offset..].to_string(), s.style));
+                                if safe_offset < span_len {
+                                    spans.push(Span::styled(
+                                        text[safe_offset..].to_string(),
+                                        s.style,
+                                    ));
                                 }
                             } else {
                                 spans.push(Span::styled(s.content.to_string(), s.style));
                             }
 
-                            byte_pos = span_end;
+                            display_pos = span_end;
                         }
                         if !cursor_inserted {
-                            // Cursor is past all spans (e.g., end of line)
                             spans.push(cursor_span);
                         }
                     } else {
