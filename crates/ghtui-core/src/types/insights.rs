@@ -80,3 +80,11 @@ pub struct Fork {
 pub struct ForkOwner {
     pub login: String,
 }
+
+/// A dependency from the SBOM (Software Bill of Materials).
+#[derive(Debug, Clone)]
+pub struct DependencyEntry {
+    pub name: String,
+    pub version: Option<String>,
+    pub package_url: Option<String>,
+}

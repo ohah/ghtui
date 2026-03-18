@@ -1,6 +1,7 @@
 use ghtui_core::types::common::RepoId;
 use ghtui_core::types::insights::{
-    CodeFrequency, CommitActivity, ContributorStats, Fork, TrafficClones, TrafficViews,
+    CodeFrequency, CommitActivity, ContributorStats, DependencyEntry, Fork, TrafficClones,
+    TrafficViews,
 };
 
 use crate::client::GithubClient;
@@ -90,5 +91,49 @@ impl GithubClient {
         let body = self.get(&path).await?;
         let forks: Vec<Fork> = serde_json::from_str(&body).unwrap_or_default();
         Ok(forks)
+    }
+
+    /// Fetch dependency graph via SBOM API.
+    pub async fn get_dependency_graph(
+        &self,
+        repo: &RepoId,
+    ) -> Result<Vec<DependencyEntry>, ApiError> {
+        let path = format!("/repos/{}/{}/dependency-graph/sbom", repo.owner, repo.name);
+        match self.get(&path).await {
+            Ok(body) => {
+                let val: serde_json::Value = serde_json::from_str(&body)?;
+                let packages = val
+                    .pointer("/sbom/packages")
+                    .and_then(|v| v.as_array())
+                    .cloned()
+                    .unwrap_or_default();
+                let deps = packages
+                    .iter()
+                    .filter_map(|p| {
+                        let name = p["name"].as_str()?.to_string();
+                        let version = p["versionInfo"].as_str().map(|s| s.to_string());
+                        let package_url = p["externalRefs"].as_array().and_then(|refs| {
+                            refs.iter().find_map(|r| {
+                                if r["referenceType"].as_str() == Some("purl") {
+                                    r["referenceLocator"].as_str().map(|s| s.to_string())
+                                } else {
+                                    None
+                                }
+                            })
+                        });
+                        Some(DependencyEntry {
+                            name,
+                            version,
+                            package_url,
+                        })
+                    })
+                    .collect();
+                Ok(deps)
+            }
+            Err(ApiError::GitHub { status: 403, .. })
+            | Err(ApiError::GitHub { status: 404, .. })
+            | Err(ApiError::NotFound(_)) => Ok(Vec::new()),
+            Err(e) => Err(e),
+        }
     }
 }

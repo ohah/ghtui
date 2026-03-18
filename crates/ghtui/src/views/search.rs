@@ -134,8 +134,13 @@ fn render_search_bar(
         spans.push(Span::styled(&search.query, theme.text()));
     }
 
+    let history_hint = if search.input_mode && !search.history.is_empty() {
+        "  [↑/↓]:History"
+    } else {
+        ""
+    };
     spans.push(Span::styled(
-        "  [Tab]:Kind",
+        format!("  [Tab]:Kind{}", history_hint),
         Style::default().fg(theme.fg_dim),
     ));
 

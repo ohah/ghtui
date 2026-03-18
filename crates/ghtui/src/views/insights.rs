@@ -50,6 +50,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         "Traffic".to_string(),
         "Code Frequency".to_string(),
         format!("Forks ({})", insights.forks.len()),
+        format!("Dependencies ({})", insights.dependencies.len()),
     ];
     let tabs = Tabs::new(tab_titles)
         .select(insights.tab)
@@ -73,6 +74,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         2 => render_traffic(frame, state, chunks[1]),
         3 => render_code_frequency(frame, state, chunks[1]),
         4 => render_forks(frame, state, chunks[1]),
+        5 => render_dependencies(frame, state, chunks[1]),
         _ => {}
     }
 }
@@ -441,6 +443,51 @@ fn render_forks(frame: &mut Frame, state: &AppState, area: Rect) {
     let list = List::new(items).block(
         Block::default()
             .title(format!(" Forks ({}) ", insights.forks.len()))
+            .borders(Borders::ALL)
+            .border_style(theme.border_style()),
+    );
+    frame.render_widget(list, area);
+}
+
+fn render_dependencies(frame: &mut Frame, state: &AppState, area: Rect) {
+    let theme = &state.theme;
+    let insights = state.insights.as_ref().unwrap();
+
+    if insights.dependencies.is_empty() {
+        let hint = if state.is_loading("dependency_graph") {
+            "  Loading dependency graph..."
+        } else {
+            "  No dependencies found (SBOM not available)"
+        };
+        let paragraph = Paragraph::new(hint).style(theme.text_dim()).block(
+            Block::default()
+                .title(" Dependencies ")
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        );
+        frame.render_widget(paragraph, area);
+        return;
+    }
+
+    let items: Vec<ListItem> = insights
+        .dependencies
+        .iter()
+        .map(|dep| {
+            let version = dep.version.as_deref().unwrap_or("?");
+            ListItem::new(Line::from(vec![
+                Span::styled("  ", Style::default()),
+                Span::styled(&dep.name, theme.text()),
+                Span::styled(
+                    format!("  {}", version),
+                    Style::default().fg(theme.fg_muted),
+                ),
+            ]))
+        })
+        .collect();
+
+    let list = List::new(items).block(
+        Block::default()
+            .title(format!(" Dependencies ({}) ", insights.dependencies.len()))
             .borders(Borders::ALL)
             .border_style(theme.border_style()),
     );

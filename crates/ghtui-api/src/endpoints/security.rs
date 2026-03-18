@@ -1,5 +1,7 @@
 use ghtui_core::types::common::RepoId;
-use ghtui_core::types::security::{CodeScanningAlert, DependabotAlert, SecretScanningAlert};
+use ghtui_core::types::security::{
+    CodeScanningAlert, DependabotAlert, RepoSecurityAdvisory, SecretScanningAlert,
+};
 
 use crate::client::GithubClient;
 use crate::error::ApiError;
@@ -57,6 +59,26 @@ impl GithubClient {
             Ok(body) => {
                 let alerts: Vec<SecretScanningAlert> = serde_json::from_str(&body)?;
                 Ok(alerts)
+            }
+            Err(ApiError::NotFound(_)) => Ok(Vec::new()),
+            Err(ApiError::GitHub { status: 403, .. }) => Ok(Vec::new()),
+            Err(ApiError::GitHub { status: 404, .. }) => Ok(Vec::new()),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn list_security_advisories(
+        &self,
+        repo: &RepoId,
+    ) -> Result<Vec<RepoSecurityAdvisory>, ApiError> {
+        let path = format!(
+            "/repos/{}/{}/security-advisories?per_page=30",
+            repo.owner, repo.name
+        );
+        match self.get(&path).await {
+            Ok(body) => {
+                let advisories: Vec<RepoSecurityAdvisory> = serde_json::from_str(&body)?;
+                Ok(advisories)
             }
             Err(ApiError::NotFound(_)) => Ok(Vec::new()),
             Err(ApiError::GitHub { status: 403, .. }) => Ok(Vec::new()),

@@ -90,6 +90,20 @@ pub struct CodeScanningLocation {
     pub end_line: Option<u64>,
 }
 
+/// A repository security advisory (GHSA).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepoSecurityAdvisory {
+    pub ghsa_id: String,
+    pub cve_id: Option<String>,
+    pub summary: String,
+    pub description: Option<String>,
+    pub severity: Option<String>,
+    pub state: String,
+    pub html_url: String,
+    pub published_at: Option<String>,
+    pub updated_at: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecretScanningAlert {
     pub number: u64,
