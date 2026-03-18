@@ -39,6 +39,12 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     };
 
+    // Dispatch modal overlay (render on top, skip everything else)
+    if list_state.dispatch.is_some() {
+        render_dispatch_modal(frame, state, list_state, area);
+        return;
+    }
+
     // Workflow sidebar layout
     let content_area = if list_state.show_workflow_sidebar {
         let sidebar_width = 30u16.min(area.width / 3);
@@ -60,12 +66,6 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
     // Filter bar
     render_filter_bar(frame, state, list_state, chunks[0]);
-
-    // Dispatch modal overlay
-    if list_state.dispatch.is_some() {
-        render_dispatch_modal(frame, state, list_state, area);
-        return;
-    }
 
     // List
     let items: Vec<ListItem> = list_state
