@@ -282,6 +282,76 @@ impl TextEditor {
         self.ensure_scroll();
     }
 
+    pub fn move_home_selecting(&mut self) {
+        self.start_selection();
+        self.cursor_col = 0;
+    }
+
+    pub fn move_end_selecting(&mut self) {
+        self.start_selection();
+        if let Some(line) = self.lines.get(self.cursor_row) {
+            self.cursor_col = char_count(line);
+        }
+    }
+
+    pub fn move_to_top_selecting(&mut self) {
+        self.start_selection();
+        self.cursor_row = 0;
+        self.cursor_col = 0;
+        self.ensure_scroll();
+    }
+
+    pub fn move_to_bottom_selecting(&mut self) {
+        self.start_selection();
+        self.cursor_row = self.lines.len().saturating_sub(1);
+        self.cursor_col = self
+            .lines
+            .get(self.cursor_row)
+            .map(|l| char_count(l))
+            .unwrap_or(0);
+        self.ensure_scroll();
+    }
+
+    pub fn move_word_left_selecting(&mut self) {
+        self.start_selection();
+        if self.cursor_col == 0 {
+            if self.cursor_row > 0 {
+                self.cursor_row -= 1;
+                self.cursor_col = char_count(&self.lines[self.cursor_row]);
+            }
+            self.ensure_scroll();
+            return;
+        }
+        if let Some(line) = self.lines.get(self.cursor_row) {
+            let chars: Vec<char> = line.chars().collect();
+            let mut col = self.cursor_col.min(chars.len());
+            while col > 0 && chars[col - 1].is_whitespace() {
+                col -= 1;
+            }
+            while col > 0 && !chars[col - 1].is_whitespace() {
+                col -= 1;
+            }
+            self.cursor_col = col;
+        }
+    }
+
+    pub fn move_word_right_selecting(&mut self) {
+        self.start_selection();
+        if let Some(line) = self.lines.get(self.cursor_row) {
+            let chars: Vec<char> = line.chars().collect();
+            let len = chars.len();
+            let mut col = self.cursor_col.min(len);
+            while col < len && !chars[col].is_whitespace() {
+                col += 1;
+            }
+            while col < len && chars[col].is_whitespace() {
+                col += 1;
+            }
+            self.cursor_col = col;
+        }
+        self.ensure_scroll();
+    }
+
     // === Text Mutation ===
 
     pub fn insert_char(&mut self, c: char) {
