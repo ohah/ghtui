@@ -256,6 +256,33 @@ impl GithubClient {
         String::from_utf8(decoded).map_err(|e| ApiError::Other(format!("UTF-8 error: {}", e)))
     }
 
+    /// Fetch raw file bytes (for binary files like images).
+    /// Same as get_file_content but returns Vec<u8> instead of String.
+    pub async fn get_file_bytes(
+        &self,
+        repo: &RepoId,
+        path: &str,
+        git_ref: &str,
+    ) -> Result<Vec<u8>, ApiError> {
+        let ref_param = if git_ref.is_empty() {
+            String::new()
+        } else {
+            format!("?ref={}", git_ref)
+        };
+        let api_path = format!(
+            "/repos/{}/{}/contents/{}{}",
+            repo.owner, repo.name, path, ref_param
+        );
+
+        let body = self.get(&api_path).await?;
+        let response: serde_json::Value = serde_json::from_str(&body)?;
+
+        let content = response["content"].as_str().unwrap_or("").replace('\n', "");
+        base64::engine::general_purpose::STANDARD
+            .decode(&content)
+            .map_err(|e| ApiError::Other(format!("Base64 decode error: {}", e)))
+    }
+
     pub async fn list_branches(&self, repo: &RepoId) -> Result<Vec<String>, ApiError> {
         let api_path = format!("/repos/{}/{}/branches?per_page=100", repo.owner, repo.name);
         let body = self.get(&api_path).await?;

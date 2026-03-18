@@ -43,6 +43,9 @@ pub struct CodeViewState {
     pub expanded_dirs: HashSet<String>,
     pub tree_visible: Vec<usize>,
     pub tree_loaded: bool,
+
+    // Image preview
+    pub image_data: Option<Vec<u8>>,
 }
 
 impl CodeViewState {
@@ -80,6 +83,8 @@ impl CodeViewState {
             expanded_dirs: HashSet::new(),
             tree_visible: Vec::new(),
             tree_loaded: false,
+
+            image_data: None,
         }
     }
 

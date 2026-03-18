@@ -38,6 +38,10 @@ clap = { version = "4", features = ["derive"] }
 # Markdown & Syntax
 pulldown-cmark = "0.13"
 
+# Image rendering in terminal
+ratatui-image = { version = "10", default-features = false, features = ["crossterm", "image-defaults"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif"] }
+
 # Tree-sitter (AST-based syntax highlighting)
 tree-sitter = "0.24"
 tree-sitter-rust = "0.23"

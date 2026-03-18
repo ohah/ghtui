@@ -3989,6 +3989,17 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::CodeImageLoaded(filename, bytes) => {
+            state.loading.remove("code_file");
+            if let Some(ref mut code) = state.code {
+                code.image_data = Some(bytes);
+                code.file_content = None; // clear text content
+                code.file_name = Some(filename);
+                code.scroll = 0;
+                code.sidebar_focused = false;
+            }
+            vec![]
+        }
         Message::CodeReadmeLoaded(content) => {
             state.loading.remove("code_readme");
             if let Some(ref mut code) = state.code {
@@ -4006,6 +4017,14 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         } else if let Some(ref repo) = state.current_repo {
                             code.file_path = Some(node.path.clone());
                             state.loading.insert("code_file".to_string());
+                            let filename = node.path.rsplit('/').next().unwrap_or(&node.path);
+                            if is_image_file(filename) {
+                                return vec![Command::FetchFileBytes(
+                                    repo.clone(),
+                                    node.path,
+                                    code.git_ref.clone(),
+                                )];
+                            }
                             return vec![Command::FetchFileContent(
                                 repo.clone(),
                                 node.path,
@@ -4035,6 +4054,13 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                             ghtui_core::types::code::FileEntryType::File => {
                                 code.file_path = Some(entry.path.clone());
                                 state.loading.insert("code_file".to_string());
+                                if is_image_file(&entry.name) {
+                                    return vec![Command::FetchFileBytes(
+                                        repo.clone(),
+                                        entry.path,
+                                        code.git_ref.clone(),
+                                    )];
+                                }
                                 return vec![Command::FetchFileContent(
                                     repo.clone(),
                                     entry.path,
@@ -4049,11 +4075,12 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::CodeNavigateBack => {
             if let Some(ref mut code) = state.code {
-                // If viewing a file, close file view first
-                if code.file_content.is_some() {
+                // If viewing a file or image, close view first
+                if code.file_content.is_some() || code.image_data.is_some() {
                     code.file_content = None;
                     code.file_name = None;
                     code.file_path = None;
+                    code.image_data = None;
                     code.scroll = 0;
                     code.sidebar_focused = true;
                     return vec![];
