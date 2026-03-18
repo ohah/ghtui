@@ -692,9 +692,17 @@ fn render_file_content(
     let is_dark = theme.bg == ratatui::style::Color::Rgb(13, 17, 23);
     let highlighted = crate::highlighter::highlight_file(content, filename, is_dark);
 
+    // Viewport-aware lazy rendering: only create Line objects for visible range
+    let visible_height = area.height.saturating_sub(2) as usize; // minus top/bottom borders
+    let buffer = 20;
+    let start = scroll;
+    let end = (scroll + visible_height + buffer).min(total_lines);
+
     let lines: Vec<Line> = content
         .lines()
         .enumerate()
+        .skip(start)
+        .take(end - start)
         .map(|(i, line)| {
             let line_num = format!("{:>width$} ", i + 1, width = gutter_width);
             let mut spans = vec![Span::styled(line_num, Style::default().fg(theme.fg_muted))];
@@ -714,8 +722,8 @@ fn render_file_content(
 
     let title = format!(" {} ({} lines) ", filename, total_lines);
 
+    // No .scroll() needed — we already sliced to the visible window
     let paragraph = Paragraph::new(lines)
-        .scroll((scroll.min(u16::MAX as usize) as u16, 0))
         .style(Style::default().bg(theme.bg))
         .block(
             Block::default()

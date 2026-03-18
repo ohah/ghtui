@@ -4040,7 +4040,12 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
 
         // System
         Message::Error(e) => {
-            state.loading.clear();
+            // Do NOT call state.loading.clear() here. When multiple API calls
+            // are in flight concurrently (e.g., Security tab fires 4 requests),
+            // a single 403 error would wipe loading state for the other
+            // still-pending requests. Individual `*Loaded` / per-command error
+            // handlers already remove their own loading keys.
+
             // Reset code editing state on error to avoid stuck editor
             if let Some(ref mut code) = state.code {
                 if code.editing {
