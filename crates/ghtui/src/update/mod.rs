@@ -341,7 +341,9 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::PrChangeBase => {
             if let Some(ref detail) = state.pr_detail {
-                state.input_buffer = detail.detail.pr.base_ref.clone();
+                let prefill = detail.detail.pr.base_ref.clone();
+                state.input_buffer = prefill.clone();
+                state.modal_editor = ghtui_core::editor::TextEditor::from_string(&prefill);
                 state.modal = Some(ghtui_core::ModalKind::Confirm {
                     title: "Change Base Branch".to_string(),
                     message: "Enter target branch name:".to_string(),
@@ -671,7 +673,8 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         .join(", ")
                 })
                 .unwrap_or_default();
-            state.input_buffer = current;
+            state.input_buffer = current.clone();
+            state.modal_editor = ghtui_core::editor::TextEditor::from_string(&current);
             state.modal = Some(ghtui_core::ModalKind::Confirm {
                 title: "Request Reviewers".to_string(),
                 message: "Enter reviewer logins (comma-separated):".to_string(),
@@ -1384,8 +1387,8 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::IssueTransfer => {
-            // Use input_buffer for destination repo
             state.input_buffer.clear();
+            state.modal_editor = ghtui_core::editor::TextEditor::new();
             state.modal = Some(ghtui_core::ModalKind::Confirm {
                 title: "Transfer Issue".to_string(),
                 message: "Enter destination repo (owner/name):".to_string(),

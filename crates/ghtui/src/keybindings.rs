@@ -1221,6 +1221,13 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
                 return Some(Message::PrDiffCommentSubmit);
             }
 
+            if ks == kb.edit_undo {
+                return Some(Message::PrEditUndo);
+            }
+            if ks == kb.edit_redo {
+                return Some(Message::PrEditRedo);
+            }
+
             return match key.code {
                 // Alt+Enter: submit fallback
                 KeyCode::Enter if alt => Some(Message::PrDiffCommentSubmit),
@@ -1232,10 +1239,17 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
                 KeyCode::Char(c) => Some(Message::PrEditChar(c)),
                 KeyCode::Backspace => Some(Message::PrEditBackspace),
                 KeyCode::Delete => Some(Message::PrEditDelete),
+                KeyCode::Tab => Some(Message::PrEditTab),
+                KeyCode::Left if ctrl || alt => Some(Message::PrEditWordLeft),
+                KeyCode::Right if ctrl || alt => Some(Message::PrEditWordRight),
                 KeyCode::Left => Some(Message::PrEditCursorLeft),
                 KeyCode::Right => Some(Message::PrEditCursorRight),
                 KeyCode::Up => Some(Message::PrEditCursorUp),
                 KeyCode::Down => Some(Message::PrEditCursorDown),
+                KeyCode::Home => Some(Message::PrEditHome),
+                KeyCode::End => Some(Message::PrEditEnd),
+                KeyCode::PageUp => Some(Message::PrEditPageUp),
+                KeyCode::PageDown => Some(Message::PrEditPageDown),
                 _ => None,
             };
         }
