@@ -3812,6 +3812,12 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         // System
         Message::Error(e) => {
             state.loading.clear();
+            // Reset code editing state on error to avoid stuck editor
+            if let Some(ref mut code) = state.code {
+                if code.editing {
+                    code.editing = false;
+                }
+            }
             state.push_toast(e.to_string(), ToastLevel::Error);
             vec![]
         }
