@@ -33,6 +33,11 @@ pub struct DispatchState {
     pub focused_field: usize, // 0 = ref, 1..N = inputs
     pub editing: bool,
     pub edit_buffer: String,
+    /// Branch/tag picker state
+    pub ref_picker_open: bool,
+    pub ref_items: Vec<(String, bool)>, // (name, is_branch)
+    pub ref_selected: usize,
+    pub ref_filter: String,
 }
 
 #[derive(Debug)]
@@ -43,6 +48,22 @@ pub struct DispatchInputField {
     pub required: bool,
     pub options: Vec<String>,
     pub description: Option<String>,
+}
+
+impl DispatchState {
+    /// Return ref items filtered by the current filter string.
+    pub fn filtered_ref_items(&self) -> Vec<(String, bool)> {
+        if self.ref_filter.is_empty() {
+            self.ref_items.clone()
+        } else {
+            let filter = self.ref_filter.to_lowercase();
+            self.ref_items
+                .iter()
+                .filter(|(name, _)| name.to_lowercase().contains(&filter))
+                .cloned()
+                .collect()
+        }
+    }
 }
 
 impl ActionsListState {

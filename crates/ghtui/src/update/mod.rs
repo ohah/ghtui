@@ -2272,12 +2272,16 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     None
                 };
                 if let Some(wf) = workflow {
-                    return vec![Command::FetchWorkflowInputs(
-                        repo.clone(),
-                        wf.id,
-                        wf.name.clone(),
-                        wf.path.clone(),
-                    )];
+                    return vec![
+                        Command::FetchWorkflowInputs(
+                            repo.clone(),
+                            wf.id,
+                            wf.name.clone(),
+                            wf.path.clone(),
+                        ),
+                        Command::FetchBranches(repo.clone()),
+                        Command::FetchTags(repo.clone()),
+                    ];
                 }
             }
             vec![]
@@ -2304,6 +2308,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     focused_field: 0,
                     editing: false,
                     edit_buffer: String::new(),
+                    ref_picker_open: false,
+                    ref_items: Vec::new(),
+                    ref_selected: 0,
+                    ref_filter: String::new(),
                 });
             }
             vec![]
@@ -2381,6 +2389,71 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     }
                 }
             }
+            vec![]
+        }
+        Message::ActionsDispatchRefPickerToggle => {
+            if let Some(ref mut list) = state.actions_list {
+                if let Some(ref mut d) = list.dispatch {
+                    d.ref_picker_open = !d.ref_picker_open;
+                    d.ref_selected = 0;
+                    d.ref_filter.clear();
+                    d.editing = false;
+                }
+            }
+            vec![]
+        }
+        Message::ActionsDispatchRefPickerNext => {
+            if let Some(ref mut list) = state.actions_list {
+                if let Some(ref mut d) = list.dispatch {
+                    let filtered_count = d.filtered_ref_items().len();
+                    if d.ref_selected < filtered_count.saturating_sub(1) {
+                        d.ref_selected += 1;
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::ActionsDispatchRefPickerPrev => {
+            if let Some(ref mut list) = state.actions_list {
+                if let Some(ref mut d) = list.dispatch {
+                    d.ref_selected = d.ref_selected.saturating_sub(1);
+                }
+            }
+            vec![]
+        }
+        Message::ActionsDispatchRefPickerSelect => {
+            if let Some(ref mut list) = state.actions_list {
+                if let Some(ref mut d) = list.dispatch {
+                    let filtered: Vec<_> = d.filtered_ref_items();
+                    if let Some((name, _)) = filtered.get(d.ref_selected) {
+                        d.git_ref = name.clone();
+                    }
+                    d.ref_picker_open = false;
+                    d.ref_filter.clear();
+                }
+            }
+            vec![]
+        }
+        Message::ActionsDispatchRefPickerFilter(c) => {
+            if let Some(ref mut list) = state.actions_list {
+                if let Some(ref mut d) = list.dispatch {
+                    d.ref_filter.push(c);
+                    d.ref_selected = 0;
+                }
+            }
+            vec![]
+        }
+        Message::ActionsDispatchRefPickerBackspace => {
+            if let Some(ref mut list) = state.actions_list {
+                if let Some(ref mut d) = list.dispatch {
+                    d.ref_filter.pop();
+                    d.ref_selected = 0;
+                }
+            }
+            vec![]
+        }
+        Message::ActionsDispatchRefsLoaded(_, _) => {
+            // Handled via CodeBranchesLoaded/CodeTagsLoaded
             vec![]
         }
         Message::ActionsDispatchSubmit => {
@@ -4658,6 +4731,17 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::CodeBranchesLoaded(branches) => {
             state.loading.remove("code_branches");
+            // Also populate dispatch ref picker if open
+            if let Some(ref mut list) = state.actions_list {
+                if let Some(ref mut d) = list.dispatch {
+                    // Add branches to ref_items (prepend, marking as branch)
+                    d.ref_items.retain(|(_name, is_branch)| !is_branch);
+                    let mut new_items: Vec<(String, bool)> =
+                        branches.iter().map(|b| (b.clone(), true)).collect();
+                    new_items.append(&mut d.ref_items);
+                    d.ref_items = new_items;
+                }
+            }
             if let Some(ref mut code) = state.code {
                 code.branches = branches;
             }
@@ -4665,6 +4749,15 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::CodeTagsLoaded(tags) => {
             state.loading.remove("code_tags");
+            // Also populate dispatch ref picker if open
+            if let Some(ref mut list) = state.actions_list {
+                if let Some(ref mut d) = list.dispatch {
+                    // Add tags to ref_items (append, marking as tag)
+                    d.ref_items.retain(|(_name, is_branch)| *is_branch);
+                    d.ref_items
+                        .extend(tags.iter().map(|t| (t.clone(), false)));
+                }
+            }
             if let Some(ref mut code) = state.code {
                 code.tags = tags;
             }

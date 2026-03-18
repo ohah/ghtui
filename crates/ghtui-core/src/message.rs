@@ -216,6 +216,13 @@ pub enum Message {
     ActionsDispatchEditChar(char), // Type char in dispatch field
     ActionsDispatchEditBackspace,  // Backspace in dispatch field
     ActionsDispatchEditDone,       // Finish editing field (Enter/Esc)
+    ActionsDispatchRefPickerToggle, // Toggle branch/tag picker
+    ActionsDispatchRefPickerNext,   // Next item in ref picker
+    ActionsDispatchRefPickerPrev,   // Prev item in ref picker
+    ActionsDispatchRefPickerSelect, // Select current ref in picker
+    ActionsDispatchRefPickerFilter(char), // Filter ref picker
+    ActionsDispatchRefPickerBackspace, // Backspace in ref filter
+    ActionsDispatchRefsLoaded(Vec<String>, Vec<String>), // (branches, tags)
     WorkflowInputsLoaded(u64, String, Vec<WorkflowInput>), // workflow_id, name, inputs
     // Action detail
     ActionDetailToggleStep(u32), // toggle step fold by step number

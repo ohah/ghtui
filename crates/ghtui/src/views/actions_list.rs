@@ -355,7 +355,7 @@ fn render_dispatch_modal(
     let ref_value = if dispatch.editing && ref_focused {
         format!("{}█", dispatch.edit_buffer)
     } else {
-        dispatch.git_ref.clone()
+        format!("{} ▾", dispatch.git_ref)
     };
     lines.push(Line::from(vec![
         Span::styled(
@@ -369,6 +369,11 @@ fn render_dispatch_modal(
             },
         ),
         Span::styled(ref_value, theme.text()),
+        if ref_focused && !dispatch.editing {
+            Span::styled("  (Enter:select  e:edit)", Style::default().fg(theme.fg_dim))
+        } else {
+            Span::raw("")
+        },
     ]));
 
     // Input fields
@@ -431,4 +436,96 @@ fn render_dispatch_modal(
             .style(Style::default().bg(theme.bg)),
     );
     frame.render_widget(paragraph, popup_area);
+
+    // Ref picker dropdown overlay
+    if dispatch.ref_picker_open {
+        render_ref_picker(frame, dispatch, theme, popup_area);
+    }
+}
+
+fn render_ref_picker(
+    frame: &mut Frame,
+    dispatch: &ghtui_core::state::actions::DispatchState,
+    theme: &ghtui_core::theme::Theme,
+    parent_area: Rect,
+) {
+    let filtered = dispatch.filtered_ref_items();
+    let max_visible = 12u16.min(parent_area.height.saturating_sub(2));
+    let picker_height = (filtered.len() as u16 + 3).min(max_visible).max(4); // +3 for border+filter+hint
+    let picker_width = 50u16.min(parent_area.width.saturating_sub(4));
+
+    // Position below the ref field (line 2 of the modal, offset by 3 for header+blank+ref)
+    let picker_x = parent_area.x + 2;
+    let picker_y = parent_area.y + 3;
+    let picker_area = Rect::new(
+        picker_x,
+        picker_y,
+        picker_width,
+        picker_height,
+    );
+
+    frame.render_widget(Clear, picker_area);
+
+    let mut lines: Vec<Line> = Vec::new();
+
+    // Filter input
+    let filter_line = if dispatch.ref_filter.is_empty() {
+        Line::styled(
+            "  Type to filter...",
+            Style::default().fg(theme.fg_dim),
+        )
+    } else {
+        Line::from(vec![
+            Span::styled("  🔍 ", Style::default().fg(theme.accent)),
+            Span::styled(
+                dispatch.ref_filter.clone(),
+                Style::default().fg(ratatui::style::Color::White).add_modifier(Modifier::BOLD),
+            ),
+        ])
+    };
+    lines.push(filter_line);
+
+    // Items
+    let scroll_offset = if dispatch.ref_selected as u16 >= max_visible.saturating_sub(3) {
+        (dispatch.ref_selected as u16).saturating_sub(max_visible.saturating_sub(4)) as usize
+    } else {
+        0
+    };
+
+    for (i, (name, is_branch)) in filtered.iter().enumerate().skip(scroll_offset) {
+        if lines.len() as u16 >= picker_height.saturating_sub(1) {
+            break;
+        }
+        let is_selected = i == dispatch.ref_selected;
+        let icon = if *is_branch { "⎇ " } else { "🏷 " };
+        let style = if is_selected {
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD)
+                .bg(theme.selection_bg)
+        } else {
+            Style::default().fg(theme.fg)
+        };
+        lines.push(Line::from(vec![
+            Span::styled(if is_selected { "▸ " } else { "  " }, style),
+            Span::styled(icon, style),
+            Span::styled(name.clone(), style),
+        ]));
+    }
+
+    if filtered.is_empty() {
+        lines.push(Line::styled(
+            "  No matching refs",
+            Style::default().fg(theme.fg_dim),
+        ));
+    }
+
+    let paragraph = Paragraph::new(lines).block(
+        Block::default()
+            .title(" Select Branch/Tag ")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(theme.accent))
+            .style(Style::default().bg(theme.bg)),
+    );
+    frame.render_widget(paragraph, picker_area);
 }
