@@ -95,10 +95,12 @@ pub struct CodeScanningLocation {
 pub struct RepoSecurityAdvisory {
     pub ghsa_id: String,
     pub cve_id: Option<String>,
+    #[serde(default)]
     pub summary: String,
     pub description: Option<String>,
     pub severity: Option<String>,
     pub state: String,
+    #[serde(default)]
     pub html_url: String,
     pub published_at: Option<String>,
     pub updated_at: Option<String>,
