@@ -822,6 +822,22 @@ fn handle_actions_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
 
     // Dispatch modal keys
     if let Some(ref dispatch) = list.dispatch {
+        // Ref picker is open — handle picker-specific keys
+        if dispatch.ref_picker_open {
+            return match key.code {
+                KeyCode::Esc => Some(Message::ActionsDispatchRefPickerToggle),
+                KeyCode::Enter => Some(Message::ActionsDispatchRefPickerSelect),
+                KeyCode::Down | KeyCode::Char('j') => {
+                    Some(Message::ActionsDispatchRefPickerNext)
+                }
+                KeyCode::Up | KeyCode::Char('k') => {
+                    Some(Message::ActionsDispatchRefPickerPrev)
+                }
+                KeyCode::Char(c) => Some(Message::ActionsDispatchRefPickerFilter(c)),
+                KeyCode::Backspace => Some(Message::ActionsDispatchRefPickerBackspace),
+                _ => None,
+            };
+        }
         if dispatch.editing {
             return match key.code {
                 KeyCode::Esc | KeyCode::Enter => Some(Message::ActionsDispatchEditDone),
@@ -841,7 +857,22 @@ fn handle_actions_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         }
         return match key.code {
             KeyCode::Esc => Some(Message::ActionsDispatchClose),
-            KeyCode::Enter => Some(Message::ActionsDispatchEditStart),
+            KeyCode::Enter => {
+                // On ref field (focused_field == 0), open picker; otherwise edit
+                if dispatch.focused_field == 0 {
+                    Some(Message::ActionsDispatchRefPickerToggle)
+                } else {
+                    Some(Message::ActionsDispatchEditStart)
+                }
+            }
+            KeyCode::Char('e') => {
+                // Allow direct text editing on ref field too
+                if dispatch.focused_field == 0 {
+                    Some(Message::ActionsDispatchEditStart)
+                } else {
+                    None
+                }
+            }
             _ => None,
         };
     }
