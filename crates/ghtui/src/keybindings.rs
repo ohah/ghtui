@@ -646,9 +646,44 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
 }
 
 fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
-    let is_editing = state.settings.as_ref().is_some_and(|s| s.is_editing());
     let ks = key_event_to_string(&key);
     let kb = &state.config.keybindings;
+
+    // Form modal intercept
+    let has_form = state.settings.as_ref().is_some_and(|s| s.form.is_some());
+    if has_form {
+        let form_editing = state
+            .settings
+            .as_ref()
+            .and_then(|s| s.form.as_ref())
+            .is_some_and(|f| f.editing);
+        if form_editing {
+            return match key.code {
+                KeyCode::Esc | KeyCode::Enter => Some(Message::SettingsFormEditDone),
+                KeyCode::Char(c) => Some(Message::SettingsFormEditChar(c)),
+                KeyCode::Backspace => Some(Message::SettingsFormEditBackspace),
+                _ => None,
+            };
+        }
+        if ks == kb.edit_submit {
+            return Some(Message::SettingsFormSubmit);
+        }
+        if key.code == KeyCode::Esc {
+            return Some(Message::SettingsFormClose);
+        }
+        if nav_down(&key, &ks, kb) || key.code == KeyCode::Tab {
+            return Some(Message::SettingsFormFieldNext);
+        }
+        if nav_up(&key, &ks, kb) || key.code == KeyCode::BackTab {
+            return Some(Message::SettingsFormFieldPrev);
+        }
+        if key.code == KeyCode::Enter {
+            return Some(Message::SettingsFormEditStart);
+        }
+        return None;
+    }
+
+    let is_editing = state.settings.as_ref().is_some_and(|s| s.is_editing());
 
     if is_editing {
         if ks == kb.edit_cancel {
@@ -724,18 +759,50 @@ fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
                 Some(Message::SettingsToggleFeature("has_wiki".to_string()))
             }
             KeyCode::Char('V') if on_general => Some(Message::SettingsToggleVisibility),
-            // Collaborator tab: d to delete
+            // Collaborator tab: c to add, d to delete
+            KeyCode::Char('c') if on_collaborators => Some(Message::SettingsFormOpen(
+                ghtui_core::state::settings::SettingsFormKind::AddCollaborator,
+            )),
             KeyCode::Char('d') if on_collaborators => Some(Message::SettingsDeleteCollaborator),
-            // Webhook tab: d to delete, a to toggle active
+            // Webhook tab: c to create, e to edit, d to delete, a to toggle active
+            KeyCode::Char('c') if on_webhooks => Some(Message::SettingsFormOpen(
+                ghtui_core::state::settings::SettingsFormKind::CreateWebhook,
+            )),
+            KeyCode::Char('e') if on_webhooks => state
+                .settings
+                .as_ref()
+                .and_then(|s| s.webhooks.get(s.selected))
+                .map(|hook| {
+                    Message::SettingsFormOpen(
+                        ghtui_core::state::settings::SettingsFormKind::EditWebhook(hook.id),
+                    )
+                }),
             KeyCode::Char('d') if on_webhooks => Some(Message::SettingsDeleteWebhook),
             KeyCode::Char('a') if on_webhooks => Some(Message::SettingsToggleWebhook),
-            // Deploy key tab: d to delete
+            // Deploy key tab: c to create, d to delete
+            KeyCode::Char('c') if on_deploy_keys => Some(Message::SettingsFormOpen(
+                ghtui_core::state::settings::SettingsFormKind::CreateDeployKey,
+            )),
             KeyCode::Char('d') if on_deploy_keys => Some(Message::SettingsDeleteDeployKey),
-            // Branch protection tab: d to delete, e to toggle enforce admins
+            // Branch protection tab: c to create, e to edit, E to toggle enforce admins, d to delete
+            KeyCode::Char('c') if on_branch_protection => Some(Message::SettingsFormOpen(
+                ghtui_core::state::settings::SettingsFormKind::CreateBranchProtection,
+            )),
+            KeyCode::Char('e') if on_branch_protection => state
+                .settings
+                .as_ref()
+                .and_then(|s| s.branch_protections.get(s.selected))
+                .map(|bp| {
+                    Message::SettingsFormOpen(
+                        ghtui_core::state::settings::SettingsFormKind::EditBranchProtection(
+                            bp.pattern.clone(),
+                        ),
+                    )
+                }),
             KeyCode::Char('d') if on_branch_protection => {
                 Some(Message::SettingsDeleteBranchProtection)
             }
-            KeyCode::Char('e') if on_branch_protection => {
+            KeyCode::Char('E') if on_branch_protection => {
                 Some(Message::SettingsToggleBranchEnforceAdmins)
             }
             _ => None,

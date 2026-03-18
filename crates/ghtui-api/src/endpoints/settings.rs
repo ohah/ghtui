@@ -209,4 +209,53 @@ impl GithubClient {
         );
         self.delete(&path).await
     }
+
+    /// Create or update branch protection rule (PUT).
+    pub async fn create_or_update_branch_protection(
+        &self,
+        repo: &RepoId,
+        branch: &str,
+        body: &serde_json::Value,
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/branches/{}/protection",
+            repo.owner, repo.name, branch
+        );
+        self.put(&path, body).await?;
+        Ok(())
+    }
+
+    /// Create a webhook (POST).
+    pub async fn create_webhook(
+        &self,
+        repo: &RepoId,
+        body: &serde_json::Value,
+    ) -> Result<(), ApiError> {
+        let path = format!("/repos/{}/{}/hooks", repo.owner, repo.name);
+        self.post(&path, body).await?;
+        Ok(())
+    }
+
+    /// Update webhook (PATCH).
+    pub async fn update_webhook(
+        &self,
+        repo: &RepoId,
+        hook_id: u64,
+        body: &serde_json::Value,
+    ) -> Result<(), ApiError> {
+        let path = format!("/repos/{}/{}/hooks/{}", repo.owner, repo.name, hook_id);
+        self.patch(&path, body).await?;
+        Ok(())
+    }
+
+    /// Create deploy key (POST).
+    pub async fn create_deploy_key(
+        &self,
+        repo: &RepoId,
+        body: &serde_json::Value,
+    ) -> Result<(), ApiError> {
+        let path = format!("/repos/{}/{}/keys", repo.owner, repo.name);
+        self.post(&path, body).await?;
+        Ok(())
+    }
 }
