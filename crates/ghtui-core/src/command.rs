@@ -93,11 +93,13 @@ pub enum Command {
     FetchTrafficViews(RepoId),
     FetchCodeFrequency(RepoId),
     FetchForks(RepoId),
+    FetchDependencyGraph(RepoId),
 
     // Security
     FetchDependabotAlerts(RepoId),
     FetchCodeScanningAlerts(RepoId),
     FetchSecretScanningAlerts(RepoId),
+    FetchSecurityAdvisories(RepoId),
 
     // Settings
     FetchRepoSettings(RepoId),

@@ -48,10 +48,13 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     let cs_count = security.code_scanning_alerts.len();
     let ss_count = security.secret_scanning_alerts.len();
 
+    let adv_count = security.advisories.len();
+
     let tab_titles = vec![
         format!("Dependabot ({})", dep_count),
         format!("Code Scanning ({})", cs_count),
         format!("Secret Scanning ({})", ss_count),
+        format!("Advisories ({})", adv_count),
     ];
     let tabs = Tabs::new(tab_titles)
         .select(security.tab)
@@ -80,6 +83,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
             0 => render_dependabot(frame, state, split[0]),
             1 => render_code_scanning(frame, state, split[0]),
             2 => render_secret_scanning(frame, state, split[0]),
+            3 => render_advisories(frame, state, split[0]),
             _ => {}
         }
         render_detail_panel(frame, state, split[1]);
@@ -88,6 +92,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
             0 => render_dependabot(frame, state, chunks[1]),
             1 => render_code_scanning(frame, state, chunks[1]),
             2 => render_secret_scanning(frame, state, chunks[1]),
+            3 => render_advisories(frame, state, chunks[1]),
             _ => {}
         }
     }
@@ -473,6 +478,31 @@ fn render_detail_panel(frame: &mut Frame, state: &AppState, area: Rect) {
                 lines.push(detail_kv("Created", &alert.created_at, label, value));
             }
         }
+        3 => {
+            // Advisory detail
+            if let Some(adv) = security.advisories.get(security.selected) {
+                lines.push(Line::raw(""));
+                lines.push(Line::styled(format!("  {}", adv.summary), accent));
+                lines.push(Line::raw(""));
+                lines.push(detail_kv("GHSA", &adv.ghsa_id, label, value));
+                if let Some(ref cve) = adv.cve_id {
+                    lines.push(detail_kv("CVE", cve, label, value));
+                }
+                if let Some(ref sev) = adv.severity {
+                    lines.push(detail_kv("Severity", sev, label, value));
+                }
+                lines.push(detail_kv("State", &adv.state, label, value));
+                if let Some(ref desc) = adv.description {
+                    lines.push(Line::raw(""));
+                    for line in desc.lines().take(20) {
+                        lines.push(Line::styled(
+                            format!("    {}", line),
+                            Style::default().fg(theme.fg_muted),
+                        ));
+                    }
+                }
+            }
+        }
         _ => {}
     }
 
@@ -500,4 +530,67 @@ fn detail_kv(label: &str, value: &str, label_style: Style, value_style: Style) -
         Span::styled(format!("    {:<18}", label), label_style),
         Span::styled(value.to_string(), value_style),
     ])
+}
+
+fn render_advisories(frame: &mut Frame, state: &AppState, area: Rect) {
+    let theme = &state.theme;
+    let security = state.security.as_ref().unwrap();
+
+    if security.advisories.is_empty() {
+        let paragraph = Paragraph::new("  No security advisories")
+            .style(theme.text_dim())
+            .block(
+                Block::default()
+                    .title(" Advisories ")
+                    .borders(Borders::ALL)
+                    .border_style(theme.border_style()),
+            );
+        frame.render_widget(paragraph, area);
+        return;
+    }
+
+    let items: Vec<ListItem> = security
+        .advisories
+        .iter()
+        .enumerate()
+        .map(|(i, adv)| {
+            let is_selected = i == security.selected;
+            let severity_color = match adv.severity.as_deref() {
+                Some("critical") | Some("high") => theme.danger,
+                Some("medium") => theme.warning,
+                Some("low") => theme.info,
+                _ => theme.fg_dim,
+            };
+            let severity_text = adv.severity.as_deref().unwrap_or("unknown");
+            let title_style = if is_selected {
+                theme.selected()
+            } else {
+                theme.text()
+            };
+
+            ListItem::new(Line::from(vec![
+                Span::styled(
+                    format!(
+                        " {} ",
+                        severity_text.chars().next().unwrap_or('?').to_uppercase()
+                    ),
+                    Style::default().fg(severity_color),
+                ),
+                Span::styled(&adv.ghsa_id, Style::default().fg(theme.fg_muted)),
+                Span::styled(format!(" {} ", adv.summary), title_style),
+                Span::styled(
+                    format!("({})", adv.state),
+                    Style::default().fg(theme.fg_dim),
+                ),
+            ]))
+        })
+        .collect();
+
+    let list = List::new(items).block(
+        Block::default()
+            .title(format!(" Advisories ({}) ", security.advisories.len()))
+            .borders(Borders::ALL)
+            .border_style(theme.border_style()),
+    );
+    frame.render_widget(list, area);
 }

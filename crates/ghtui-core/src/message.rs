@@ -259,6 +259,8 @@ pub enum Message {
     SearchCancel,        // Cancel search
     SearchCycleKind,     // Cycle search kind (Repos/Issues/Code)
     SearchNavigate,      // Enter on selected result
+    SearchHistoryPrev,   // Previous search history (Up in input mode)
+    SearchHistoryNext,   // Next search history (Down in input mode)
 
     // Insights
     ContributorStatsLoaded(Vec<insights::ContributorStats>),
@@ -267,11 +269,13 @@ pub enum Message {
     TrafficViewsLoaded(insights::TrafficViews),
     CodeFrequencyLoaded(Vec<insights::CodeFrequency>),
     ForksLoaded(Vec<insights::Fork>),
+    DependencyGraphLoaded(Vec<insights::DependencyEntry>),
 
     // Security
     DependabotAlertsLoaded(Vec<security::DependabotAlert>),
     CodeScanningAlertsLoaded(Vec<security::CodeScanningAlert>),
     SecretScanningAlertsLoaded(Vec<security::SecretScanningAlert>),
+    SecurityAdvisoriesLoaded(Vec<security::RepoSecurityAdvisory>),
     SecurityToggleDetail,
     SecurityOpenInBrowser,
 
@@ -288,6 +292,7 @@ pub enum Message {
     SettingsEditSubmit,
     SettingsEditCancel,
     SettingsToggleFeature(String), // feature name (has_issues, has_wiki, etc.)
+    SettingsToggleVisibility,      // Toggle public/private (with confirmation)
 
     // Mouse
     ScrollUp,

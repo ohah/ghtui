@@ -193,7 +193,7 @@
 - [x] 검색 종류 순환 (Tab: Repos/Issues/Code)
 - [x] Ctrl+K 글로벌 검색 단축키
 - [x] 검색 결과에서 Enter로 이동 (Issue→IssueDetail, PR→PrDetail, Repo/Code→브라우저)
-- [ ] 최근 검색 히스토리 (보류)
+- [x] 최근 검색 히스토리 (↑/↓키로 이전 검색어 탐색, 최대 20개)
 
 ## Phase 6 — Security 탭 ✅ 완성
 
@@ -203,7 +203,7 @@
 - [x] Code scanning 상세 (severity, tool, rule, 파일 위치)
 - [x] Secret scanning 상세 (타입, state, resolution)
 - [x] 브라우저에서 열기 (`o`)
-- [ ] Security advisories (보류 — API 별도)
+- [x] Security advisories (Advisories 탭 — GHSA/CVE, severity, 상세 패널)
 
 ## Phase 7 — Insights 탭 ✅ 완성
 
@@ -212,7 +212,7 @@
 - [x] 트래픽 (clones, views, 일별 카운트)
 - [x] Code Frequency (additions/deletions 주간 바 차트, 최근 26주)
 - [x] Forks 네트워크 (★ 카운트, owner, 이름)
-- [ ] Dependency graph (보류 — SBOM API 별도)
+- [x] Dependency graph (Dependencies 탭 — SBOM API, 패키지명/버전 목록)
 
 ## Phase 8 — Settings 탭 완성 (읽기 → 수정 가능)
 
@@ -224,7 +224,7 @@
 - [x] default branch 변경 (`b`)
 - [x] topics 편집 (`T`)
 - [x] features 토글 (`I`:Issues, `P`:Projects, `W`:Wiki)
-- [ ] visibility 토글 (보류 — 위험한 작업)
+- [x] visibility 토글 (`V`키 — public/private 전환, 경고 토스트)
 
 ### 8-2 Branch Protection
 - [x] 브랜치 보호 규칙 보기

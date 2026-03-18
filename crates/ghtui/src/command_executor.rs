@@ -431,6 +431,10 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Ok(forks) => Message::ForksLoaded(forks),
             Err(e) => Message::Error(e.into()),
         },
+        Command::FetchDependencyGraph(repo) => match client.get_dependency_graph(&repo).await {
+            Ok(deps) => Message::DependencyGraphLoaded(deps),
+            Err(e) => Message::Error(e.into()),
+        },
 
         // Security
         Command::FetchDependabotAlerts(repo) => match client.list_dependabot_alerts(&repo).await {
@@ -446,6 +450,12 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
         Command::FetchSecretScanningAlerts(repo) => {
             match client.list_secret_scanning_alerts(&repo).await {
                 Ok(alerts) => Message::SecretScanningAlertsLoaded(alerts),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::FetchSecurityAdvisories(repo) => {
+            match client.list_security_advisories(&repo).await {
+                Ok(advisories) => Message::SecurityAdvisoriesLoaded(advisories),
                 Err(e) => Message::Error(e.into()),
             }
         }

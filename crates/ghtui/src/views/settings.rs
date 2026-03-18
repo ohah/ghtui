@@ -123,14 +123,17 @@ fn render_general(frame: &mut Frame, state: &AppState, area: Rect) {
         ),
         Span::styled(" [d:edit]", Style::default().fg(theme.fg_dim)),
     ]));
-    lines.push(kv(
-        "Visibility",
-        repo.visibility
-            .as_deref()
-            .unwrap_or(if repo.private { "private" } else { "public" }),
-        label_style,
-        value_style,
-    ));
+    lines.push(Line::from(vec![
+        Span::styled(format!("    {:<18}", "Visibility"), label_style),
+        Span::styled(
+            repo.visibility
+                .as_deref()
+                .unwrap_or(if repo.private { "private" } else { "public" })
+                .to_string(),
+            value_style,
+        ),
+        Span::styled(" [V:toggle]", Style::default().fg(theme.fg_dim)),
+    ]));
     lines.push(kv(
         "Default branch",
         &repo.default_branch,

@@ -2666,6 +2666,13 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::DependencyGraphLoaded(deps) => {
+            state.loading.remove("dependency_graph");
+            if let Some(ref mut ins) = state.insights {
+                ins.dependencies = deps;
+            }
+            vec![]
+        }
 
         // Search
         Message::SearchResults(results) => {
@@ -2709,7 +2716,9 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             if let Some(ref mut search) = state.search {
                 search.input_mode = false;
                 search.query = search.input_query.clone();
+                search.history_cursor = None;
                 if !search.query.is_empty() {
+                    search.push_history(&search.query.clone());
                     let kind = search.kind;
                     let query = search.query.clone();
                     state.loading.insert("search".to_string());
@@ -2722,6 +2731,19 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             if let Some(ref mut search) = state.search {
                 search.input_mode = false;
                 search.input_query = search.query.clone();
+                search.history_cursor = None;
+            }
+            vec![]
+        }
+        Message::SearchHistoryPrev => {
+            if let Some(ref mut search) = state.search {
+                search.history_prev();
+            }
+            vec![]
+        }
+        Message::SearchHistoryNext => {
+            if let Some(ref mut search) = state.search {
+                search.history_next();
             }
             vec![]
         }
@@ -2809,6 +2831,13 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.loading.remove("secret_scanning");
             if let Some(ref mut sec) = state.security {
                 sec.secret_scanning_alerts = alerts;
+            }
+            vec![]
+        }
+        Message::SecurityAdvisoriesLoaded(advisories) => {
+            state.loading.remove("security_advisories");
+            if let Some(ref mut sec) = state.security {
+                sec.advisories = advisories;
             }
             vec![]
         }
@@ -2956,6 +2985,24 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 };
                 let updates = serde_json::json!({ feature: !current });
                 return vec![Command::UpdateRepo(repo.clone(), updates)];
+            }
+            vec![]
+        }
+        Message::SettingsToggleVisibility => {
+            if let Some(ref settings) = state.settings {
+                let new_private = !settings.repo.private;
+                let updates = serde_json::json!({
+                    "private": new_private,
+                    "visibility": if new_private { "private" } else { "public" },
+                });
+                let label = if new_private { "private" } else { "public" };
+                state.push_toast(
+                    format!("Changing visibility to {}...", label),
+                    ToastLevel::Warning,
+                );
+                if let Some(ref repo) = state.current_repo {
+                    return vec![Command::UpdateRepo(repo.clone(), updates)];
+                }
             }
             vec![]
         }
@@ -3609,10 +3656,12 @@ fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command> {
             state.loading.insert("dependabot".to_string());
             state.loading.insert("code_scanning".to_string());
             state.loading.insert("secret_scanning".to_string());
+            state.loading.insert("security_advisories".to_string());
             vec![
                 Command::FetchDependabotAlerts(repo.clone()),
                 Command::FetchCodeScanningAlerts(repo.clone()),
                 Command::FetchSecretScanningAlerts(repo.clone()),
+                Command::FetchSecurityAdvisories(repo.clone()),
             ]
         }
         Route::Insights { repo } => {
@@ -3623,6 +3672,7 @@ fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command> {
             state.loading.insert("traffic_views".to_string());
             state.loading.insert("code_frequency".to_string());
             state.loading.insert("forks".to_string());
+            state.loading.insert("dependency_graph".to_string());
             vec![
                 Command::FetchContributorStats(repo.clone()),
                 Command::FetchCommitActivity(repo.clone()),
@@ -3630,6 +3680,7 @@ fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command> {
                 Command::FetchTrafficViews(repo.clone()),
                 Command::FetchCodeFrequency(repo.clone()),
                 Command::FetchForks(repo.clone()),
+                Command::FetchDependencyGraph(repo.clone()),
             ]
         }
         Route::Settings { repo } => {

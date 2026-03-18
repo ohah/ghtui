@@ -163,6 +163,8 @@ fn handle_search_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         return match key.code {
             KeyCode::Esc => Some(Message::SearchCancel),
             KeyCode::Enter => Some(Message::SearchSubmit),
+            KeyCode::Up => Some(Message::SearchHistoryPrev),
+            KeyCode::Down => Some(Message::SearchHistoryNext),
             KeyCode::Char(c) => Some(Message::SearchInput(c.to_string())),
             KeyCode::Backspace => Some(Message::SearchInput("\x08".to_string())),
             KeyCode::Tab => Some(Message::SearchCycleKind),
@@ -276,6 +278,7 @@ fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         KeyCode::Char('W') if on_general => {
             Some(Message::SettingsToggleFeature("has_wiki".to_string()))
         }
+        KeyCode::Char('V') if on_general => Some(Message::SettingsToggleVisibility),
         _ => None,
     }
 }
