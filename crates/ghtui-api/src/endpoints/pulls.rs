@@ -107,6 +107,7 @@ impl GithubClient {
             status_body,
             commits_body,
             timeline_body,
+            review_threads_result,
         ) = tokio::join!(
             self.get(&reviews_path),
             self.get(&comments_path),
@@ -115,7 +116,9 @@ impl GithubClient {
             self.get(&status_path),
             self.get(&commits_path),
             self.get(&timeline_path),
+            self.get_review_threads(repo, number),
         );
+        let review_threads = review_threads_result.unwrap_or_default();
 
         let reviews: Vec<ApiReview> = serde_json::from_str(&reviews_body?).unwrap_or_default();
         let comments: Vec<PrComment> = serde_json::from_str(&comments_body?).unwrap_or_default();
@@ -197,12 +200,6 @@ impl GithubClient {
                 }
             }
         }
-
-        // Fetch review threads via GraphQL for resolve/unresolve support
-        let review_threads = self
-            .get_review_threads(repo, number)
-            .await
-            .unwrap_or_default();
 
         Ok(PullRequestDetail {
             pr,
@@ -507,14 +504,16 @@ impl GithubClient {
         Ok(threads)
     }
 
-    pub async fn resolve_review_thread(&self, thread_node_id: &str) -> Result<(), ApiError> {
-        let query = "mutation($id: ID!) { resolveReviewThread(input: {threadId: $id}) { thread { isResolved } } }";
-        self.graphql(query, json!({"id": thread_node_id})).await?;
-        Ok(())
-    }
-
-    pub async fn unresolve_review_thread(&self, thread_node_id: &str) -> Result<(), ApiError> {
-        let query = "mutation($id: ID!) { unresolveReviewThread(input: {threadId: $id}) { thread { isResolved } } }";
+    pub async fn set_review_thread_resolved(
+        &self,
+        thread_node_id: &str,
+        resolve: bool,
+    ) -> Result<(), ApiError> {
+        let query = if resolve {
+            "mutation($id: ID!) { resolveReviewThread(input: {threadId: $id}) { thread { isResolved } } }"
+        } else {
+            "mutation($id: ID!) { unresolveReviewThread(input: {threadId: $id}) { thread { isResolved } } }"
+        };
         self.graphql(query, json!({"id": thread_node_id})).await?;
         Ok(())
     }

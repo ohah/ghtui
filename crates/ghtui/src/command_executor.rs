@@ -127,12 +127,10 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             }
         }
         Command::ResolveReviewThread(_repo, number, thread_id, resolve) => {
-            let result = if resolve {
-                client.resolve_review_thread(&thread_id).await
-            } else {
-                client.unresolve_review_thread(&thread_id).await
-            };
-            match result {
+            match client
+                .set_review_thread_resolved(&thread_id, resolve)
+                .await
+            {
                 Ok(()) => Message::PrUpdated(number),
                 Err(e) => Message::Error(e.into()),
             }
