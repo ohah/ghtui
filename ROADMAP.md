@@ -6,13 +6,13 @@
 
 | # | 탭 | API | 뷰 | 주요 기능 |
 |---|---|---|---|---|
-| 1 | Code | - | dashboard.rs | 레포 소개 + README placeholder (파일 브라우저 미구현) |
+| 1 | Code | ✅ | code.rs | **완료** — 파일 트리 브라우저, 파일 뷰어(구문 강조), 인라인 편집+커밋, 브랜치/태그 전환, 커밋 히스토리, 커밋 상세 |
 | 2 | Issues | ✅ | issue_list, issue_detail | **Phase 1 완료** — 목록(카드UI), 상세(섹션포커스), CRUD, 필터/검색/정렬, 라벨/Assignee/Milestone, 리액션, 타임라인, 핀/잠금/이전 |
 | 3 | Pull requests | ✅ | pr_list, pr_detail | **Phase 2-4 완료** — 목록(필터/검색/정렬), 4탭(Conversation/Commits/Checks/Files changed), 인라인 편집, Approve/Request changes, 파일트리, diff 리뷰 코멘트, suggestion, CI 상태, 타임라인, 액션 바, PR 생성, 리뷰어 관리 |
 | 4 | Actions | ✅ | actions_list, action_detail | **Phase 3 완료** — 필터/검색/페이지, ANSI 컬러 로그, 스텝 접기, 액션 바, Artifact, Workflow dispatch, 환경 승인, 실시간 스트리밍 |
-| 5 | Security | ✅ | security.rs | Dependabot, Code Scanning, Secret Scanning (read-only) |
-| 6 | Insights | ✅ | insights.rs | Contributors, Commit Activity, Traffic (read-only) |
-| 7 | Settings | ✅ | settings.rs | 일반설정, 브랜치 보호, Collaborators (read-only) |
+| 5 | Security | ✅ | security.rs | Dependabot, Code Scanning, Secret Scanning, Advisories, Dismiss/Resolve 지원 |
+| 6 | Insights | ✅ | insights.rs | Contributors, Commit Activity, Traffic, Code Frequency, Forks, Dependency Graph |
+| 7 | Settings | ✅ | settings.rs | 일반설정(편집), 브랜치 보호(관리), Collaborators(관리), Webhooks(관리), Deploy Keys(관리), Visibility 토글 |
 
 ### 완료된 기반 기능
 

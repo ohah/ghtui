@@ -272,10 +272,8 @@ fn render_pinned_cards(
 
             let mut meta_spans: Vec<Span> = Vec::new();
             for label in issue.labels.iter().take(3) {
-                meta_spans.push(Span::styled(
-                    format!(" {} ", label.name),
-                    Style::default().fg(theme.accent),
-                ));
+                meta_spans.push(super::components::label_span(&label.name, &label.color));
+                meta_spans.push(Span::raw(" "));
             }
             if let Some(count) = issue.comments {
                 if count > 0 {
@@ -353,10 +351,8 @@ fn render_issue_list(
             ];
 
             for label in &issue.labels {
-                spans.push(Span::styled(
-                    format!(" {} ", label.name),
-                    Style::default().fg(theme.accent),
-                ));
+                spans.push(super::components::label_span(&label.name, &label.color));
+                spans.push(Span::raw(" "));
             }
 
             if let Some(count) = issue.comments {

@@ -50,6 +50,24 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     }
 
+    // Review Approve → fullscreen editor
+    if matches!(edit_target, Some(PrInlineEditTarget::ReviewApprove)) {
+        let widget = ghtui_widgets::EditorView::new(&detail_state.editor, " Approve Review ")
+            .status_hint(
+                "Ctrl+S:Submit  Ctrl+Z:Undo  Ctrl+Y:Redo  Esc:Cancel  (leave empty for default)",
+            );
+        frame.render_widget(widget, area);
+        return;
+    }
+
+    // Review Request Changes → fullscreen editor
+    if matches!(edit_target, Some(PrInlineEditTarget::ReviewRequestChanges)) {
+        let widget = ghtui_widgets::EditorView::new(&detail_state.editor, " Request Changes ")
+            .status_hint("Ctrl+S:Submit  Ctrl+Z:Undo  Ctrl+Y:Redo  Esc:Cancel  (required)");
+        frame.render_widget(widget, area);
+        return;
+    }
+
     let is_comment_editing = matches!(
         edit_target,
         Some(
@@ -348,10 +366,8 @@ fn render_conversation(
             focus_style(&PrSection::Labels),
         )];
         for label in &pr.labels {
-            spans.push(Span::styled(
-                format!(" {} ", label.name),
-                Style::default().fg(theme.accent),
-            ));
+            spans.push(super::components::label_span(&label.name, &label.color));
+            spans.push(Span::raw(" "));
         }
         if labels_focused && !is_editing {
             spans.push(Span::styled(

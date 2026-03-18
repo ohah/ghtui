@@ -251,10 +251,8 @@ fn render_body_comments(
             focus_style(&IssueSection::Labels),
         )];
         for label in &issue.labels {
-            spans.push(Span::styled(
-                format!(" {} ", label.name),
-                Style::default().fg(theme.accent),
-            ));
+            spans.push(super::components::label_span(&label.name, &label.color));
+            spans.push(Span::raw(" "));
         }
         if labels_focused && !is_editing {
             spans.push(Span::styled(
