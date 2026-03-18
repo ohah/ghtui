@@ -45,7 +45,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     // Body editing → fullscreen editor
     if matches!(edit_target, Some(PrInlineEditTarget::PrBody)) {
         let widget = ghtui_widgets::EditorView::new(&detail_state.editor, " Edit Body (markdown) ")
-            .status_hint("Ctrl+S: Submit  Esc: Cancel  (markdown)");
+            .status_hint("Ctrl+S:Submit  Ctrl+Z:Undo  Ctrl+Y:Redo  Esc:Cancel  (markdown)");
         frame.render_widget(widget, area);
         return;
     }
