@@ -207,8 +207,7 @@ impl KeybindingConfig {
         if let Some(path) = AppConfig::config_path() {
             let mut config = AppConfig::load();
             config.keybindings = self.clone();
-            let content = toml::to_string_pretty(&config)
-                .map_err(std::io::Error::other)?;
+            let content = toml::to_string_pretty(&config).map_err(std::io::Error::other)?;
             if let Some(parent) = path.parent() {
                 std::fs::create_dir_all(parent)?;
             }

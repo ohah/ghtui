@@ -9,6 +9,9 @@ use ghtui_core::{AppState, Message};
 /// Convert a KeyEvent to a human-readable string like "Ctrl+s", "Shift+Tab", "a", "Enter"
 pub fn key_event_to_string(key: &KeyEvent) -> String {
     let mut parts = Vec::new();
+    if key.modifiers.contains(KeyModifiers::SUPER) {
+        parts.push("Cmd");
+    }
     if key.modifiers.contains(KeyModifiers::CONTROL) {
         parts.push("Ctrl");
     }

@@ -4254,7 +4254,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     code.file_content = Some(content);
                     code.file_name = Some(filename);
                     code.scroll = 0;
-                    code.sidebar_focused = false;
+                    // Don't auto-switch focus — user navigates manually
                 }
             }
             vec![]
@@ -4263,10 +4263,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.loading.remove("code_file");
             if let Some(ref mut code) = state.code {
                 code.image_data = Some(bytes);
-                code.file_content = None; // clear text content
+                code.file_content = None;
                 code.file_name = Some(filename);
                 code.scroll = 0;
-                code.sidebar_focused = false;
+                // Don't auto-switch focus — user navigates manually
             }
             vec![]
         }
