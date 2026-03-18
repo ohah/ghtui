@@ -108,7 +108,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         let artifact_names: Vec<&str> = detail.artifacts.iter().map(|a| a.name.as_str()).collect();
         let total_size: u64 = detail.artifacts.iter().map(|a| a.size_in_bytes).sum();
         let size_str = format_size(total_size);
-        header_lines.push(Line::from(vec![
+        let mut spans = vec![
             Span::styled(
                 format!(" Artifacts ({}): ", detail.artifacts.len()),
                 Style::default().fg(theme.fg_dim),
@@ -118,7 +118,15 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 format!(" ({})", size_str),
                 Style::default().fg(theme.fg_muted),
             ),
-        ]));
+        ];
+        // Download progress indicator
+        if let Some(ref downloading) = detail.downloading_artifact {
+            spans.push(Span::styled(
+                format!("  [downloading: {}...]", downloading),
+                Style::default().fg(theme.warning),
+            ));
+        }
+        header_lines.push(Line::from(spans));
     }
 
     // Pending deployments line

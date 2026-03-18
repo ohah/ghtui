@@ -71,6 +71,7 @@ pub enum Command {
     DownloadArtifact(RepoId, u64, String), // repo, artifact_id, artifact_name
     DispatchWorkflow(RepoId, u64, String, serde_json::Value), // repo, workflow_id, ref, inputs
     FetchWorkflowFile(RepoId, String),     // repo, workflow_path
+    FetchWorkflowInputs(RepoId, u64, String, String), // repo, workflow_id, workflow_name, path
     FetchPendingDeployments(RepoId, u64),
     ApproveDeployment(RepoId, u64, Vec<u64>), // repo, run_id, environment_ids
     RejectDeployment(RepoId, u64, Vec<u64>),

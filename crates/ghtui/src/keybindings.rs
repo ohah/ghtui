@@ -293,6 +293,62 @@ fn handle_actions_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         };
     }
 
+    // Dispatch modal keys
+    let has_dispatch = state
+        .actions_list
+        .as_ref()
+        .is_some_and(|l| l.dispatch.is_some());
+    if has_dispatch {
+        let editing = state
+            .actions_list
+            .as_ref()
+            .and_then(|l| l.dispatch.as_ref())
+            .is_some_and(|d| d.editing);
+        if editing {
+            return match key.code {
+                KeyCode::Esc | KeyCode::Enter => Some(Message::ActionsDispatchEditDone),
+                KeyCode::Char(c) => Some(Message::ActionsDispatchEditChar(c)),
+                KeyCode::Backspace => Some(Message::ActionsDispatchEditBackspace),
+                _ => None,
+            };
+        }
+        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        return match key.code {
+            KeyCode::Esc => Some(Message::ActionsDispatchClose),
+            KeyCode::Char('s') if ctrl => Some(Message::ActionsDispatchSubmit),
+            KeyCode::Enter => Some(Message::ActionsDispatchEditStart),
+            KeyCode::Char('j') | KeyCode::Down => Some(Message::ActionsDispatchFieldNext),
+            KeyCode::Char('k') | KeyCode::Up => Some(Message::ActionsDispatchFieldPrev),
+            _ => None,
+        };
+    }
+
+    // Workflow sidebar keys
+    let sidebar_focused = state
+        .actions_list
+        .as_ref()
+        .is_some_and(|l| l.show_workflow_sidebar && l.workflow_sidebar_focused);
+    if sidebar_focused {
+        return match key.code {
+            KeyCode::Char('j') | KeyCode::Down => Some(Message::ActionsWorkflowSidebarDown),
+            KeyCode::Char('k') | KeyCode::Up => Some(Message::ActionsWorkflowSidebarUp),
+            KeyCode::Enter => Some(Message::ActionsWorkflowSidebarSelect),
+            KeyCode::Char('w') => Some(Message::ActionsToggleWorkflowSidebar),
+            KeyCode::Char('d') => Some(Message::ActionsDispatchOpen),
+            KeyCode::Tab => {
+                // Switch focus to run list
+                if let Some(ref list) = state.actions_list {
+                    if list.show_workflow_sidebar {
+                        return Some(Message::ActionsToggleWorkflowSidebar);
+                    }
+                }
+                None
+            }
+            KeyCode::Esc => Some(Message::ActionsToggleWorkflowSidebar),
+            _ => None,
+        };
+    }
+
     match key.code {
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
@@ -307,6 +363,8 @@ fn handle_actions_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         KeyCode::Char('F') => Some(Message::ActionsFilterClear),
         KeyCode::Char('x') => Some(Message::ActionsCancelRun),
         KeyCode::Char('R') => Some(Message::ActionsRerunRun),
+        KeyCode::Char('w') => Some(Message::ActionsToggleWorkflowSidebar),
+        KeyCode::Char('d') => Some(Message::ActionsDispatchOpen),
         _ => None,
     }
 }

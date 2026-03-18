@@ -167,10 +167,10 @@
 - [x] LIVE 인디케이터 표시
 - [x] Actions list에서 Cancel(`x`)/Re-run(`R`) 직접 실행
 
-### Phase 3-5 미완 (UI 보강 필요)
-- [ ] 워크플로우 사이드바 (왼쪽에 워크플로우 목록, 파일트리 UI처럼)
-- [ ] Workflow dispatch 파라미터 입력 UI (inputs 동적 폼)
-- [ ] Artifact 다운로드 진행 표시
+### Phase 3-5 완료 (UI 보강)
+- [x] 워크플로우 사이드바 (`w`키 — 왼쪽 패널에 워크플로우 목록, Enter:필터)
+- [x] Workflow dispatch 파라미터 입력 UI (`d`키 — YAML 파싱, 동적 폼, Ctrl+S 제출)
+- [x] Artifact 다운로드 진행 표시 (헤더에 다운로드 중 인디케이터)
 
 ## Phase 4 — Notifications ✅ 완성
 

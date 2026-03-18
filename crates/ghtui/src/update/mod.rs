@@ -2193,6 +2193,188 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        // Workflow sidebar
+        Message::ActionsToggleWorkflowSidebar => {
+            if let Some(ref mut list) = state.actions_list {
+                list.show_workflow_sidebar = !list.show_workflow_sidebar;
+                list.workflow_sidebar_focused = list.show_workflow_sidebar;
+            }
+            vec![]
+        }
+        Message::ActionsWorkflowSidebarUp => {
+            if let Some(ref mut list) = state.actions_list {
+                list.workflow_sidebar_selected = list.workflow_sidebar_selected.saturating_sub(1);
+            }
+            vec![]
+        }
+        Message::ActionsWorkflowSidebarDown => {
+            if let Some(ref mut list) = state.actions_list {
+                let max = list.workflows.len(); // 0="All", 1..N=workflows
+                if list.workflow_sidebar_selected < max {
+                    list.workflow_sidebar_selected += 1;
+                }
+            }
+            vec![]
+        }
+        Message::ActionsWorkflowSidebarSelect => {
+            if let (Some(list), Some(repo)) = (&mut state.actions_list, &state.current_repo) {
+                let workflow_id = if list.workflow_sidebar_selected == 0 {
+                    None
+                } else {
+                    list.workflows
+                        .get(list.workflow_sidebar_selected - 1)
+                        .map(|w| w.id)
+                };
+                list.filters.workflow_id = workflow_id;
+                list.workflow_sidebar_focused = false;
+                return vec![Command::FetchRuns(repo.clone(), list.filters.clone(), 1)];
+            }
+            vec![]
+        }
+        // Dispatch modal
+        Message::ActionsDispatchOpen => {
+            if let (Some(list), Some(repo)) = (&state.actions_list, &state.current_repo) {
+                let workflow = if list.workflow_sidebar_selected > 0 {
+                    list.workflows.get(list.workflow_sidebar_selected - 1)
+                } else if !list.workflows.is_empty() {
+                    Some(&list.workflows[0])
+                } else {
+                    None
+                };
+                if let Some(wf) = workflow {
+                    return vec![Command::FetchWorkflowInputs(
+                        repo.clone(),
+                        wf.id,
+                        wf.name.clone(),
+                        wf.path.clone(),
+                    )];
+                }
+            }
+            vec![]
+        }
+        Message::WorkflowInputsLoaded(workflow_id, workflow_name, inputs) => {
+            if let Some(ref mut list) = state.actions_list {
+                use ghtui_core::state::actions::{DispatchInputField, DispatchState};
+                let fields: Vec<DispatchInputField> = inputs
+                    .iter()
+                    .map(|i| DispatchInputField {
+                        name: i.name.clone(),
+                        value: i.default.clone().unwrap_or_default(),
+                        input_type: i.input_type.clone(),
+                        required: i.required,
+                        options: i.options.clone(),
+                        description: i.description.clone(),
+                    })
+                    .collect();
+                list.dispatch = Some(DispatchState {
+                    workflow_id,
+                    workflow_name,
+                    git_ref: "main".to_string(),
+                    inputs: fields,
+                    focused_field: 0,
+                    editing: false,
+                    edit_buffer: String::new(),
+                });
+            }
+            vec![]
+        }
+        Message::ActionsDispatchClose => {
+            if let Some(ref mut list) = state.actions_list {
+                list.dispatch = None;
+            }
+            vec![]
+        }
+        Message::ActionsDispatchFieldNext => {
+            if let Some(ref mut list) = state.actions_list {
+                if let Some(ref mut d) = list.dispatch {
+                    if d.focused_field < d.inputs.len() {
+                        d.focused_field += 1;
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::ActionsDispatchFieldPrev => {
+            if let Some(ref mut list) = state.actions_list {
+                if let Some(ref mut d) = list.dispatch {
+                    d.focused_field = d.focused_field.saturating_sub(1);
+                }
+            }
+            vec![]
+        }
+        Message::ActionsDispatchEditStart => {
+            if let Some(ref mut list) = state.actions_list {
+                if let Some(ref mut d) = list.dispatch {
+                    d.editing = true;
+                    d.edit_buffer = if d.focused_field == 0 {
+                        d.git_ref.clone()
+                    } else {
+                        d.inputs
+                            .get(d.focused_field - 1)
+                            .map(|f| f.value.clone())
+                            .unwrap_or_default()
+                    };
+                }
+            }
+            vec![]
+        }
+        Message::ActionsDispatchEditChar(c) => {
+            if let Some(ref mut list) = state.actions_list {
+                if let Some(ref mut d) = list.dispatch {
+                    if d.editing {
+                        d.edit_buffer.push(c);
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::ActionsDispatchEditBackspace => {
+            if let Some(ref mut list) = state.actions_list {
+                if let Some(ref mut d) = list.dispatch {
+                    if d.editing {
+                        d.edit_buffer.pop();
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::ActionsDispatchEditDone => {
+            if let Some(ref mut list) = state.actions_list {
+                if let Some(ref mut d) = list.dispatch {
+                    if d.editing {
+                        if d.focused_field == 0 {
+                            d.git_ref = d.edit_buffer.clone();
+                        } else if let Some(field) = d.inputs.get_mut(d.focused_field - 1) {
+                            field.value = d.edit_buffer.clone();
+                        }
+                        d.editing = false;
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::ActionsDispatchSubmit => {
+            if let (Some(list), Some(repo)) = (&mut state.actions_list, &state.current_repo) {
+                if let Some(dispatch) = list.dispatch.take() {
+                    let mut inputs = serde_json::Map::new();
+                    for field in &dispatch.inputs {
+                        if !field.value.is_empty() {
+                            inputs.insert(
+                                field.name.clone(),
+                                serde_json::Value::String(field.value.clone()),
+                            );
+                        }
+                    }
+                    return vec![Command::DispatchWorkflow(
+                        repo.clone(),
+                        dispatch.workflow_id,
+                        dispatch.git_ref,
+                        serde_json::Value::Object(inputs),
+                    )];
+                }
+            }
+            vec![]
+        }
         Message::ActionDetailToggleStep(_) => {
             if let Some(ref mut detail) = state.action_detail {
                 detail.toggle_steps_collapsed();
@@ -2285,7 +2467,13 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::ArtifactDownloaded(name, url) => {
-            state.push_toast(format!("Artifact '{}' ready", name), ToastLevel::Success);
+            if let Some(ref mut detail) = state.action_detail {
+                detail.downloading_artifact = None;
+            }
+            state.push_toast(
+                format!("Artifact '{}' downloading...", name),
+                ToastLevel::Success,
+            );
             vec![Command::OpenInBrowser(url)]
         }
         Message::WorkflowDispatched => {

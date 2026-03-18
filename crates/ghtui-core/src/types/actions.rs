@@ -182,6 +182,17 @@ pub struct Workflow {
     pub state: String,
 }
 
+/// A workflow dispatch input parameter parsed from workflow YAML.
+#[derive(Debug, Clone)]
+pub struct WorkflowInput {
+    pub name: String,
+    pub required: bool,
+    pub input_type: String, // "string", "choice", "boolean", "environment"
+    pub description: Option<String>,
+    pub default: Option<String>,
+    pub options: Vec<String>, // for "choice" type
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Artifact {
     pub id: u64,
