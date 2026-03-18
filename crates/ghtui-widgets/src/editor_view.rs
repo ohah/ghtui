@@ -5,6 +5,18 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Widget, Wrap};
 
+/// Extract the character at `byte_col` for cursor overlay rendering.
+/// Returns (char_as_string, byte_index_after_char).
+/// If at end of line, returns a space so the cursor is still visible.
+fn cursor_char_at(line: &str, byte_col: usize) -> (String, usize) {
+    if byte_col < line.len() {
+        let ch = line[byte_col..].chars().next().unwrap();
+        (ch.to_string(), byte_col + ch.len_utf8())
+    } else {
+        (" ".to_string(), byte_col)
+    }
+}
+
 /// Configuration for the editor view appearance.
 #[derive(Debug, Clone)]
 pub struct EditorTheme {
@@ -147,17 +159,18 @@ impl Widget for EditorView<'_> {
                     let selected = &line[sel_start..sel_end];
                     let after_sel = &line[sel_end..];
 
+                    let cursor_style = Style::default()
+                        .fg(self.theme.bg)
+                        .bg(self.theme.cursor)
+                        .add_modifier(Modifier::SLOW_BLINK);
+
                     if byte_col <= sel_start {
                         // Cursor is before or at selection start
                         let before_cursor = &line[..byte_col];
-                        let between = &line[byte_col..sel_start];
+                        let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
+                        let between = &line[after_cursor_byte..sel_start];
                         spans.push(Span::styled(before_cursor.to_string(), normal_style));
-                        spans.push(Span::styled(
-                            "\u{2588}",
-                            Style::default()
-                                .fg(self.theme.cursor)
-                                .add_modifier(Modifier::SLOW_BLINK),
-                        ));
+                        spans.push(Span::styled(cursor_ch, cursor_style));
                         spans.push(Span::styled(between.to_string(), normal_style));
                         spans.push(Span::styled(selected.to_string(), sel_style));
                         spans.push(Span::styled(after_sel.to_string(), normal_style));
@@ -166,27 +179,21 @@ impl Widget for EditorView<'_> {
                         spans.push(Span::styled(before_sel.to_string(), normal_style));
                         spans.push(Span::styled(selected.to_string(), sel_style));
                         let between = &line[sel_end..byte_col];
-                        let after_cursor = &line[byte_col..];
+                        let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
+                        let after_cursor = &line[after_cursor_byte..];
                         spans.push(Span::styled(between.to_string(), normal_style));
-                        spans.push(Span::styled(
-                            "\u{2588}",
-                            Style::default()
-                                .fg(self.theme.cursor)
-                                .add_modifier(Modifier::SLOW_BLINK),
-                        ));
+                        spans.push(Span::styled(cursor_ch, cursor_style));
                         spans.push(Span::styled(after_cursor.to_string(), normal_style));
                     } else {
                         // Cursor is inside selection
                         spans.push(Span::styled(before_sel.to_string(), normal_style));
                         let sel_before_cursor = &line[sel_start..byte_col];
-                        let sel_after_cursor = &line[byte_col..sel_end];
+                        let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
+                        let sel_after_cursor = &line[after_cursor_byte..sel_end];
                         spans.push(Span::styled(sel_before_cursor.to_string(), sel_style));
                         spans.push(Span::styled(
-                            "\u{2588}",
-                            Style::default()
-                                .fg(self.theme.cursor)
-                                .bg(self.theme.selection_bg)
-                                .add_modifier(Modifier::SLOW_BLINK),
+                            cursor_ch,
+                            cursor_style.bg(self.theme.selection_bg),
                         ));
                         spans.push(Span::styled(sel_after_cursor.to_string(), sel_style));
                         spans.push(Span::styled(after_sel.to_string(), normal_style));
@@ -202,12 +209,10 @@ impl Widget for EditorView<'_> {
                 }
             } else if is_cursor_line {
                 let byte_col = self.editor.cursor_byte_col();
-                let cursor_span = Span::styled(
-                    "\u{2588}",
-                    Style::default()
-                        .fg(self.theme.cursor)
-                        .add_modifier(Modifier::SLOW_BLINK),
-                );
+                let cursor_style = Style::default()
+                    .fg(self.theme.bg)
+                    .bg(self.theme.cursor)
+                    .add_modifier(Modifier::SLOW_BLINK);
 
                 if let Some(hl) = self.highlighted.and_then(|h| h.get(i)) {
                     if !hl.is_empty() {
@@ -219,7 +224,7 @@ impl Widget for EditorView<'_> {
                             byte_col + tab_count * 3 // each tab: 1 byte → 4 bytes (+3)
                         };
 
-                        // Render highlighted spans with cursor block inserted
+                        // Render highlighted spans with cursor overlaid on character
                         let mut display_pos: usize = 0;
                         let mut cursor_inserted = false;
                         for s in hl {
@@ -228,7 +233,7 @@ impl Widget for EditorView<'_> {
 
                             if !cursor_inserted
                                 && adjusted_col >= display_pos
-                                && adjusted_col <= span_end
+                                && adjusted_col < span_end
                             {
                                 let offset = adjusted_col - display_pos;
                                 let text = s.content.as_ref();
@@ -245,11 +250,14 @@ impl Widget for EditorView<'_> {
                                         s.style,
                                     ));
                                 }
-                                spans.push(cursor_span.clone());
+                                // Overlay cursor on the character at this position
+                                let (cursor_ch, ch_end) =
+                                    cursor_char_at(text, safe_offset);
+                                spans.push(Span::styled(cursor_ch, cursor_style));
                                 cursor_inserted = true;
-                                if safe_offset < span_len {
+                                if ch_end < span_len {
                                     spans.push(Span::styled(
-                                        text[safe_offset..].to_string(),
+                                        text[ch_end..].to_string(),
                                         s.style,
                                     ));
                                 }
@@ -260,17 +268,18 @@ impl Widget for EditorView<'_> {
                             display_pos = span_end;
                         }
                         if !cursor_inserted {
-                            spans.push(cursor_span);
+                            spans.push(Span::styled(" ".to_string(), cursor_style));
                         }
                     } else {
                         // Empty highlights — fall back to single color
                         let before = &line[..byte_col];
-                        let after = &line[byte_col..];
+                        let (cursor_ch, after_byte) = cursor_char_at(line, byte_col);
+                        let after = &line[after_byte..];
                         spans.push(Span::styled(
                             before.to_string(),
                             Style::default().fg(self.theme.text),
                         ));
-                        spans.push(cursor_span);
+                        spans.push(Span::styled(cursor_ch, cursor_style));
                         spans.push(Span::styled(
                             after.to_string(),
                             Style::default().fg(self.theme.text),
@@ -279,12 +288,13 @@ impl Widget for EditorView<'_> {
                 } else {
                     // No highlights available — fall back to single color
                     let before = &line[..byte_col];
-                    let after = &line[byte_col..];
+                    let (cursor_ch, after_byte) = cursor_char_at(line, byte_col);
+                    let after = &line[after_byte..];
                     spans.push(Span::styled(
                         before.to_string(),
                         Style::default().fg(self.theme.text),
                     ));
-                    spans.push(cursor_span);
+                    spans.push(Span::styled(cursor_ch, cursor_style));
                     spans.push(Span::styled(
                         after.to_string(),
                         Style::default().fg(self.theme.text),
@@ -390,17 +400,17 @@ impl Widget for InlineEditorView<'_> {
                     let before_sel = &line[..sel_start];
                     let selected = &line[sel_start..sel_end];
                     let after_sel = &line[sel_end..];
+                    let cursor_style = Style::default()
+                        .fg(self.theme.bg)
+                        .bg(self.theme.cursor)
+                        .add_modifier(Modifier::SLOW_BLINK);
 
                     if byte_col <= sel_start {
                         let before_cursor = &line[..byte_col];
-                        let between = &line[byte_col..sel_start];
+                        let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
+                        let between = &line[after_cursor_byte..sel_start];
                         spans.push(Span::styled(before_cursor.to_string(), normal_style));
-                        spans.push(Span::styled(
-                            "\u{2588}",
-                            Style::default()
-                                .fg(self.theme.cursor)
-                                .add_modifier(Modifier::SLOW_BLINK),
-                        ));
+                        spans.push(Span::styled(cursor_ch, cursor_style));
                         spans.push(Span::styled(between.to_string(), normal_style));
                         spans.push(Span::styled(selected.to_string(), sel_style));
                         spans.push(Span::styled(after_sel.to_string(), normal_style));
@@ -408,26 +418,20 @@ impl Widget for InlineEditorView<'_> {
                         spans.push(Span::styled(before_sel.to_string(), normal_style));
                         spans.push(Span::styled(selected.to_string(), sel_style));
                         let between = &line[sel_end..byte_col];
-                        let after_cursor = &line[byte_col..];
+                        let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
+                        let after_cursor = &line[after_cursor_byte..];
                         spans.push(Span::styled(between.to_string(), normal_style));
-                        spans.push(Span::styled(
-                            "\u{2588}",
-                            Style::default()
-                                .fg(self.theme.cursor)
-                                .add_modifier(Modifier::SLOW_BLINK),
-                        ));
+                        spans.push(Span::styled(cursor_ch, cursor_style));
                         spans.push(Span::styled(after_cursor.to_string(), normal_style));
                     } else {
                         spans.push(Span::styled(before_sel.to_string(), normal_style));
                         let sel_before_cursor = &line[sel_start..byte_col];
-                        let sel_after_cursor = &line[byte_col..sel_end];
+                        let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
+                        let sel_after_cursor = &line[after_cursor_byte..sel_end];
                         spans.push(Span::styled(sel_before_cursor.to_string(), sel_style));
                         spans.push(Span::styled(
-                            "\u{2588}",
-                            Style::default()
-                                .fg(self.theme.cursor)
-                                .bg(self.theme.selection_bg)
-                                .add_modifier(Modifier::SLOW_BLINK),
+                            cursor_ch,
+                            cursor_style.bg(self.theme.selection_bg),
                         ));
                         spans.push(Span::styled(sel_after_cursor.to_string(), sel_style));
                         spans.push(Span::styled(after_sel.to_string(), normal_style));
@@ -444,16 +448,18 @@ impl Widget for InlineEditorView<'_> {
             } else if is_cursor_line {
                 let byte_col = self.editor.cursor_byte_col();
                 let before = &line[..byte_col];
-                let after = &line[byte_col..];
+                let (cursor_ch, after_byte) = cursor_char_at(line, byte_col);
+                let after = &line[after_byte..];
                 lines.push(Line::from(vec![
                     Span::styled(
                         format!("  {}", before),
                         Style::default().fg(self.theme.text),
                     ),
                     Span::styled(
-                        "\u{2588}",
+                        cursor_ch,
                         Style::default()
-                            .fg(self.theme.cursor)
+                            .fg(self.theme.bg)
+                            .bg(self.theme.cursor)
                             .add_modifier(Modifier::SLOW_BLINK),
                     ),
                     Span::styled(after.to_string(), Style::default().fg(self.theme.text)),
