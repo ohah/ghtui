@@ -112,12 +112,12 @@ fn render_file_tree(
 
                     let (arrow, icon) = if node.is_dir {
                         if code.expanded_dirs.contains(&node.path) {
-                            ("\u{25BE} ", "\u{1F4C1} ")
+                            ("▾ ", "")
                         } else {
-                            ("\u{25B8} ", "\u{1F4C1} ")
+                            ("▸ ", "")
                         }
                     } else {
-                        ("  ", "\u{1F4C4} ")
+                        ("  ", "")
                     };
 
                     let size_str = if !node.is_dir {
@@ -144,14 +144,23 @@ fn render_file_tree(
                         Style::default().fg(theme.fg)
                     };
 
+                    let arrow_style = if node.is_dir {
+                        Style::default().fg(theme.fg_muted)
+                    } else {
+                        Style::default().fg(theme.fg_dim)
+                    };
+
                     let spans = vec![
-                        Span::styled(format!(" {}{}{}", indent, arrow, icon), style),
+                        Span::styled(
+                            format!(" {}{}{}", indent, arrow, icon),
+                            if is_selected { style } else { arrow_style },
+                        ),
                         Span::styled(node.name.clone(), style),
                         Span::styled(
                             if size_str.is_empty() {
                                 String::new()
                             } else {
-                                format!(" ({})", size_str)
+                                format!(" {}", size_str)
                             },
                             Style::default().fg(theme.fg_dim),
                         ),
@@ -173,9 +182,9 @@ fn render_file_tree(
             .enumerate()
             .map(|(i, entry)| {
                 let icon = if entry.entry_type == ghtui_core::types::code::FileEntryType::Dir {
-                    "\u{1F4C1} "
+                    "▸ "
                 } else {
-                    "\u{1F4C4} "
+                    "  "
                 };
 
                 let size_str = if entry.entry_type == ghtui_core::types::code::FileEntryType::File {
