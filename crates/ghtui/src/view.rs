@@ -6,13 +6,16 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Paragraph};
+use ratatui::widgets::{Block, Clear, Paragraph};
 
 use crate::views;
 
 pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
     let theme = &state.theme;
     let size = frame.area();
+
+    // Clear previous frame to prevent render artifacts when switching tabs
+    frame.render_widget(Clear, size);
 
     // Set background
     let bg_block = Block::default().style(Style::default().bg(theme.bg));

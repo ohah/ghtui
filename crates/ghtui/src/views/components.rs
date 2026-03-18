@@ -82,3 +82,30 @@ pub fn centered_rect(width: u16, height: u16, area: Rect) -> Rect {
     let y = (area.height.saturating_sub(height)) / 2 + area.y;
     Rect::new(x, y, width.min(area.width), height.min(area.height))
 }
+
+/// Parse a GitHub label hex color (e.g., "d73a4a") and return a styled Span.
+/// Uses the label color as background with contrasting text color.
+pub fn label_span(name: &str, hex_color: &str) -> Span<'static> {
+    let (r, g, b) = parse_hex_color(hex_color);
+    // Choose white or black text based on luminance
+    let luminance = 0.299 * r as f64 + 0.587 * g as f64 + 0.114 * b as f64;
+    let fg = if luminance > 128.0 {
+        ratatui::style::Color::Rgb(0, 0, 0)
+    } else {
+        ratatui::style::Color::Rgb(255, 255, 255)
+    };
+    let bg = ratatui::style::Color::Rgb(r, g, b);
+    Span::styled(format!(" {} ", name), Style::default().fg(fg).bg(bg))
+}
+
+fn parse_hex_color(hex: &str) -> (u8, u8, u8) {
+    let hex = hex.trim_start_matches('#');
+    if hex.len() >= 6 {
+        let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(128);
+        let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(128);
+        let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(128);
+        (r, g, b)
+    } else {
+        (128, 128, 128) // default gray
+    }
+}

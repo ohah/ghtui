@@ -295,26 +295,17 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::PrApprove => {
-            if let Some(ref detail) = state.pr_detail {
-                if let Some(ref repo) = state.current_repo {
-                    let number = detail.detail.pr.number;
-                    let input = ghtui_core::types::ReviewInput {
-                        event: ghtui_core::types::ReviewEvent::Approve,
-                        body: Some("Approved".to_string()),
-                        comments: vec![],
-                    };
-                    return vec![Command::SubmitReview(repo.clone(), number, input)];
-                }
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor = ghtui_core::editor::TextEditor::new();
+                detail.edit_target = Some(PrInlineEditTarget::ReviewApprove);
             }
             vec![]
         }
         Message::PrRequestChanges => {
-            state.input_buffer.clear();
-            state.modal = Some(ghtui_core::ModalKind::Confirm {
-                title: "Request Changes".to_string(),
-                message: "Enter review comment:".to_string(),
-            });
-            state.input_mode = InputMode::Insert;
+            if let Some(ref mut detail) = state.pr_detail {
+                detail.editor = ghtui_core::editor::TextEditor::new();
+                detail.edit_target = Some(PrInlineEditTarget::ReviewRequestChanges);
+            }
             vec![]
         }
         Message::PrActionBarFocus => {
@@ -943,6 +934,37 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                             }
                             let number = detail.detail.pr.number;
                             vec![Command::AddPrComment(repo.clone(), number, body)]
+                        }
+                        Some(PrInlineEditTarget::ReviewApprove) => {
+                            let body = detail.editor_text();
+                            let number = detail.detail.pr.number;
+                            let input = ghtui_core::types::ReviewInput {
+                                event: ghtui_core::types::ReviewEvent::Approve,
+                                body: Some(if body.trim().is_empty() {
+                                    "Approved".to_string()
+                                } else {
+                                    body
+                                }),
+                                comments: vec![],
+                            };
+                            vec![Command::SubmitReview(repo.clone(), number, input)]
+                        }
+                        Some(PrInlineEditTarget::ReviewRequestChanges) => {
+                            let body = detail.editor_text();
+                            if body.trim().is_empty() {
+                                state.push_toast(
+                                    "Review comment cannot be empty".to_string(),
+                                    ToastLevel::Warning,
+                                );
+                                return vec![];
+                            }
+                            let number = detail.detail.pr.number;
+                            let input = ghtui_core::types::ReviewInput {
+                                event: ghtui_core::types::ReviewEvent::RequestChanges,
+                                body: Some(body),
+                                comments: vec![],
+                            };
+                            vec![Command::SubmitReview(repo.clone(), number, input)]
                         }
                         None => vec![],
                     };
@@ -3717,30 +3739,6 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                             ToastLevel::Warning,
                         );
                         return vec![];
-                    }
-                }
-                Some(ghtui_core::ModalKind::Confirm { ref title, .. })
-                    if title == "Request Changes" =>
-                {
-                    let body = state.input_buffer.trim().to_string();
-                    if body.is_empty() {
-                        state
-                            .push_toast("Comment cannot be empty".to_string(), ToastLevel::Warning);
-                        return vec![];
-                    }
-                    if let (Some(repo), Some(detail)) = (&state.current_repo, &state.pr_detail) {
-                        let input = ghtui_core::types::ReviewInput {
-                            event: ghtui_core::types::ReviewEvent::RequestChanges,
-                            body: Some(body),
-                            comments: vec![],
-                        };
-                        vec![Command::SubmitReview(
-                            repo.clone(),
-                            detail.detail.pr.number,
-                            input,
-                        )]
-                    } else {
-                        vec![]
                     }
                 }
                 Some(ghtui_core::ModalKind::Confirm { ref title, .. })

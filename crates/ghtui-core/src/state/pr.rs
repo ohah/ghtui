@@ -118,6 +118,8 @@ pub enum PrInlineEditTarget {
     Comment(usize),
     NewComment,
     QuoteReply(usize),
+    ReviewApprove,
+    ReviewRequestChanges,
 }
 
 #[derive(Debug)]

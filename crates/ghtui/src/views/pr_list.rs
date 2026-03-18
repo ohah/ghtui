@@ -208,10 +208,8 @@ fn render_pr_list(
             ));
 
             for label in &pr.labels {
-                spans.push(Span::styled(
-                    format!(" {} ", label.name),
-                    Style::default().fg(theme.accent),
-                ));
+                spans.push(super::components::label_span(&label.name, &label.color));
+                spans.push(Span::raw(" "));
             }
 
             if let Some(count) = pr.comments {
