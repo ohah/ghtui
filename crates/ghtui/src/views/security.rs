@@ -1,30 +1,16 @@
+use super::components;
 use ghtui_core::AppState;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Wrap};
 
 pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     let theme = &state.theme;
 
     if state.is_loading("security") {
-        let spinner = ghtui_widgets::Spinner::new(
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as usize
-                / 100,
-        );
-        let paragraph = Paragraph::new(Line::from(spinner.span()))
-            .style(theme.text())
-            .block(
-                Block::default()
-                    .title(" Security ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
-        frame.render_widget(paragraph, area);
+        components::render_loading(frame, theme, area, "Security");
         return;
     }
 
@@ -56,44 +42,15 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         format!("Advisories ({})", security.advisories.len()),
     ];
 
-    let sidebar_items: Vec<ListItem> = sidebar_titles
-        .iter()
-        .enumerate()
-        .map(|(i, title)| {
-            let style = if i == security.tab {
-                if security.sidebar_focused {
-                    Style::default()
-                        .fg(theme.tab_active_fg)
-                        .add_modifier(Modifier::BOLD)
-                        .bg(theme.selection_bg)
-                } else {
-                    Style::default()
-                        .fg(theme.tab_active_fg)
-                        .add_modifier(Modifier::BOLD)
-                }
-            } else {
-                Style::default().fg(theme.fg_muted)
-            };
-            ListItem::new(Line::from(Span::styled(format!("  {} ", title), style)))
-        })
-        .collect();
-
-    let sidebar_border = if security.sidebar_focused {
-        Style::default().fg(theme.accent)
-    } else {
-        theme.border_style()
-    };
-
-    let sidebar = List::new(sidebar_items).block(
-        Block::default()
-            .title(" Security ")
-            .borders(Borders::ALL)
-            .border_style(sidebar_border),
+    components::render_sidebar(
+        frame,
+        theme,
+        "Security",
+        &sidebar_titles,
+        security.tab,
+        security.sidebar_focused,
+        h_chunks[0],
     );
-
-    let mut sidebar_state = ListState::default();
-    sidebar_state.select(Some(security.tab));
-    frame.render_stateful_widget(sidebar, h_chunks[0], &mut sidebar_state);
 
     // Content area
     let content_area = h_chunks[1];
@@ -137,7 +94,7 @@ fn render_dependabot(frame: &mut Frame, state: &AppState, area: Rect) {
     let security = state.security.as_ref().unwrap();
 
     if state.is_loading("dependabot") {
-        render_loading(frame, theme, area, "Dependabot Alerts");
+        components::render_loading(frame, theme, area, "Dependabot Alerts");
         return;
     }
 
@@ -192,7 +149,7 @@ fn render_code_scanning(frame: &mut Frame, state: &AppState, area: Rect) {
     let security = state.security.as_ref().unwrap();
 
     if state.is_loading("code_scanning") {
-        render_loading(frame, theme, area, "Code Scanning Alerts");
+        components::render_loading(frame, theme, area, "Code Scanning Alerts");
         return;
     }
 
@@ -263,7 +220,7 @@ fn render_secret_scanning(frame: &mut Frame, state: &AppState, area: Rect) {
     let security = state.security.as_ref().unwrap();
 
     if state.is_loading("secret_scanning") {
-        render_loading(frame, theme, area, "Secret Scanning Alerts");
+        components::render_loading(frame, theme, area, "Secret Scanning Alerts");
         return;
     }
 
@@ -311,25 +268,6 @@ fn render_secret_scanning(frame: &mut Frame, state: &AppState, area: Rect) {
             .border_style(theme.border_style()),
     );
     frame.render_widget(list, area);
-}
-
-fn render_loading(frame: &mut Frame, theme: &ghtui_core::theme::Theme, area: Rect, title: &str) {
-    let spinner = ghtui_widgets::Spinner::new(
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as usize
-            / 100,
-    );
-    let paragraph = Paragraph::new(Line::from(spinner.span()))
-        .style(theme.text())
-        .block(
-            Block::default()
-                .title(format!(" {} ", title))
-                .borders(Borders::ALL)
-                .border_style(theme.border_style()),
-        );
-    frame.render_widget(paragraph, area);
 }
 
 fn render_detail_panel(frame: &mut Frame, state: &AppState, area: Rect) {

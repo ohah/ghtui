@@ -1,30 +1,16 @@
+use super::components;
 use ghtui_core::AppState;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Wrap};
 
 pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     let theme = &state.theme;
 
     if state.is_loading("insights") {
-        let spinner = ghtui_widgets::Spinner::new(
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as usize
-                / 100,
-        );
-        let paragraph = Paragraph::new(Line::from(spinner.span()))
-            .style(theme.text())
-            .block(
-                Block::default()
-                    .title(" Insights ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
-        frame.render_widget(paragraph, area);
+        components::render_loading(frame, theme, area, "Insights");
         return;
     }
 
@@ -55,44 +41,15 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         format!("Dependencies ({})", insights.dependencies.len()),
     ];
 
-    let sidebar_items: Vec<ListItem> = sidebar_titles
-        .iter()
-        .enumerate()
-        .map(|(i, title)| {
-            let style = if i == insights.tab {
-                if insights.sidebar_focused {
-                    Style::default()
-                        .fg(theme.tab_active_fg)
-                        .add_modifier(Modifier::BOLD)
-                        .bg(theme.selection_bg)
-                } else {
-                    Style::default()
-                        .fg(theme.tab_active_fg)
-                        .add_modifier(Modifier::BOLD)
-                }
-            } else {
-                Style::default().fg(theme.fg_muted)
-            };
-            ListItem::new(Line::from(Span::styled(format!("  {} ", title), style)))
-        })
-        .collect();
-
-    let sidebar_border = if insights.sidebar_focused {
-        Style::default().fg(theme.accent)
-    } else {
-        theme.border_style()
-    };
-
-    let sidebar = List::new(sidebar_items).block(
-        Block::default()
-            .title(" Insights ")
-            .borders(Borders::ALL)
-            .border_style(sidebar_border),
+    components::render_sidebar(
+        frame,
+        theme,
+        "Insights",
+        &sidebar_titles,
+        insights.tab,
+        insights.sidebar_focused,
+        chunks[0],
     );
-
-    let mut sidebar_state = ListState::default();
-    sidebar_state.select(Some(insights.tab));
-    frame.render_stateful_widget(sidebar, chunks[0], &mut sidebar_state);
 
     // Content
     match insights.tab {
@@ -418,22 +375,7 @@ fn render_forks(frame: &mut Frame, state: &AppState, area: Rect) {
     let insights = state.insights.as_ref().unwrap();
 
     if state.is_loading("forks") {
-        let spinner = ghtui_widgets::Spinner::new(
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as usize
-                / 100,
-        );
-        let paragraph = Paragraph::new(Line::from(spinner.span()))
-            .style(theme.text())
-            .block(
-                Block::default()
-                    .title(" Forks ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
-        frame.render_widget(paragraph, area);
+        components::render_loading(frame, theme, area, "Forks");
         return;
     }
 
