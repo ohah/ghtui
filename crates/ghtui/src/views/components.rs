@@ -123,6 +123,14 @@ pub fn time_ago(dt: &chrono::DateTime<chrono::Utc>) -> String {
     }
 }
 
+/// Parse an RFC3339/ISO8601 date string and return a relative time string.
+/// Returns the original string if parsing fails.
+pub fn time_ago_rfc3339(s: &str) -> String {
+    chrono::DateTime::parse_from_rfc3339(s)
+        .map(|dt| time_ago(&dt.with_timezone(&chrono::Utc)))
+        .unwrap_or_else(|_| s.to_string())
+}
+
 fn parse_hex_color(hex: &str) -> (u8, u8, u8) {
     let hex = hex.trim_start_matches('#');
     if hex.len() >= 6 {

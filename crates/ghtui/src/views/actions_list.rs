@@ -114,24 +114,10 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
             let time_str = super::components::time_ago(&run.created_at);
 
-            // Duration: updated_at - created_at
-            let duration = run.updated_at - run.created_at;
-            let duration_str = if duration.num_hours() > 0 {
-                format!(
-                    "{}h {}m {}s",
-                    duration.num_hours(),
-                    duration.num_minutes() % 60,
-                    duration.num_seconds() % 60,
-                )
-            } else if duration.num_minutes() > 0 {
-                format!(
-                    "{}m {}s",
-                    duration.num_minutes(),
-                    duration.num_seconds() % 60,
-                )
-            } else {
-                format!("{}s", duration.num_seconds())
-            };
+            let duration_str = ghtui_core::state::actions::format_duration(
+                Some(run.created_at),
+                Some(run.updated_at),
+            );
 
             // Line 1: status_icon + workflow_name + run_display_title
             let line1 = Line::from(vec![

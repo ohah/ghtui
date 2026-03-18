@@ -316,7 +316,7 @@ fn render_commit_list(
                     commit.message.clone()
                 };
 
-                let relative = format_relative_time(&commit.date);
+                let relative = super::components::time_ago_rfc3339(&commit.date);
 
                 ListItem::new(vec![
                     Line::from(vec![
@@ -460,7 +460,7 @@ fn render_commit_detail(
         Line::from(vec![
             Span::styled("  Date: ", Style::default().fg(theme.fg_dim)),
             Span::styled(
-                format_relative_time(&detail.date),
+                super::components::time_ago_rfc3339(&detail.date),
                 Style::default().fg(theme.fg),
             ),
         ]),
@@ -745,17 +745,3 @@ fn format_size(bytes: u64) -> String {
     }
 }
 
-fn format_relative_time(date_str: &str) -> String {
-    // Parse ISO 8601 date and return relative time
-    // Simple implementation: just show the date if parsing is complex
-    if date_str.len() >= 10 {
-        // Try to extract date portion
-        let date_part = &date_str[..10];
-        // Simple relative: just show date for now
-        date_part.to_string()
-    } else if date_str.is_empty() {
-        "unknown".to_string()
-    } else {
-        date_str.to_string()
-    }
-}
