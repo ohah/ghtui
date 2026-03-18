@@ -622,35 +622,61 @@ fn render_image_preview(
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    match image::load_from_memory(image_bytes) {
-        Ok(dyn_img) => {
-            let picker = ratatui_image::picker::Picker::halfblocks();
-            let resize = ratatui_image::Resize::Fit(None);
-            match picker.new_protocol(dyn_img, inner, resize) {
-                Ok(protocol) => {
-                    let image_widget = ratatui_image::Image::new(&protocol);
-                    frame.render_widget(image_widget, inner);
-                }
-                Err(_) => {
-                    let fallback = Paragraph::new(format!(
-                        "  [Image: {} - unable to render protocol]",
-                        filename
-                    ))
-                    .style(Style::default().fg(theme.fg_dim));
-                    frame.render_widget(fallback, inner);
-                }
+    // Cache the decoded DynamicImage to avoid re-decoding every frame.
+    // Protocol creation is cheap (halfblocks), image decoding is expensive.
+    use std::cell::RefCell;
+    type ImgCache = Option<(usize, image::DynamicImage)>;
+    thread_local! {
+        static DECODED_IMG: RefCell<ImgCache> = const { RefCell::new(None) };
+    }
+
+    let bytes_len = image_bytes.len();
+
+    // Get or decode image
+    let decoded = DECODED_IMG.with(|c| {
+        let borrow = c.borrow();
+        if let Some((len, ref img)) = *borrow {
+            if len == bytes_len {
+                return Some(img.clone());
             }
         }
-        Err(_) => {
-            let (w, h) = (image_bytes.len(), 0usize);
-            let _ = h; // suppress unused
-            let info = format!(
-                "  [Binary image file: {} ({} bytes) - unable to decode]",
-                filename, w
-            );
-            let fallback = Paragraph::new(info).style(Style::default().fg(theme.fg_dim));
-            frame.render_widget(fallback, inner);
+        None
+    });
+
+    let dyn_img = if let Some(img) = decoded {
+        Some(img)
+    } else if let Ok(img) = image::load_from_memory(image_bytes) {
+        DECODED_IMG.with(|c| {
+            *c.borrow_mut() = Some((bytes_len, img.clone()));
+        });
+        Some(img)
+    } else {
+        None
+    };
+
+    if let Some(img) = dyn_img {
+        let picker = ratatui_image::picker::Picker::halfblocks();
+        let resize = ratatui_image::Resize::Fit(None);
+        match picker.new_protocol(img, inner, resize) {
+            Ok(protocol) => {
+                let image_widget = ratatui_image::Image::new(&protocol);
+                frame.render_widget(image_widget, inner);
+            }
+            Err(_) => {
+                let fallback =
+                    Paragraph::new(format!("  [Image: {} - unable to render]", filename))
+                        .style(Style::default().fg(theme.fg_dim));
+                frame.render_widget(fallback, inner);
+            }
         }
+    } else {
+        let info = format!(
+            "  [Image: {} ({} bytes) - unable to decode]",
+            filename,
+            image_bytes.len()
+        );
+        let fallback = Paragraph::new(info).style(Style::default().fg(theme.fg_dim));
+        frame.render_widget(fallback, inner);
     }
 }
 

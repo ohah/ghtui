@@ -8,7 +8,7 @@ pub(crate) fn is_image_file(filename: &str) -> bool {
     let ext = filename.rsplit('.').next().unwrap_or("").to_lowercase();
     matches!(
         ext.as_str(),
-        "png" | "jpg" | "jpeg" | "gif" | "bmp" | "webp" | "svg" | "ico"
+        "png" | "jpg" | "jpeg" | "gif" // only formats enabled in image crate
     )
 }
 
