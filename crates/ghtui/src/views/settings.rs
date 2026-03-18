@@ -3,7 +3,7 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Tabs, Wrap};
+use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap};
 
 pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     let theme = &state.theme;
@@ -39,41 +39,69 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     };
 
+    // Horizontal split: sidebar (30) | content (rest)
     let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(2), Constraint::Min(0)])
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(30), Constraint::Min(0)])
         .split(area);
 
-    // Sub-tab bar
-    let tab_titles: Vec<String> = vec![
+    // Sidebar
+    let sidebar_titles = [
         "General".to_string(),
         "Branch Protection".to_string(),
         format!("Collaborators ({})", settings.collaborators.len()),
         format!("Webhooks ({})", settings.webhooks.len()),
         format!("Deploy Keys ({})", settings.deploy_keys.len()),
     ];
-    let tabs = Tabs::new(tab_titles)
-        .select(settings.tab)
-        .style(Style::default().fg(theme.fg_muted))
-        .highlight_style(
-            Style::default()
-                .fg(theme.tab_active_fg)
-                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
-        )
-        .divider(" │ ")
-        .block(
-            Block::default()
-                .borders(Borders::BOTTOM)
-                .border_style(theme.border_style()),
-        );
-    frame.render_widget(tabs, chunks[0]);
+
+    let sidebar_items: Vec<ListItem> = sidebar_titles
+        .iter()
+        .enumerate()
+        .map(|(i, title)| {
+            let style = if i == settings.tab {
+                if settings.sidebar_focused {
+                    Style::default()
+                        .fg(theme.tab_active_fg)
+                        .add_modifier(Modifier::BOLD)
+                        .bg(theme.selection_bg)
+                } else {
+                    Style::default()
+                        .fg(theme.tab_active_fg)
+                        .add_modifier(Modifier::BOLD)
+                }
+            } else {
+                Style::default().fg(theme.fg_muted)
+            };
+            ListItem::new(Line::from(Span::styled(format!("  {} ", title), style)))
+        })
+        .collect();
+
+    let sidebar_border_style = if settings.sidebar_focused {
+        Style::default().fg(theme.accent)
+    } else {
+        theme.border_style()
+    };
+
+    let sidebar = List::new(sidebar_items).block(
+        Block::default()
+            .title(" Settings ")
+            .borders(Borders::ALL)
+            .border_style(sidebar_border_style),
+    );
+
+    let mut sidebar_state = ListState::default();
+    sidebar_state.select(Some(settings.tab));
+    frame.render_stateful_widget(sidebar, chunks[0], &mut sidebar_state);
+
+    // Content panel
+    let content_area = chunks[1];
 
     match settings.tab {
-        0 => render_general(frame, state, chunks[1]),
-        1 => render_branch_protections(frame, state, chunks[1]),
-        2 => render_collaborators(frame, state, chunks[1]),
-        3 => render_webhooks(frame, state, chunks[1]),
-        4 => render_deploy_keys(frame, state, chunks[1]),
+        0 => render_general(frame, state, content_area),
+        1 => render_branch_protections(frame, state, content_area),
+        2 => render_collaborators(frame, state, content_area),
+        3 => render_webhooks(frame, state, content_area),
+        4 => render_deploy_keys(frame, state, content_area),
         _ => {}
     }
 }
@@ -375,10 +403,14 @@ fn render_collaborators(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     }
 
+    let selected = settings.selected;
+    let content_focused = !settings.sidebar_focused;
+
     let items: Vec<ListItem> = settings
         .collaborators
         .iter()
-        .map(|collab| {
+        .enumerate()
+        .map(|(i, collab)| {
             let role = collab
                 .role_name
                 .as_deref()
@@ -406,23 +438,39 @@ fn render_collaborators(frame: &mut Frame, state: &AppState, area: Rect) {
                 _ => theme.fg_muted,
             };
 
-            ListItem::new(Line::from(vec![
-                Span::styled("  @", Style::default().fg(theme.fg_muted)),
+            let prefix = if content_focused && i == selected {
+                "▶ @"
+            } else {
+                "  @"
+            };
+
+            let mut item = ListItem::new(Line::from(vec![
+                Span::styled(prefix, Style::default().fg(theme.fg_muted)),
                 Span::styled(collab.login.clone(), theme.text()),
                 Span::raw("  "),
                 Span::styled(role.to_string(), Style::default().fg(role_color)),
-            ]))
+            ]));
+            if content_focused && i == selected {
+                item = item.style(Style::default().bg(theme.selection_bg));
+            }
+            item
         })
         .collect();
+
+    let border_style = if content_focused {
+        Style::default().fg(theme.accent)
+    } else {
+        theme.border_style()
+    };
 
     let list = List::new(items).block(
         Block::default()
             .title(format!(
-                " Collaborators ({}) ",
+                " Collaborators ({}) [d:remove] ",
                 settings.collaborators.len()
             ))
             .borders(Borders::ALL)
-            .border_style(theme.border_style()),
+            .border_style(border_style),
     );
     frame.render_widget(list, area);
 }
@@ -473,10 +521,19 @@ fn render_webhooks(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     }
 
+    let selected = settings.selected;
+    let content_focused = !settings.sidebar_focused;
+
     let items: Vec<ListItem> = settings
         .webhooks
         .iter()
-        .map(|hook| {
+        .enumerate()
+        .map(|(i, hook)| {
+            let prefix = if content_focused && i == selected {
+                "▶"
+            } else {
+                " "
+            };
             let status_icon = if hook.active {
                 Span::styled(" ● ", Style::default().fg(theme.success))
             } else {
@@ -493,19 +550,33 @@ fn render_webhooks(frame: &mut Frame, state: &AppState, area: Rect) {
                 hook.events.join(", ")
             };
 
-            ListItem::new(Line::from(vec![
+            let mut item = ListItem::new(Line::from(vec![
+                Span::styled(prefix, Style::default().fg(theme.accent)),
                 status_icon,
                 Span::styled(url.to_string(), theme.text()),
                 Span::styled(format!("  ({})", events), Style::default().fg(theme.fg_dim)),
-            ]))
+            ]));
+            if content_focused && i == selected {
+                item = item.style(Style::default().bg(theme.selection_bg));
+            }
+            item
         })
         .collect();
 
+    let border_style = if content_focused {
+        Style::default().fg(theme.accent)
+    } else {
+        theme.border_style()
+    };
+
     let list = List::new(items).block(
         Block::default()
-            .title(format!(" Webhooks ({}) ", settings.webhooks.len()))
+            .title(format!(
+                " Webhooks ({}) [d:delete a:toggle] ",
+                settings.webhooks.len()
+            ))
             .borders(Borders::ALL)
-            .border_style(theme.border_style()),
+            .border_style(border_style),
     );
     frame.render_widget(list, area);
 }
@@ -532,10 +603,19 @@ fn render_deploy_keys(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     }
 
+    let selected = settings.selected;
+    let content_focused = !settings.sidebar_focused;
+
     let items: Vec<ListItem> = settings
         .deploy_keys
         .iter()
-        .map(|key| {
+        .enumerate()
+        .map(|(i, key)| {
+            let prefix = if content_focused && i == selected {
+                "▶ 🔑 "
+            } else {
+                "  🔑 "
+            };
             let read_only = if key.read_only {
                 Span::styled(" read-only", Style::default().fg(theme.fg_muted))
             } else {
@@ -547,8 +627,8 @@ fn render_deploy_keys(frame: &mut Frame, state: &AppState, area: Rect) {
                 Span::styled("", Style::default())
             };
 
-            ListItem::new(Line::from(vec![
-                Span::styled("  🔑 ", Style::default().fg(theme.accent)),
+            let mut item = ListItem::new(Line::from(vec![
+                Span::styled(prefix, Style::default().fg(theme.accent)),
                 Span::styled(key.title.clone(), theme.text()),
                 read_only,
                 verified,
@@ -556,15 +636,28 @@ fn render_deploy_keys(frame: &mut Frame, state: &AppState, area: Rect) {
                     format!("  {}", key.created_at),
                     Style::default().fg(theme.fg_dim),
                 ),
-            ]))
+            ]));
+            if content_focused && i == selected {
+                item = item.style(Style::default().bg(theme.selection_bg));
+            }
+            item
         })
         .collect();
 
+    let border_style = if content_focused {
+        Style::default().fg(theme.accent)
+    } else {
+        theme.border_style()
+    };
+
     let list = List::new(items).block(
         Block::default()
-            .title(format!(" Deploy Keys ({}) ", settings.deploy_keys.len()))
+            .title(format!(
+                " Deploy Keys ({}) [d:delete] ",
+                settings.deploy_keys.len()
+            ))
             .borders(Borders::ALL)
-            .border_style(theme.border_style()),
+            .border_style(border_style),
     );
     frame.render_widget(list, area);
 }

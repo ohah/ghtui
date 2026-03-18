@@ -459,6 +459,39 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 Err(e) => Message::Error(e.into()),
             }
         }
+        Command::DismissDependabotAlert(repo, number, reason) => {
+            match client
+                .dismiss_dependabot_alert(&repo, number, &reason)
+                .await
+            {
+                Ok(()) => Message::SecurityAlertUpdated,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::ReopenDependabotAlert(repo, number) => {
+            match client.reopen_dependabot_alert(&repo, number).await {
+                Ok(()) => Message::SecurityAlertUpdated,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::DismissCodeScanningAlert(repo, number, reason) => {
+            match client
+                .dismiss_code_scanning_alert(&repo, number, &reason)
+                .await
+            {
+                Ok(()) => Message::SecurityAlertUpdated,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::ResolveSecretScanningAlert(repo, number, resolution) => {
+            match client
+                .resolve_secret_scanning_alert(&repo, number, &resolution)
+                .await
+            {
+                Ok(()) => Message::SecurityAlertUpdated,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
 
         // Settings
         Command::FetchRepoSettings(repo) => match client.get_repo(&repo).await {
@@ -487,6 +520,30 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Ok(repository) => Message::SettingsRepoUpdated(Box::new(repository)),
             Err(e) => Message::Error(e.into()),
         },
+        Command::RemoveCollaborator(repo, username) => {
+            match client.remove_collaborator(&repo, &username).await {
+                Ok(()) => Message::SettingsItemUpdated,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::DeleteWebhook(repo, hook_id) => {
+            match client.delete_webhook(&repo, hook_id).await {
+                Ok(()) => Message::SettingsItemUpdated,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::ToggleWebhook(repo, hook_id, active) => {
+            match client.toggle_webhook(&repo, hook_id, active).await {
+                Ok(()) => Message::SettingsItemUpdated,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::DeleteDeployKey(repo, key_id) => {
+            match client.delete_deploy_key(&repo, key_id).await {
+                Ok(()) => Message::SettingsItemUpdated,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
 
         // Utility
         Command::OpenInBrowser(url) => {

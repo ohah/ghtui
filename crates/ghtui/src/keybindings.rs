@@ -231,6 +231,8 @@ fn handle_security_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
         KeyCode::Enter => Some(Message::SecurityToggleDetail),
         KeyCode::Char('o') => Some(Message::SecurityOpenInBrowser),
+        KeyCode::Char('d') => Some(Message::SecurityDismissAlert),
+        KeyCode::Char('r') => Some(Message::SecurityReopenAlert),
         _ => None,
     }
 }
@@ -250,12 +252,33 @@ fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         };
     }
 
-    // Check if on General tab for edit keys
-    let on_general = state.settings.as_ref().is_some_and(|s| s.tab == 0);
+    let sidebar_focused = state
+        .settings
+        .as_ref()
+        .map(|s| s.sidebar_focused)
+        .unwrap_or(true);
+
+    if sidebar_focused {
+        // Sidebar focused: j/k navigate tabs, Enter/Tab switch to content
+        return match key.code {
+            KeyCode::Char('j') | KeyCode::Down => Some(Message::TabChanged(1)),
+            KeyCode::Char('k') | KeyCode::Up => Some(Message::TabChanged(usize::MAX)),
+            KeyCode::Enter | KeyCode::Tab => Some(Message::SettingsSidebarFocus),
+            _ => None,
+        };
+    }
+
+    // Content focused
+    let current_tab = state.settings.as_ref().map(|s| s.tab).unwrap_or(0);
+    let on_general = current_tab == 0;
+    let on_collaborators = current_tab == 2;
+    let on_webhooks = current_tab == 3;
+    let on_deploy_keys = current_tab == 4;
 
     match key.code {
-        KeyCode::Tab => Some(Message::TabChanged(1)),
-        KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
+        // Tab / Esc go back to sidebar
+        KeyCode::Tab | KeyCode::Esc => Some(Message::SettingsSidebarFocus),
+        // j/k navigate items in content
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
         KeyCode::PageDown => Some(Message::ScrollDown),
@@ -279,6 +302,13 @@ fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             Some(Message::SettingsToggleFeature("has_wiki".to_string()))
         }
         KeyCode::Char('V') if on_general => Some(Message::SettingsToggleVisibility),
+        // Collaborator tab: d to delete
+        KeyCode::Char('d') if on_collaborators => Some(Message::SettingsDeleteCollaborator),
+        // Webhook tab: d to delete, a to toggle active
+        KeyCode::Char('d') if on_webhooks => Some(Message::SettingsDeleteWebhook),
+        KeyCode::Char('a') if on_webhooks => Some(Message::SettingsToggleWebhook),
+        // Deploy key tab: d to delete
+        KeyCode::Char('d') if on_deploy_keys => Some(Message::SettingsDeleteDeployKey),
         _ => None,
     }
 }
