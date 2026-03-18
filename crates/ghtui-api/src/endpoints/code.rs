@@ -209,41 +209,22 @@ impl GithubClient {
             });
         }
 
-        // Sort: by path components, dirs first at each level
+        // Sort: use a sort key that ensures dirs-before-files at each level.
+        // For path "src/main.rs" (file): key = "src/\x01main.rs" (dirs get \x00, files get \x01)
+        // For path "src" (dir):          key = "\x00src"
+        // This naturally sorts dirs before files at each level.
         nodes.sort_by(|a, b| {
-            let a_parts: Vec<&str> = a.path.split('/').collect();
-            let b_parts: Vec<&str> = b.path.split('/').collect();
-            let min_len = a_parts.len().min(b_parts.len());
-
-            for i in 0..min_len {
-                if i == a_parts.len() - 1 && i == b_parts.len() - 1 {
-                    // Both are at their last component — compare dir vs file
-                    let a_is_dir = a.is_dir;
-                    let b_is_dir = b.is_dir;
-                    if a_is_dir != b_is_dir {
-                        return if a_is_dir {
-                            std::cmp::Ordering::Less
-                        } else {
-                            std::cmp::Ordering::Greater
-                        };
-                    }
-                    return a_parts[i].to_lowercase().cmp(&b_parts[i].to_lowercase());
+            fn sort_key(path: &str, is_dir: bool) -> String {
+                let parts: Vec<&str> = path.split('/').collect();
+                let mut key_parts: Vec<String> = Vec::new();
+                for (i, part) in parts.iter().enumerate() {
+                    let is_last = i == parts.len() - 1;
+                    let prefix = if is_last && !is_dir { "\x01" } else { "\x00" };
+                    key_parts.push(format!("{}{}", prefix, part.to_lowercase()));
                 }
-                if a_parts[i] != b_parts[i] {
-                    // At this level, one might be a "file" and the other a "dir" (has children)
-                    let a_has_more = i < a_parts.len() - 1;
-                    let b_has_more = i < b_parts.len() - 1;
-                    if a_has_more != b_has_more {
-                        return if a_has_more {
-                            std::cmp::Ordering::Less
-                        } else {
-                            std::cmp::Ordering::Greater
-                        };
-                    }
-                    return a_parts[i].to_lowercase().cmp(&b_parts[i].to_lowercase());
-                }
+                key_parts.join("/")
             }
-            a_parts.len().cmp(&b_parts.len())
+            sort_key(&a.path, a.is_dir).cmp(&sort_key(&b.path, b.is_dir))
         });
 
         Ok(nodes)
