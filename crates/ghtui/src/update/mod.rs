@@ -43,6 +43,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.insights = None;
             state.security = None;
             state.settings = None;
+            state.code = None;
             // Refresh current view
             refresh_current_view(state)
         }
@@ -3256,6 +3257,16 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
 
         // Scroll — context-aware
         Message::ScrollUp => {
+            if matches!(state.route, Route::Code { .. }) {
+                if let Some(ref mut code) = state.code {
+                    if !code.sidebar_focused {
+                        code.scroll = code.scroll.saturating_sub(3);
+                    } else {
+                        code.select_prev();
+                    }
+                    return vec![];
+                }
+            }
             if matches!(state.route, Route::Security { .. }) {
                 if let Some(ref mut sec) = state.security {
                     if sec.detail_open {
@@ -3291,6 +3302,16 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             update(state, Message::ListSelect(usize::MAX))
         }
         Message::ScrollDown => {
+            if matches!(state.route, Route::Code { .. }) {
+                if let Some(ref mut code) = state.code {
+                    if !code.sidebar_focused {
+                        code.scroll += 3;
+                    } else {
+                        code.select_next();
+                    }
+                    return vec![];
+                }
+            }
             if matches!(state.route, Route::Security { .. }) {
                 if let Some(ref mut sec) = state.security {
                     if sec.detail_open {
@@ -3800,6 +3821,97 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::SecuritySidebarFocus => {
             if let Some(ref mut sec) = state.security {
                 sec.sidebar_focused = !sec.sidebar_focused;
+            }
+            vec![]
+        }
+
+        // Code tab
+        Message::CodeContentsLoaded(entries) => {
+            state.loading.remove("code_contents");
+            if let Some(ref mut code) = state.code {
+                code.entries = entries;
+                code.selected = 0;
+            }
+            vec![]
+        }
+        Message::CodeFileLoaded(filename, content) => {
+            state.loading.remove("code_file");
+            if let Some(ref mut code) = state.code {
+                code.file_content = Some(content);
+                code.file_name = Some(filename);
+                code.scroll = 0;
+                code.sidebar_focused = false;
+            }
+            vec![]
+        }
+        Message::CodeReadmeLoaded(content) => {
+            state.loading.remove("code_readme");
+            if let Some(ref mut code) = state.code {
+                code.readme_content = Some(content);
+            }
+            vec![]
+        }
+        Message::CodeNavigateInto => {
+            if let Some(ref mut code) = state.code {
+                if let Some(entry) = code.entries.get(code.selected).cloned() {
+                    if let Some(ref repo) = state.current_repo {
+                        match entry.entry_type {
+                            ghtui_core::types::code::FileEntryType::Dir => {
+                                code.path_stack.push(code.current_path.clone());
+                                code.current_path = entry.path.clone();
+                                code.file_content = None;
+                                code.file_name = None;
+                                code.selected = 0;
+                                state.loading.insert("code_contents".to_string());
+                                return vec![Command::FetchContents(
+                                    repo.clone(),
+                                    entry.path,
+                                    code.git_ref.clone(),
+                                )];
+                            }
+                            ghtui_core::types::code::FileEntryType::File => {
+                                state.loading.insert("code_file".to_string());
+                                return vec![Command::FetchFileContent(
+                                    repo.clone(),
+                                    entry.path,
+                                    code.git_ref.clone(),
+                                )];
+                            }
+                        }
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::CodeNavigateBack => {
+            if let Some(ref mut code) = state.code {
+                // If viewing a file, close file view first
+                if code.file_content.is_some() {
+                    code.file_content = None;
+                    code.file_name = None;
+                    code.scroll = 0;
+                    code.sidebar_focused = true;
+                    return vec![];
+                }
+                // Otherwise go up in directory
+                if let Some(parent_path) = code.path_stack.pop() {
+                    code.current_path = parent_path.clone();
+                    code.selected = 0;
+                    if let Some(ref repo) = state.current_repo {
+                        state.loading.insert("code_contents".to_string());
+                        return vec![Command::FetchContents(
+                            repo.clone(),
+                            parent_path,
+                            code.git_ref.clone(),
+                        )];
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::CodeSidebarFocus => {
+            if let Some(ref mut code) = state.code {
+                code.sidebar_focused = !code.sidebar_focused;
             }
             vec![]
         }

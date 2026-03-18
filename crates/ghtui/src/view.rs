@@ -37,9 +37,8 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
     // Main content
     let content_area = chunks[2];
     match &state.route {
-        Route::Dashboard | Route::Code { .. } => {
-            views::dashboard::render(frame, state, content_area)
-        }
+        Route::Dashboard => views::dashboard::render(frame, state, content_area),
+        Route::Code { .. } => views::code::render(frame, state, content_area),
         Route::PrList { .. } => views::pr_list::render(frame, state, content_area),
         Route::PrDetail { .. } => views::pr_detail::render(frame, state, content_area),
         Route::IssueList { .. } => views::issue_list::render(frame, state, content_area),
@@ -260,6 +259,9 @@ fn render_footer(frame: &mut Frame, state: &AppState, theme: &Theme, area: Rect)
         Route::Security { .. } => "Tab:Section j/k:Nav Enter:Detail o:Open Esc:Close",
         Route::Settings { .. } => "Tab:Section d:Desc b:Branch T:Topics I/P/W:Toggle",
         Route::Notifications => "Enter:Open m:Read M:ReadAll d:Done u:Unsub s/e:Filter g:Group",
+        Route::Dashboard | Route::Code { .. } => {
+            "j/k:Nav Enter:Open BS:Back Tab:Focus t:Theme ?:Help q:Quit"
+        }
         _ => "1-6:Tabs t:Theme ?:Help q:Quit",
     };
 

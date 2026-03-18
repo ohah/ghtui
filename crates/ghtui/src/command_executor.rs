@@ -493,6 +493,34 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             }
         }
 
+        // Code
+        Command::FetchContents(repo, path, git_ref) => {
+            match client.list_contents(&repo, &path, &git_ref).await {
+                Ok(entries) => Message::CodeContentsLoaded(entries),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::FetchFileContent(repo, path, git_ref) => {
+            match client.get_file_content(&repo, &path, &git_ref).await {
+                Ok(content) => {
+                    let filename = path.rsplit('/').next().unwrap_or(&path).to_string();
+                    Message::CodeFileLoaded(filename, content)
+                }
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::FetchReadme(repo, git_ref) => {
+            // Try README.md, then readme.md, then README
+            for name in &["README.md", "readme.md", "README"] {
+                match client.get_file_content(&repo, name, &git_ref).await {
+                    Ok(content) => return Message::CodeReadmeLoaded(content),
+                    Err(_) => continue,
+                }
+            }
+            // No README found — not an error, just no content
+            Message::Tick
+        }
+
         // Settings
         Command::FetchRepoSettings(repo) => match client.get_repo(&repo).await {
             Ok(repository) => Message::SettingsRepoLoaded(Box::new(repository)),

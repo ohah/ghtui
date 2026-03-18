@@ -1,6 +1,7 @@
 pub mod account_switcher;
 pub mod action_detail;
 pub mod actions_list;
+pub mod code;
 pub mod components;
 pub mod dashboard;
 pub mod help;

@@ -1,4 +1,5 @@
 pub mod actions;
+pub mod code;
 pub mod insights;
 pub mod issue;
 pub mod notification;
@@ -16,6 +17,7 @@ use crate::theme::Theme;
 use crate::types::common::RepoId;
 
 pub use actions::*;
+pub use code::*;
 pub use insights::*;
 pub use issue::*;
 pub use notification::*;
@@ -63,6 +65,7 @@ pub struct AppState {
     pub insights: Option<InsightsState>,
     pub security: Option<SecurityState>,
     pub settings: Option<SettingsState>,
+    pub code: Option<CodeViewState>,
 
     // Cross-cutting
     pub current_repo: Option<RepoId>,
@@ -104,6 +107,7 @@ impl AppState {
             insights: None,
             security: None,
             settings: None,
+            code: None,
             current_repo: repo,
             loading: HashSet::new(),
             toasts: VecDeque::new(),

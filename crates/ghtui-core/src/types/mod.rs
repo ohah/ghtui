@@ -1,4 +1,5 @@
 pub mod actions;
+pub mod code;
 pub mod common;
 pub mod insights;
 pub mod issue;
@@ -9,6 +10,7 @@ pub mod security;
 pub mod settings;
 
 pub use actions::*;
+pub use code::*;
 pub use common::*;
 pub use insights::*;
 pub use issue::*;

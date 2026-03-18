@@ -75,6 +75,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
             | Route::IssueDetail { .. }
             | Route::ActionDetail { .. }
             | Route::JobLog { .. }
+            | Route::Code { .. }
             | Route::Security { .. }
             | Route::Insights { .. }
             | Route::Settings { .. }
@@ -127,6 +128,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         Route::ActionDetail { .. } | Route::JobLog { .. } => handle_action_detail_keys(key, state),
         Route::Search { .. } => handle_search_keys(key, state),
         Route::Notifications => handle_notification_keys(key),
+        Route::Code { .. } => handle_code_keys(key, state),
         Route::Security { .. } => handle_security_keys(key, state),
         Route::Insights { .. } => handle_insights_keys(key, state),
         Route::Settings { .. } => handle_settings_keys(key, state),
@@ -264,6 +266,39 @@ fn handle_security_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         KeyCode::Char('o') => Some(Message::SecurityOpenInBrowser),
         KeyCode::Char('d') => Some(Message::SecurityDismissAlert),
         KeyCode::Char('r') => Some(Message::SecurityReopenAlert),
+        _ => None,
+    }
+}
+
+fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let sidebar_focused = state
+        .code
+        .as_ref()
+        .map(|c| c.sidebar_focused)
+        .unwrap_or(true);
+
+    if sidebar_focused {
+        // File tree focused
+        return match key.code {
+            KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+            KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+            KeyCode::Enter | KeyCode::Char('l') | KeyCode::Right => Some(Message::CodeNavigateInto),
+            KeyCode::Backspace | KeyCode::Char('h') | KeyCode::Left => {
+                Some(Message::CodeNavigateBack)
+            }
+            KeyCode::Tab => Some(Message::CodeSidebarFocus),
+            _ => None,
+        };
+    }
+
+    // Content focused: scroll
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::PageDown => Some(Message::ScrollDown),
+        KeyCode::PageUp => Some(Message::ScrollUp),
+        KeyCode::Tab | KeyCode::Esc => Some(Message::CodeSidebarFocus),
+        KeyCode::Backspace => Some(Message::CodeNavigateBack),
         _ => None,
     }
 }
