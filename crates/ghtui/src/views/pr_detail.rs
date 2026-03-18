@@ -808,6 +808,7 @@ fn render_diff_content(
         };
         let mut diff_view = ghtui_widgets::DiffView::new(files, theme)
             .review_comments(&detail.detail.review_comments)
+            .review_threads(&detail.detail.review_threads)
             .side_by_side(detail.diff_side_by_side);
         if let Some((ref path, line)) = detail.diff_comment_target {
             diff_view = diff_view.comment_editor(path, line, &detail.diff_comment_editor);
@@ -825,9 +826,12 @@ fn render_diff_content(
             "s:split"
         };
         let title = if detail.show_file_tree {
-            format!(" Files changed (f:tree  Tab:tree  {}) ", sbs_hint)
+            format!(" Files changed (f:tree  Tab:tree  {}  z:resolve) ", sbs_hint)
         } else {
-            format!(" Files changed (f:tree  j/k  J/K  Enter  {}) ", sbs_hint)
+            format!(
+                " Files changed (f:tree  j/k  J/K  Enter  {}  z:resolve) ",
+                sbs_hint
+            )
         };
 
         let diff_view = diff_view.block(

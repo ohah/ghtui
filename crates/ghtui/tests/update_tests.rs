@@ -186,6 +186,7 @@ fn test_pr_detail_tab_switching() {
         reviews: vec![],
         comments: vec![],
         review_comments: vec![],
+        review_threads: vec![],
         checks: vec![],
         commits: vec![],
         timeline: vec![],

@@ -126,6 +126,17 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 Err(e) => Message::Error(e.into()),
             }
         }
+        Command::ResolveReviewThread(_repo, number, thread_id, resolve) => {
+            let result = if resolve {
+                client.resolve_review_thread(&thread_id).await
+            } else {
+                client.unresolve_review_thread(&thread_id).await
+            };
+            match result {
+                Ok(()) => Message::PrUpdated(number),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
 
         // Issues
         Command::FetchIssueList(repo, filters, page) => {

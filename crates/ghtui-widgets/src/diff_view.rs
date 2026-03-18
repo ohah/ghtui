@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use ghtui_core::editor::TextEditor;
 use ghtui_core::theme::Theme;
-use ghtui_core::types::{DiffFile, DiffFileStatus, DiffLineKind, ReviewComment};
+use ghtui_core::types::{DiffFile, DiffFileStatus, DiffLineKind, ReviewComment, ReviewThread};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
@@ -127,6 +127,7 @@ impl DiffViewState {
 pub struct DiffView<'a> {
     files: &'a [DiffFile],
     review_comments: &'a [ReviewComment],
+    review_threads: &'a [ReviewThread],
     theme: &'a Theme,
     block: Option<Block<'a>>,
     comment_editor: Option<(&'a str, u32, &'a TextEditor)>,
@@ -138,6 +139,7 @@ impl<'a> DiffView<'a> {
         Self {
             files,
             review_comments: &[],
+            review_threads: &[],
             theme,
             block: None,
             comment_editor: None,
@@ -146,6 +148,10 @@ impl<'a> DiffView<'a> {
     }
     pub fn review_comments(mut self, comments: &'a [ReviewComment]) -> Self {
         self.review_comments = comments;
+        self
+    }
+    pub fn review_threads(mut self, threads: &'a [ReviewThread]) -> Self {
+        self.review_threads = threads;
         self
     }
     pub fn comment_editor(mut self, path: &'a str, line: u32, editor: &'a TextEditor) -> Self {
@@ -467,22 +473,31 @@ impl<'a> DiffView<'a> {
                         .collect();
 
                     for root in &roots {
-                        lines.push(box_top(
-                            vec![
-                                Span::styled(
-                                    format!(" @{}", root.user.login),
-                                    Style::default()
-                                        .fg(theme.accent)
-                                        .add_modifier(Modifier::BOLD),
-                                ),
-                                Span::styled(
-                                    format!("  {} ", root.created_at.format("%m/%d %H:%M")),
-                                    Style::default().fg(theme.fg_muted),
-                                ),
-                            ],
-                            border_style,
-                            width,
-                        ));
+                        // Check if this thread is resolved
+                        let thread_resolved = self
+                            .review_threads
+                            .iter()
+                            .find(|t| t.root_comment_id == root.id)
+                            .is_some_and(|t| t.is_resolved);
+                        let mut header_spans = vec![
+                            Span::styled(
+                                format!(" @{}", root.user.login),
+                                Style::default()
+                                    .fg(theme.accent)
+                                    .add_modifier(Modifier::BOLD),
+                            ),
+                            Span::styled(
+                                format!("  {} ", root.created_at.format("%m/%d %H:%M")),
+                                Style::default().fg(theme.fg_muted),
+                            ),
+                        ];
+                        if thread_resolved {
+                            header_spans.push(Span::styled(
+                                " Resolved",
+                                Style::default().fg(theme.success),
+                            ));
+                        }
+                        lines.push(box_top(header_spans, border_style, width));
                         line_ids.push(DiffLineId::Summary);
 
                         Self::render_comment_body(
