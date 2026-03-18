@@ -3397,6 +3397,17 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                             vec![]
                         }
                     }
+                    // Dashboard: info section (5) + repos list
+                    Route::Dashboard => {
+                        // info (5 rows) + border (1) = repos start at content_row 7
+                        if content_row >= 7 && !state.recent_repos.is_empty() {
+                            let idx = content_row.saturating_sub(7);
+                            if idx < state.recent_repos.len() {
+                                state.dashboard_selected = idx;
+                            }
+                        }
+                        vec![]
+                    }
                     // Default: just border offset
                     _ => {
                         if content_row > 0 {
@@ -3448,6 +3459,33 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                             }
                             // Select + open
                             return update(state, Message::ListSelect(0)); // 0 = Enter/open
+                        }
+                        vec![]
+                    }
+                    // Dashboard: double-click repo → open
+                    Route::Dashboard => {
+                        if content_row >= 7 && !state.recent_repos.is_empty() {
+                            let idx = content_row.saturating_sub(7);
+                            if idx < state.recent_repos.len() {
+                                state.dashboard_selected = idx;
+                                // Navigate to selected repo
+                                if let Some(repo) = state.recent_repos.get(idx) {
+                                    let parts: Vec<&str> = repo.full_name.splitn(2, '/').collect();
+                                    if parts.len() == 2 {
+                                        let repo_id = ghtui_core::types::common::RepoId::new(
+                                            parts[0], parts[1],
+                                        );
+                                        return update(
+                                            state,
+                                            Message::Navigate(Route::Code {
+                                                repo: repo_id,
+                                                path: String::new(),
+                                                git_ref: repo.default_branch.clone(),
+                                            }),
+                                        );
+                                    }
+                                }
+                            }
                         }
                         vec![]
                     }
