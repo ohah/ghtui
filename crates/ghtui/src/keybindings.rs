@@ -75,6 +75,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
             KeyCode::Char('5') => return Some(Message::GlobalTabSelect(4)),
             KeyCode::Char('6') => return Some(Message::GlobalTabSelect(5)),
             KeyCode::Char('7') => return Some(Message::GlobalTabSelect(6)),
+            KeyCode::Char('8') => return Some(Message::GlobalTabSelect(8)),
             _ => {}
         }
     }
@@ -113,9 +114,16 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
             .pr_detail
             .as_ref()
             .is_some_and(|d| d.diff_comment_target.is_some());
+        let code_editing = state.code.as_ref().is_some_and(|c| c.editing);
+        let code_active = matches!(state.route, Route::Code { .. })
+            && (code_editing
+                || state.code.as_ref().is_some_and(|c| {
+                    c.ref_picker_open || c.commit_detail.is_some() || c.show_commits
+                }));
         if (matches!(state.route, Route::IssueDetail { .. }) && issue_editing)
             || (matches!(state.route, Route::PrDetail { .. })
                 && (pr_editing || pr_picker || pr_diff_select || pr_diff_commenting))
+            || code_active
         {
             // Fall through to route-specific handler
         } else {
@@ -143,7 +151,10 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         Route::Security { .. } => handle_security_keys(key, state),
         Route::Insights { .. } => handle_insights_keys(key, state),
         Route::Settings { .. } => handle_settings_keys(key, state),
-        _ => handle_list_keys(key),
+        Route::Discussions { .. } => handle_discussions_keys(key, state),
+        Route::Gists => handle_gists_keys(key, state),
+        Route::Organizations => handle_org_keys(key, state),
+        Route::Dashboard => handle_dashboard_keys(key, state),
     }
 }
 
@@ -1007,6 +1018,61 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         KeyCode::Char('-') => Some(Message::IssueAddReaction("-1".to_string())),
         KeyCode::PageDown => Some(Message::ScrollDown),
         KeyCode::PageUp => Some(Message::ScrollUp),
+        _ => None,
+    }
+}
+
+fn handle_discussions_keys(key: KeyEvent, _state: &AppState) -> Option<Message> {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Char('o') | KeyCode::Enter => Some(Message::DiscussionsOpenInBrowser),
+        KeyCode::Esc => Some(Message::Back),
+        _ => None,
+    }
+}
+
+fn handle_gists_keys(key: KeyEvent, _state: &AppState) -> Option<Message> {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Char('o') | KeyCode::Enter => Some(Message::GistsOpenInBrowser),
+        KeyCode::Esc => Some(Message::Back),
+        _ => None,
+    }
+}
+
+fn handle_org_keys(key: KeyEvent, _state: &AppState) -> Option<Message> {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Esc => Some(Message::Back),
+        _ => None,
+    }
+}
+
+fn handle_dashboard_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    if state.recent_repos.is_empty() {
+        return handle_list_keys(key);
+    }
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::Enter => {
+            // Navigate to the selected repo's Code tab
+            if let Some(repo) = state.recent_repos.get(state.dashboard_selected) {
+                let parts: Vec<&str> = repo.full_name.splitn(2, '/').collect();
+                if parts.len() == 2 {
+                    let repo_id = ghtui_core::types::common::RepoId::new(parts[0], parts[1]);
+                    return Some(Message::Navigate(Route::Code {
+                        repo: repo_id,
+                        path: String::new(),
+                        git_ref: repo.default_branch.clone(),
+                    }));
+                }
+            }
+            None
+        }
         _ => None,
     }
 }

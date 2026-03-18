@@ -69,16 +69,16 @@ pub(crate) fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command
         }
         Route::Code {
             repo,
-            path,
+            path: _,
             git_ref,
         } => {
-            let clean_path = path.trim_matches('/').to_string();
             state.code = Some(ghtui_core::state::CodeViewState::new(git_ref.clone()));
+            state.loading.insert("code_tree".to_string());
             state.loading.insert("code_contents".to_string());
             state.loading.insert("code_branches".to_string());
             state.loading.insert("code_tags".to_string());
             vec![
-                Command::FetchContents(repo.clone(), clean_path, git_ref.clone()),
+                Command::FetchTree(repo.clone(), git_ref.clone()),
                 Command::FetchBranches(repo.clone()),
                 Command::FetchTags(repo.clone()),
             ]
@@ -126,7 +126,22 @@ pub(crate) fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command
                 Command::FetchDeployKeys(repo.clone()),
             ]
         }
-        Route::Dashboard => vec![],
+        Route::Discussions { repo } => {
+            state.loading.insert("discussions".to_string());
+            vec![Command::FetchDiscussions(repo.clone())]
+        }
+        Route::Gists => {
+            state.loading.insert("gists".to_string());
+            vec![Command::FetchGists]
+        }
+        Route::Organizations => {
+            state.loading.insert("orgs".to_string());
+            vec![Command::FetchOrgs]
+        }
+        Route::Dashboard => {
+            state.loading.insert("recent_repos".to_string());
+            vec![Command::FetchRecentRepos]
+        }
     };
 
     // Sync active_tab with route
@@ -447,6 +462,57 @@ pub(crate) fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Comm
                             settings.scroll += 1;
                         }
                     }
+                }
+            }
+        }
+        Route::Discussions { .. } => {
+            if let Some(ref mut disc) = state.discussions {
+                if !disc.items.is_empty() {
+                    if delta == usize::MAX {
+                        disc.selected = disc.selected.saturating_sub(1);
+                    } else if delta > 0 {
+                        disc.selected = (disc.selected + 1).min(disc.items.len().saturating_sub(1));
+                    }
+                }
+            }
+        }
+        Route::Gists => {
+            if let Some(ref mut g) = state.gists {
+                if !g.items.is_empty() {
+                    if delta == usize::MAX {
+                        g.selected = g.selected.saturating_sub(1);
+                    } else if delta > 0 {
+                        g.selected = (g.selected + 1).min(g.items.len().saturating_sub(1));
+                    }
+                }
+            }
+        }
+        Route::Organizations => {
+            if let Some(ref mut org_state) = state.org {
+                if !org_state.orgs.is_empty() {
+                    let old_selected = org_state.selected_org;
+                    if delta == usize::MAX {
+                        org_state.selected_org = org_state.selected_org.saturating_sub(1);
+                    } else if delta > 0 {
+                        org_state.selected_org = (org_state.selected_org + 1)
+                            .min(org_state.orgs.len().saturating_sub(1));
+                    }
+                    // If selection changed, fetch members for new org
+                    if old_selected != org_state.selected_org {
+                        let login = org_state.orgs[org_state.selected_org].login.clone();
+                        state.loading.insert("org_members".to_string());
+                        return vec![Command::FetchOrgMembers(login)];
+                    }
+                }
+            }
+        }
+        Route::Dashboard => {
+            if !state.recent_repos.is_empty() {
+                if delta == usize::MAX {
+                    state.dashboard_selected = state.dashboard_selected.saturating_sub(1);
+                } else if delta > 0 {
+                    state.dashboard_selected = (state.dashboard_selected + 1)
+                        .min(state.recent_repos.len().saturating_sub(1));
                 }
             }
         }

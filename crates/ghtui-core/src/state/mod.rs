@@ -1,8 +1,11 @@
 pub mod actions;
 pub mod code;
+pub mod discussions;
+pub mod gists;
 pub mod insights;
 pub mod issue;
 pub mod notification;
+pub mod org;
 pub mod pr;
 pub mod search;
 pub mod security;
@@ -18,9 +21,12 @@ use crate::types::common::RepoId;
 
 pub use actions::*;
 pub use code::*;
+pub use discussions::*;
+pub use gists::*;
 pub use insights::*;
 pub use issue::*;
 pub use notification::*;
+pub use org::*;
 pub use pr::*;
 pub use search::*;
 pub use security::*;
@@ -95,6 +101,21 @@ impl CommandPaletteState {
                 label: "Search".into(),
                 category: "Navigate".into(),
                 message: Message::SearchOpen,
+            },
+            PaletteItem {
+                label: "Discussions".into(),
+                category: "Navigate".into(),
+                message: Message::GlobalTabSelect(8),
+            },
+            PaletteItem {
+                label: "Gists".into(),
+                category: "Navigate".into(),
+                message: Message::Navigate(Route::Gists),
+            },
+            PaletteItem {
+                label: "Organizations".into(),
+                category: "Navigate".into(),
+                message: Message::Navigate(Route::Organizations),
             },
             PaletteItem {
                 label: "Toggle theme".into(),
@@ -181,6 +202,13 @@ pub struct AppState {
     pub security: Option<SecurityState>,
     pub settings: Option<SettingsState>,
     pub code: Option<CodeViewState>,
+    pub discussions: Option<DiscussionsState>,
+    pub gists: Option<GistsState>,
+    pub org: Option<OrgState>,
+
+    // Multi-repo dashboard
+    pub recent_repos: Vec<crate::types::settings::Repository>,
+    pub dashboard_selected: usize,
 
     // Cross-cutting
     pub current_repo: Option<RepoId>,
@@ -226,6 +254,11 @@ impl AppState {
             security: None,
             settings: None,
             code: None,
+            discussions: None,
+            gists: None,
+            org: None,
+            recent_repos: Vec::new(),
+            dashboard_selected: 0,
             current_repo: repo,
             loading: HashSet::new(),
             toasts: VecDeque::new(),

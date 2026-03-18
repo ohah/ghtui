@@ -63,8 +63,12 @@ async fn main() -> Result<()> {
             .init();
     }
 
-    // Create API client
-    let client = GithubClient::new(token)?;
+    // Create API client (use enterprise URL if configured)
+    let client = if let Some(ref enterprise_url) = config.enterprise_url {
+        GithubClient::with_base_url(token, enterprise_url.clone())?
+    } else {
+        GithubClient::new(token)?
+    };
 
     // Run app
     let mut app = App::new(config, client, repo, current_account, accounts);

@@ -44,6 +44,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.security = None;
             state.settings = None;
             state.code = None;
+            state.discussions = None;
+            state.gists = None;
+            state.org = None;
+            state.recent_repos.clear();
             // Refresh current view
             refresh_current_view(state)
         }
@@ -3447,7 +3451,14 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             navigate_to_tab(state)
         }
         Message::GlobalTabSelect(idx) => {
-            if idx < ghtui_core::router::TAB_LABELS.len() {
+            if idx == 8 {
+                // Discussions tab (accessible via key 8 or command palette)
+                if let Some(ref repo) = state.current_repo {
+                    let route = Route::Discussions { repo: repo.clone() };
+                    return handle_navigate(state, route);
+                }
+                vec![]
+            } else if idx < ghtui_core::router::TAB_LABELS.len() {
                 state.active_tab = idx;
                 navigate_to_tab(state)
             } else {
@@ -3885,6 +3896,47 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
 
         // Code tab
+        Message::CodeTreeLoaded(nodes) => {
+            state.loading.remove("code_tree");
+            state.loading.remove("code_contents");
+            let mut cmds = vec![];
+            if let (Some(code), Some(repo)) = (&mut state.code, &state.current_repo) {
+                // Detect README in root
+                if code.readme_content.is_none() {
+                    if let Some(readme_node) = nodes.iter().find(|n| {
+                        n.depth == 0 && !n.is_dir && {
+                            let lower = n.name.to_lowercase();
+                            lower == "readme.md" || lower == "readme" || lower == "readme.txt"
+                        }
+                    }) {
+                        state.loading.insert("code_readme".to_string());
+                        cmds.push(Command::FetchFileContent(
+                            repo.clone(),
+                            readme_node.path.clone(),
+                            code.git_ref.clone(),
+                        ));
+                    }
+                }
+                code.tree = nodes;
+                code.tree_loaded = true;
+                // Expand root-level directories by default
+                code.expanded_dirs.clear();
+                for node in &code.tree {
+                    if node.depth == 0 && node.is_dir {
+                        code.expanded_dirs.insert(node.path.clone());
+                    }
+                }
+                code.rebuild_visible_tree();
+                code.selected = 0;
+            }
+            cmds
+        }
+        Message::CodeToggleExpand => {
+            if let Some(ref mut code) = state.code {
+                code.toggle_expand();
+            }
+            vec![]
+        }
         Message::CodeContentsLoaded(entries) => {
             state.loading.remove("code_contents");
             let mut cmds = vec![];
@@ -3937,6 +3989,24 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::CodeNavigateInto => {
             if let Some(ref mut code) = state.code {
+                // Tree mode
+                if code.tree_loaded {
+                    if let Some(node) = code.tree_selected_node().cloned() {
+                        if node.is_dir {
+                            code.toggle_expand();
+                        } else if let Some(ref repo) = state.current_repo {
+                            code.file_path = Some(node.path.clone());
+                            state.loading.insert("code_file".to_string());
+                            return vec![Command::FetchFileContent(
+                                repo.clone(),
+                                node.path,
+                                code.git_ref.clone(),
+                            )];
+                        }
+                    }
+                    return vec![];
+                }
+                // Flat mode fallback
                 if let Some(entry) = code.entries.get(code.selected).cloned() {
                     if let Some(ref repo) = state.current_repo {
                         match entry.entry_type {
@@ -3979,7 +4049,35 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     code.sidebar_focused = true;
                     return vec![];
                 }
-                // Otherwise go up in directory
+                // Tree mode: collapse parent directory of selected node
+                if code.tree_loaded {
+                    if let Some(node) = code.tree_selected_node().cloned() {
+                        if node.is_dir && code.expanded_dirs.contains(&node.path) {
+                            // Collapse this dir
+                            code.expanded_dirs.remove(&node.path);
+                            code.rebuild_visible_tree();
+                        } else {
+                            // Find parent dir and collapse it
+                            let parts: Vec<&str> = node.path.split('/').collect();
+                            if parts.len() > 1 {
+                                let parent = parts[..parts.len() - 1].join("/");
+                                code.expanded_dirs.remove(&parent);
+                                code.rebuild_visible_tree();
+                                // Move selection to the parent dir
+                                for (vi, &ti) in code.tree_visible.iter().enumerate() {
+                                    if let Some(n) = code.tree.get(ti) {
+                                        if n.path == parent {
+                                            code.selected = vi;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    return vec![];
+                }
+                // Flat mode fallback: go up in directory
                 if let Some(parent_path) = code.path_stack.pop() {
                     code.current_path = parent_path.clone();
                     code.selected = 0;
@@ -4048,13 +4146,15 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     code.commit_detail = None;
                     code.show_commits = false;
                     code.commit_selected = 0;
+                    // Clear tree state
+                    code.tree.clear();
+                    code.expanded_dirs.clear();
+                    code.tree_visible.clear();
+                    code.tree_loaded = false;
                     if let Some(ref repo) = state.current_repo {
+                        state.loading.insert("code_tree".to_string());
                         state.loading.insert("code_contents".to_string());
-                        return vec![Command::FetchContents(
-                            repo.clone(),
-                            String::new(),
-                            code.git_ref.clone(),
-                        )];
+                        return vec![Command::FetchTree(repo.clone(), code.git_ref.clone())];
                     }
                 }
             }
@@ -4267,6 +4367,65 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+
+        // Discussions
+        Message::DiscussionsLoaded(discussions) => {
+            state.loading.remove("discussions");
+            state.discussions = Some(ghtui_core::state::DiscussionsState::new(discussions));
+            vec![]
+        }
+        Message::DiscussionsOpenInBrowser => {
+            if let Some(ref disc) = state.discussions {
+                if let Some(item) = disc.items.get(disc.selected) {
+                    return vec![Command::OpenInBrowser(item.url.clone())];
+                }
+            }
+            vec![]
+        }
+
+        // Gists
+        Message::GistsLoaded(gists) => {
+            state.loading.remove("gists");
+            state.gists = Some(ghtui_core::state::GistsState::new(gists));
+            vec![]
+        }
+        Message::GistsOpenInBrowser => {
+            if let Some(ref g) = state.gists {
+                if let Some(item) = g.items.get(g.selected) {
+                    return vec![Command::OpenInBrowser(item.html_url.clone())];
+                }
+            }
+            vec![]
+        }
+
+        // Organizations
+        Message::OrgsLoaded(orgs) => {
+            state.loading.remove("orgs");
+            state.org = Some(ghtui_core::state::OrgState::new(orgs));
+            // Fetch members of first org
+            if let Some(ref org_state) = state.org {
+                if let Some(first_org) = org_state.orgs.first() {
+                    state.loading.insert("org_members".to_string());
+                    return vec![Command::FetchOrgMembers(first_org.login.clone())];
+                }
+            }
+            vec![]
+        }
+        Message::OrgMembersLoaded(members) => {
+            state.loading.remove("org_members");
+            if let Some(ref mut org_state) = state.org {
+                org_state.members = members;
+            }
+            vec![]
+        }
+
+        // Multi-repo dashboard
+        Message::RecentReposLoaded(repos) => {
+            state.loading.remove("recent_repos");
+            state.recent_repos = repos;
+            vec![]
+        }
+
         Message::CodeFileUpdated => {
             state.loading.remove("code_file_update");
             let mut cmds = vec![];

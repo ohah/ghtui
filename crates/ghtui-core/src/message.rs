@@ -310,6 +310,8 @@ pub enum Message {
     SettingsItemUpdated(usize), // tab index: 1=branch, 2=collaborators, 3=webhooks, 4=deploy_keys
 
     // Code tab
+    CodeTreeLoaded(Vec<crate::types::code::TreeNode>),
+    CodeToggleExpand,
     CodeContentsLoaded(Vec<crate::types::code::FileEntry>),
     CodeFileLoaded(String, String), // filename, content
     CodeReadmeLoaded(String),       // readme content
@@ -375,6 +377,21 @@ pub enum Message {
     PaletteSelect,
     PaletteUp,
     PaletteDown,
+
+    // Discussions
+    DiscussionsLoaded(Vec<crate::types::Discussion>),
+    DiscussionsOpenInBrowser,
+
+    // Gists
+    GistsLoaded(Vec<crate::types::GistEntry>),
+    GistsOpenInBrowser,
+
+    // Organizations
+    OrgsLoaded(Vec<crate::types::OrgInfo>),
+    OrgMembersLoaded(Vec<crate::types::OrgMember>),
+
+    // Multi-repo dashboard
+    RecentReposLoaded(Vec<crate::types::settings::Repository>),
 
     // System
     Error(GhtuiError),

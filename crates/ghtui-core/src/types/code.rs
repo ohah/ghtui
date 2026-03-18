@@ -14,6 +14,16 @@ pub enum FileEntryType {
 }
 
 #[derive(Debug, Clone)]
+pub struct TreeNode {
+    pub name: String,
+    pub path: String,
+    pub is_dir: bool,
+    pub depth: usize,
+    pub expanded: bool,
+    pub size: Option<u64>,
+}
+
+#[derive(Debug, Clone)]
 pub struct CommitEntry {
     pub sha: String,
     pub message: String, // first line only

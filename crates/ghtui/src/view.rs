@@ -52,6 +52,9 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
         Route::Insights { .. } => views::insights::render(frame, state, content_area),
         Route::Settings { .. } => views::settings::render(frame, state, content_area),
         Route::Search { .. } => views::search::render(frame, state, content_area),
+        Route::Discussions { .. } => views::discussions::render(frame, state, content_area),
+        Route::Gists => views::gists::render(frame, state, content_area),
+        Route::Organizations => views::organizations::render(frame, state, content_area),
     }
 
     // Footer

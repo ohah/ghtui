@@ -1,9 +1,13 @@
 pub mod actions;
 pub mod code;
+pub mod discussions;
+pub mod gists;
 pub mod insights;
 pub mod issues;
 pub mod notifications;
+pub mod orgs;
 pub mod pulls;
+pub mod repos;
 pub mod search;
 pub mod security;
 pub mod settings;
