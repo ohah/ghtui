@@ -550,11 +550,13 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 Err(e) => Message::Error(e.into()),
             }
         }
-        Command::UpdateBranchProtection(repo, branch, settings) => {
-            match client
-                .update_branch_protection(&repo, &branch, &settings)
-                .await
-            {
+        Command::ToggleBranchEnforceAdmins(repo, branch, enable) => {
+            let result = if enable {
+                client.enable_enforce_admins(&repo, &branch).await
+            } else {
+                client.disable_enforce_admins(&repo, &branch).await
+            };
+            match result {
                 Ok(()) => Message::SettingsItemUpdated(1),
                 Err(e) => Message::Error(e.into()),
             }

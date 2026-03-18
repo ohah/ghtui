@@ -3167,21 +3167,16 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         .map(|e| e.enabled)
                         .unwrap_or(false);
                     let pattern = bp.pattern.clone();
-                    let new_settings = serde_json::json!({
-                        "enforce_admins": !current,
-                        "required_status_checks": null,
-                        "restrictions": null,
-                        "required_pull_request_reviews": null,
-                    });
+                    let label = if current { "Disabling" } else { "Enabling" };
                     state.push_toast(
-                        format!("Updating protection for '{}'...", pattern),
+                        format!("{} enforce admins for '{}'...", label, pattern),
                         ToastLevel::Info,
                     );
                     if let Some(ref repo) = state.current_repo {
-                        return vec![Command::UpdateBranchProtection(
+                        return vec![Command::ToggleBranchEnforceAdmins(
                             repo.clone(),
                             pattern,
-                            new_settings,
+                            !current,
                         )];
                     }
                 }
