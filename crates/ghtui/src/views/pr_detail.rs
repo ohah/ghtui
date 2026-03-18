@@ -860,9 +860,25 @@ fn render_diff_content(
                 .title(title),
         );
         frame.render_stateful_widget(diff_view, area, &mut diff_state);
-    } else {
-        let spinner = ghtui_widgets::Spinner::new(0);
+    } else if state.is_loading("pr_diff") {
+        let spinner = ghtui_widgets::Spinner::new(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as usize
+                / 100,
+        );
         let paragraph = Paragraph::new(Line::from(spinner.span_with_message("Loading diff...")))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(theme.border_style())
+                    .title(" Files changed "),
+            );
+        frame.render_widget(paragraph, area);
+    } else {
+        let paragraph = Paragraph::new("  No file changes")
+            .style(theme.text_dim())
             .block(
                 Block::default()
                     .borders(Borders::ALL)
