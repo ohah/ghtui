@@ -265,6 +265,7 @@ pub struct AppState {
     pub active_tab: usize,
     pub input_mode: InputMode,
     pub input_buffer: String,
+    pub modal_editor: crate::editor::TextEditor,
     pub terminal_size: (u16, u16),
 
     // Account
@@ -318,6 +319,7 @@ impl AppState {
             active_tab: 0,
             input_mode: InputMode::Normal,
             input_buffer: String::new(),
+            modal_editor: crate::editor::TextEditor::new(),
             terminal_size: (80, 24),
             current_account,
             accounts,
