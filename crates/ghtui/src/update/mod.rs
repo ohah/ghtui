@@ -3271,14 +3271,110 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 }
                 vec![]
             } else if row >= 2 {
-                // Content area click — select list item by row offset
+                // Content area click — route-specific handling
                 let content_row = (row - 2) as usize;
-                // Find which item is at this row (accounting for border)
-                if content_row > 0 {
-                    let item_index = content_row - 1; // -1 for top border
-                    handle_mouse_list_select(state, item_index)
-                } else {
-                    vec![]
+
+                // PR/Issue detail: row 2-6 = header, row 7 area = sub-tab bar
+                // Approximate sub-tab row for detail views
+                match &state.route {
+                    Route::PrDetail { .. } => {
+                        // PR header is ~5 rows, sub-tab bar at row ~7 (row-2 = 5)
+                        if content_row <= 5 {
+                            // Header area — check sub-tab click
+                            // Sub-tab bar is at the boundary between header and content
+                            if let Some(ref mut detail) = state.pr_detail {
+                                let tab_names =
+                                    ["Conversation", "Commits", "Checks", "Files changed"];
+                                let mut x: u16 = 0;
+                                for (i, name) in tab_names.iter().enumerate() {
+                                    let w = name.len() as u16 + 2; // padding
+                                    if _col >= x && _col < x + w {
+                                        detail.tab = i;
+                                        return vec![];
+                                    }
+                                    x += w + 1; // separator
+                                }
+                            }
+                            vec![]
+                        } else if content_row > 0 {
+                            let item_index = content_row.saturating_sub(6); // after header+tabs
+                            handle_mouse_list_select(state, item_index)
+                        } else {
+                            vec![]
+                        }
+                    }
+                    // Sidebar views: left 30 cols = sidebar click, rest = content
+                    Route::Security { .. } | Route::Insights { .. } | Route::Settings { .. } => {
+                        if _col < 30 {
+                            // Sidebar item click — set tab directly
+                            if content_row > 0 {
+                                let idx = content_row.saturating_sub(1);
+                                match &state.route {
+                                    Route::Security { .. } => {
+                                        if let Some(ref mut sec) = state.security {
+                                            if idx < sec.tab_count() {
+                                                sec.tab = idx;
+                                                sec.selected = 0;
+                                            }
+                                        }
+                                    }
+                                    Route::Insights { .. } => {
+                                        if let Some(ref mut ins) = state.insights {
+                                            if idx < ins.tab_count() {
+                                                ins.tab = idx;
+                                            }
+                                        }
+                                    }
+                                    Route::Settings { .. } => {
+                                        if let Some(ref mut settings) = state.settings {
+                                            if idx < settings.tab_count() {
+                                                settings.tab = idx;
+                                                settings.selected = 0;
+                                            }
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            vec![]
+                        } else if content_row > 0 {
+                            let item_index = content_row.saturating_sub(1);
+                            handle_mouse_list_select(state, item_index)
+                        } else {
+                            vec![]
+                        }
+                    }
+                    // Code view: left 35 cols = file tree click
+                    Route::Code { .. } => {
+                        if _col < 35 {
+                            // File tree click
+                            if content_row > 0 {
+                                let idx = content_row.saturating_sub(1);
+                                if let Some(ref mut code) = state.code {
+                                    code.selected = idx.min(if code.tree_loaded {
+                                        code.tree_visible.len().saturating_sub(1)
+                                    } else {
+                                        code.entries.len().saturating_sub(1)
+                                    });
+                                }
+                            }
+                            vec![]
+                        } else if content_row > 0 {
+                            let item_index = content_row.saturating_sub(1);
+                            handle_mouse_list_select(state, item_index)
+                        } else {
+                            vec![]
+                        }
+                    }
+                    // Default: list item select
+                    _ => {
+                        if content_row > 0 {
+                            let item_index = content_row.saturating_sub(1);
+                            handle_mouse_list_select(state, item_index)
+                        } else {
+                            vec![]
+                        }
+                    }
                 }
             } else {
                 vec![]
