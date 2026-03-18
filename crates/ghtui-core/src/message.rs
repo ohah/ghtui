@@ -374,7 +374,8 @@ pub enum Message {
     // Mouse
     ScrollUp,
     ScrollDown,
-    MouseClick(u16, u16), // (column, row)
+    MouseClick(u16, u16),       // single click (column, row)
+    MouseDoubleClick(u16, u16), // double click (column, row)
 
     // UI
     InputChanged(String),

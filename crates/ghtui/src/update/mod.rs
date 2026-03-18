@@ -3390,7 +3390,17 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                             vec![]
                         }
                     }
-                    // Default: list item select
+                    // List views with filter bar: extra row offset
+                    Route::IssueList { .. } | Route::PrList { .. } | Route::ActionsList { .. } => {
+                        // filter bar (1) + border (1) + header (1) = 3 rows before items
+                        if content_row > 2 {
+                            let item_index = content_row.saturating_sub(3);
+                            handle_mouse_list_select(state, item_index)
+                        } else {
+                            vec![]
+                        }
+                    }
+                    // Default: just border offset
                     _ => {
                         if content_row > 0 {
                             let item_index = content_row.saturating_sub(1);
@@ -3399,6 +3409,51 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                             vec![]
                         }
                     }
+                }
+            } else {
+                vec![]
+            }
+        }
+
+        // Mouse double-click — open/toggle the clicked item
+        Message::MouseDoubleClick(_col, row) => {
+            let term_width = state.terminal_size.0;
+            let sidebar_visible = term_width >= 80;
+
+            if row >= 2 {
+                let content_row = (row - 2) as usize;
+
+                match &state.route {
+                    // Code tab: double-click file tree → open/toggle
+                    Route::Code { .. } => {
+                        if sidebar_visible && _col < 35 && content_row > 0 {
+                            let idx = content_row.saturating_sub(1);
+                            if let Some(ref mut code) = state.code {
+                                code.selected = idx.min(if code.tree_loaded {
+                                    code.tree_visible.len().saturating_sub(1)
+                                } else {
+                                    code.entries.len().saturating_sub(1)
+                                });
+                            }
+                            // Navigate into (open file or toggle dir)
+                            return update(state, Message::CodeNavigateInto);
+                        }
+                        vec![]
+                    }
+                    // List views: double-click → open detail
+                    Route::IssueList { .. } | Route::PrList { .. } | Route::ActionsList { .. } => {
+                        if content_row > 0 {
+                            let item_index = content_row.saturating_sub(1);
+                            let cmds = handle_mouse_list_select(state, item_index);
+                            if !cmds.is_empty() {
+                                return cmds;
+                            }
+                            // Select + open
+                            return update(state, Message::ListSelect(0)); // 0 = Enter/open
+                        }
+                        vec![]
+                    }
+                    _ => vec![],
                 }
             } else {
                 vec![]
