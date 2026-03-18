@@ -187,18 +187,26 @@ impl GithubClient {
         Ok(())
     }
 
-    /// Update branch protection settings
-    pub async fn update_branch_protection(
+    /// Enable enforce_admins on a protected branch.
+    pub async fn enable_enforce_admins(&self, repo: &RepoId, branch: &str) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/branches/{}/protection/enforce_admins",
+            repo.owner, repo.name, branch
+        );
+        self.post(&path, &serde_json::json!({})).await?;
+        Ok(())
+    }
+
+    /// Disable enforce_admins on a protected branch.
+    pub async fn disable_enforce_admins(
         &self,
         repo: &RepoId,
         branch: &str,
-        settings: &serde_json::Value,
     ) -> Result<(), ApiError> {
         let path = format!(
-            "/repos/{}/{}/branches/{}/protection",
+            "/repos/{}/{}/branches/{}/protection/enforce_admins",
             repo.owner, repo.name, branch
         );
-        self.put(&path, settings).await?;
-        Ok(())
+        self.delete(&path).await
     }
 }

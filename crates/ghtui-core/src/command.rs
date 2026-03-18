@@ -117,7 +117,7 @@ pub enum Command {
     ToggleWebhook(RepoId, u64, bool),       // repo, hook_id, active
     DeleteDeployKey(RepoId, u64),           // repo, key_id
     DeleteBranchProtection(RepoId, String), // repo, branch_name
-    UpdateBranchProtection(RepoId, String, serde_json::Value), // repo, branch, settings
+    ToggleBranchEnforceAdmins(RepoId, String, bool), // repo, branch, enable
 
     // Utility
     OpenInBrowser(String),
