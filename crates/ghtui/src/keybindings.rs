@@ -249,29 +249,80 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
 }
 
 fn handle_modal_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
-    match key.code {
-        KeyCode::Esc | KeyCode::Char('q') => Some(Message::ModalClose),
-        _ => {
-            // Account switcher modal: j/k to navigate, Enter to select
-            if matches!(state.modal, Some(ModalKind::AccountSwitcher)) {
-                let ks = key_event_to_string(&key);
-                let kb = &state.config.keybindings;
-                if nav_down(&key, &ks, kb) {
-                    Some(Message::ListSelect(1))
-                } else if nav_up(&key, &ks, kb) {
-                    Some(Message::ListSelect(usize::MAX))
-                } else if key.code == KeyCode::Enter {
-                    state
-                        .accounts
-                        .get(state.account_selected)
-                        .map(|account| Message::AccountSwitch(account.clone()))
-                } else {
-                    None
-                }
+    // Non-editor modals (Help, AccountSwitcher, etc.)
+    match &state.modal {
+        Some(ModalKind::Help) => {
+            return Some(Message::ModalClose);
+        }
+        Some(ModalKind::AccountSwitcher) => {
+            let ks = key_event_to_string(&key);
+            let kb = &state.config.keybindings;
+            return if key.code == KeyCode::Esc {
+                Some(Message::ModalClose)
+            } else if nav_down(&key, &ks, kb) {
+                Some(Message::ListSelect(1))
+            } else if nav_up(&key, &ks, kb) {
+                Some(Message::ListSelect(usize::MAX))
+            } else if key.code == KeyCode::Enter {
+                state
+                    .accounts
+                    .get(state.account_selected)
+                    .map(|account| Message::AccountSwitch(account.clone()))
             } else {
                 None
+            };
+        }
+        _ => {}
+    }
+
+    // Text-editing modals — full editor keybindings
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
+
+    if ks == kb.edit_submit {
+        return Some(Message::ModalSubmit);
+    }
+    if key.code == KeyCode::Esc {
+        return Some(Message::ModalClose);
+    }
+    if ks == kb.edit_undo {
+        return Some(Message::ModalEditorUndo);
+    }
+    if ks == kb.edit_redo {
+        return Some(Message::ModalEditorRedo);
+    }
+
+    match key.code {
+        KeyCode::Enter => Some(Message::ModalEditorNewline),
+        KeyCode::Char(c) => Some(Message::ModalEditorChar(c)),
+        KeyCode::Backspace => Some(Message::ModalEditorBackspace),
+        KeyCode::Delete => Some(Message::ModalEditorDelete),
+        KeyCode::Tab => Some(Message::ModalEditorTab),
+        KeyCode::Left => {
+            if key.modifiers.contains(KeyModifiers::CONTROL)
+                || key.modifiers.contains(KeyModifiers::ALT)
+            {
+                Some(Message::ModalEditorWordLeft)
+            } else {
+                Some(Message::ModalEditorLeft)
             }
         }
+        KeyCode::Right => {
+            if key.modifiers.contains(KeyModifiers::CONTROL)
+                || key.modifiers.contains(KeyModifiers::ALT)
+            {
+                Some(Message::ModalEditorWordRight)
+            } else {
+                Some(Message::ModalEditorRight)
+            }
+        }
+        KeyCode::Up => Some(Message::ModalEditorUp),
+        KeyCode::Down => Some(Message::ModalEditorDown),
+        KeyCode::Home => Some(Message::ModalEditorHome),
+        KeyCode::End => Some(Message::ModalEditorEnd),
+        KeyCode::PageUp => Some(Message::ModalEditorPageUp),
+        KeyCode::PageDown => Some(Message::ModalEditorPageDown),
+        _ => None,
     }
 }
 

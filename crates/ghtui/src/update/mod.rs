@@ -1247,6 +1247,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::CommentAdded => {
             state.push_toast("Comment added".to_string(), ToastLevel::Success);
             state.input_buffer.clear();
+            state.modal_editor = ghtui_core::editor::TextEditor::new();
             state.input_mode = InputMode::Normal;
             state.modal = None;
             refresh_current_view(state)
@@ -1254,6 +1255,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::CommentUpdated => {
             state.push_toast("Comment updated".to_string(), ToastLevel::Success);
             state.input_buffer.clear();
+            state.modal_editor = ghtui_core::editor::TextEditor::new();
             state.input_mode = InputMode::Normal;
             state.modal = None;
             refresh_current_view(state)
@@ -4030,31 +4032,29 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::ModalOpen(kind) => {
             state.input_buffer.clear();
+            let mut prefill = String::new();
             // Pre-fill input for edit/reply modals
             match &kind {
                 ghtui_core::ModalKind::EditIssue => {
                     if let Some(ref detail) = state.issue_detail {
                         match detail.selected_comment() {
                             None => {
-                                // Editing the issue itself: title\nbody
                                 let issue = &detail.detail.issue;
-                                state.input_buffer = format!(
+                                prefill = format!(
                                     "{}\n{}",
                                     issue.title,
                                     issue.body.as_deref().unwrap_or("")
                                 );
                             }
                             Some(idx) => {
-                                // Editing a comment
                                 if let Some(comment) = detail.detail.comments.get(idx) {
-                                    state.input_buffer = comment.body.clone();
+                                    prefill = comment.body.clone();
                                 }
                             }
                         }
                     }
                 }
                 ghtui_core::ModalKind::AddComment => {
-                    // If a comment is selected, quote it for reply
                     if let Some(ref detail) = state.issue_detail {
                         if let Some(idx) = detail.selected_comment() {
                             if let Some(comment) = detail.detail.comments.get(idx) {
@@ -4064,7 +4064,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                                     .map(|l| format!("> {}", l))
                                     .collect::<Vec<_>>()
                                     .join("\n");
-                                state.input_buffer =
+                                prefill =
                                     format!("> @{}\n{}\n\n", comment.user.login, quoted);
                             }
                         }
@@ -4072,11 +4072,19 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 }
                 _ => {}
             }
+            state.modal_editor = if prefill.is_empty() {
+                ghtui_core::editor::TextEditor::new()
+            } else {
+                state.input_buffer = prefill.clone();
+                ghtui_core::editor::TextEditor::from_string(&prefill)
+            };
             state.modal = Some(kind);
             state.input_mode = InputMode::Insert;
             vec![]
         }
         Message::ModalSubmit => {
+            // Sync input_buffer from modal editor content
+            state.input_buffer = state.modal_editor.content();
             let cmds = match state.modal {
                 Some(ghtui_core::ModalKind::AddComment) => {
                     let body = state.input_buffer.clone();
@@ -4317,14 +4325,34 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.modal = None;
             state.input_mode = InputMode::Normal;
             state.input_buffer.clear();
+            state.modal_editor = ghtui_core::editor::TextEditor::new();
             cmds
         }
         Message::ModalClose => {
             state.modal = None;
             state.input_mode = InputMode::Normal;
             state.input_buffer.clear();
+            state.modal_editor = ghtui_core::editor::TextEditor::new();
             vec![]
         }
+        // Modal editor operations
+        Message::ModalEditorChar(c) => { state.modal_editor.insert_char(c); vec![] }
+        Message::ModalEditorNewline => { state.modal_editor.insert_char('\n'); vec![] }
+        Message::ModalEditorBackspace => { state.modal_editor.backspace(); vec![] }
+        Message::ModalEditorDelete => { state.modal_editor.delete(); vec![] }
+        Message::ModalEditorTab => { state.modal_editor.insert_tab(); vec![] }
+        Message::ModalEditorLeft => { state.modal_editor.move_left(); vec![] }
+        Message::ModalEditorRight => { state.modal_editor.move_right(); vec![] }
+        Message::ModalEditorUp => { state.modal_editor.move_up(); vec![] }
+        Message::ModalEditorDown => { state.modal_editor.move_down(); vec![] }
+        Message::ModalEditorWordLeft => { state.modal_editor.move_word_left(); vec![] }
+        Message::ModalEditorWordRight => { state.modal_editor.move_word_right(); vec![] }
+        Message::ModalEditorHome => { state.modal_editor.move_home(); vec![] }
+        Message::ModalEditorEnd => { state.modal_editor.move_end(); vec![] }
+        Message::ModalEditorPageUp => { state.modal_editor.page_up(); vec![] }
+        Message::ModalEditorPageDown => { state.modal_editor.page_down(); vec![] }
+        Message::ModalEditorUndo => { state.modal_editor.undo(); vec![] }
+        Message::ModalEditorRedo => { state.modal_editor.redo(); vec![] }
         Message::Tick => {
             state.tick_toasts();
             // Log streaming: re-fetch log every 5 ticks (~5 seconds) for in-progress jobs
