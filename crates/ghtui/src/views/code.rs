@@ -604,15 +604,26 @@ fn render_file_content(
     let total_lines = content.lines().count();
     let gutter_width = format!("{}", total_lines).len();
 
+    // Syntax highlighting
+    let highlighted = highlight_content(content, filename, theme);
+
     let lines: Vec<Line> = content
         .lines()
         .enumerate()
         .map(|(i, line)| {
             let line_num = format!("{:>width$} ", i + 1, width = gutter_width);
-            Line::from(vec![
-                Span::styled(line_num, Style::default().fg(theme.fg_muted)),
-                Span::styled(line.to_string(), Style::default().fg(theme.fg)),
-            ])
+            let mut spans = vec![Span::styled(line_num, Style::default().fg(theme.fg_muted))];
+
+            if let Some(hl_spans) = highlighted.get(i) {
+                spans.extend(hl_spans.iter().cloned());
+            } else {
+                spans.push(Span::styled(
+                    line.to_string(),
+                    Style::default().fg(theme.fg),
+                ));
+            }
+
+            Line::from(spans)
         })
         .collect();
 
@@ -629,6 +640,131 @@ fn render_file_content(
         );
 
     frame.render_widget(paragraph, area);
+}
+
+/// Syntax-highlight file content using syntect.
+/// Uses a static cache: only re-highlights when filename changes.
+/// Returns a Vec of Span lists, one per line.
+fn highlight_content<'a>(
+    content: &str,
+    filename: &str,
+    theme: &ghtui_core::theme::Theme,
+) -> Vec<Vec<Span<'a>>> {
+    use std::cell::RefCell;
+    use std::sync::LazyLock;
+    use syntect::easy::HighlightLines;
+    use syntect::highlighting::ThemeSet;
+    use syntect::parsing::SyntaxSet;
+
+    static SYNTAX_SET: LazyLock<SyntaxSet> = LazyLock::new(SyntaxSet::load_defaults_newlines);
+    static THEME_SET: LazyLock<ThemeSet> = LazyLock::new(ThemeSet::load_defaults);
+
+    // Cache: (filename, content_len, line_count) → highlighted result
+    // Re-highlight only when file changes, not every frame
+    type HlToken = (u8, u8, u8, String); // (r, g, b, text)
+    type HlCache = Option<(String, usize, usize, Vec<Vec<HlToken>>)>;
+    thread_local! {
+        static CACHE: RefCell<HlCache> = const { RefCell::new(None) };
+    }
+
+    let cache_key = (filename.to_string(), content.len(), content.lines().count());
+
+    // Check cache
+    let cached = CACHE.with(|c| {
+        let borrow = c.borrow();
+        if let Some((ref name, len, lc, ref data)) = *borrow {
+            if name == &cache_key.0 && len == cache_key.1 && lc == cache_key.2 {
+                return Some(
+                    data.iter()
+                        .map(|line_tokens| {
+                            line_tokens
+                                .iter()
+                                .map(|(r, g, b, text)| {
+                                    Span::styled(
+                                        text.clone(),
+                                        Style::default().fg(ratatui::style::Color::Rgb(*r, *g, *b)),
+                                    )
+                                })
+                                .collect::<Vec<Span>>()
+                        })
+                        .collect::<Vec<Vec<Span>>>(),
+                );
+            }
+        }
+        None
+    });
+
+    if let Some(result) = cached {
+        return result;
+    }
+
+    // Cache miss — do the highlighting
+    let ss = &*SYNTAX_SET;
+    let ts = &*THEME_SET;
+
+    let theme_name = if theme.bg == ratatui::style::Color::Rgb(13, 17, 23) {
+        "base16-ocean.dark"
+    } else {
+        "base16-ocean.light"
+    };
+    let syn_theme = match ts.themes.get(theme_name) {
+        Some(t) => t,
+        None => return Vec::new(),
+    };
+
+    let ext = filename.rsplit('.').next().unwrap_or("");
+    let syntax = ss
+        .find_syntax_by_extension(ext)
+        .unwrap_or_else(|| ss.find_syntax_plain_text());
+
+    let mut highlighter = HighlightLines::new(syntax, syn_theme);
+    let mut raw_result: Vec<Vec<(u8, u8, u8, String)>> = Vec::new();
+
+    for line in content.lines() {
+        let line_with_newline = format!("{}\n", line);
+        match highlighter.highlight_line(&line_with_newline, ss) {
+            Ok(ranges) => {
+                let tokens: Vec<(u8, u8, u8, String)> = ranges
+                    .iter()
+                    .map(|(style, text)| {
+                        let clean = text.trim_end_matches('\n').to_string();
+                        (
+                            style.foreground.r,
+                            style.foreground.g,
+                            style.foreground.b,
+                            clean,
+                        )
+                    })
+                    .filter(|(_, _, _, text)| !text.is_empty())
+                    .collect();
+                raw_result.push(tokens);
+            }
+            Err(_) => {
+                raw_result.push(vec![(200, 200, 200, line.to_string())]);
+            }
+        }
+    }
+
+    // Store in cache
+    CACHE.with(|c| {
+        *c.borrow_mut() = Some((cache_key.0, cache_key.1, cache_key.2, raw_result.clone()));
+    });
+
+    // Convert to Spans
+    raw_result
+        .iter()
+        .map(|line_tokens| {
+            line_tokens
+                .iter()
+                .map(|(r, g, b, text)| {
+                    Span::styled(
+                        text.clone(),
+                        Style::default().fg(ratatui::style::Color::Rgb(*r, *g, *b)),
+                    )
+                })
+                .collect()
+        })
+        .collect()
 }
 
 fn format_size(bytes: u64) -> String {

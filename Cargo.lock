@@ -943,6 +943,7 @@ dependencies = [
  "ratatui",
  "serde_json",
  "serde_yaml",
+ "syntect",
  "tokio",
  "tracing",
  "tracing-subscriber",
