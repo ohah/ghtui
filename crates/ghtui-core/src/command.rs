@@ -113,6 +113,7 @@ pub enum Command {
     FetchTags(RepoId),
     FetchCommits(RepoId, String, String, u32), // repo, git_ref, path, per_page
     FetchCommitDetail(RepoId, String),         // repo, sha
+    UpdateFileContent(RepoId, String, String, String, String, String), // repo, path, content, message, sha, branch
 
     // Settings
     FetchRepoSettings(RepoId),

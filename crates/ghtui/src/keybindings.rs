@@ -276,6 +276,34 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     let ref_picker_open = code.is_some_and(|c| c.ref_picker_open);
     let show_commits = code.is_some_and(|c| c.show_commits);
     let has_commit_detail = code.is_some_and(|c| c.commit_detail.is_some());
+    let is_editing = code.is_some_and(|c| c.editing);
+
+    // File editing mode — fullscreen editor
+    if is_editing {
+        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        return match key.code {
+            KeyCode::Esc => Some(Message::CodeEditCancel),
+            KeyCode::Char('s') if ctrl => Some(Message::CodeEditSubmit),
+            KeyCode::Char('z') if ctrl => Some(Message::CodeEditUndo),
+            KeyCode::Char('y') if ctrl => Some(Message::CodeEditRedo),
+            KeyCode::Char(c) => Some(Message::CodeEditChar(c)),
+            KeyCode::Enter => Some(Message::CodeEditNewline),
+            KeyCode::Backspace => Some(Message::CodeEditBackspace),
+            KeyCode::Delete => Some(Message::CodeEditDelete),
+            KeyCode::Tab => Some(Message::CodeEditTab),
+            KeyCode::Left if ctrl => Some(Message::CodeEditWordLeft),
+            KeyCode::Right if ctrl => Some(Message::CodeEditWordRight),
+            KeyCode::Left => Some(Message::CodeEditCursorLeft),
+            KeyCode::Right => Some(Message::CodeEditCursorRight),
+            KeyCode::Up => Some(Message::CodeEditCursorUp),
+            KeyCode::Down => Some(Message::CodeEditCursorDown),
+            KeyCode::Home => Some(Message::CodeEditHome),
+            KeyCode::End => Some(Message::CodeEditEnd),
+            KeyCode::PageUp => Some(Message::CodeEditPageUp),
+            KeyCode::PageDown => Some(Message::CodeEditPageDown),
+            _ => None,
+        };
+    }
 
     // Ref picker mode
     if ref_picker_open {
@@ -330,7 +358,7 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         };
     }
 
-    // Content focused: scroll
+    // Content focused: scroll + edit
     match key.code {
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
@@ -340,6 +368,7 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         KeyCode::Backspace => Some(Message::CodeNavigateBack),
         KeyCode::Char('b') => Some(Message::CodeOpenRefPicker),
         KeyCode::Char('c') => Some(Message::CodeToggleCommits),
+        KeyCode::Char('e') => Some(Message::CodeStartEdit),
         _ => None,
     }
 }

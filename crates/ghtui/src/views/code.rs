@@ -28,6 +28,15 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     };
 
+    // Fullscreen editor mode
+    if code.editing {
+        let title = format!(" Edit: {} ", code.file_name.as_deref().unwrap_or("file"));
+        let widget = ghtui_widgets::EditorView::new(&code.editor, &title)
+            .status_hint("Ctrl+S: Commit  Esc: Cancel");
+        frame.render_widget(widget, area);
+        return;
+    }
+
     // Horizontal split: sidebar (35) | content (rest)
     let chunks = Layout::default()
         .direction(Direction::Horizontal)

@@ -538,6 +538,15 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Ok(detail) => Message::CodeCommitDetailLoaded(Box::new(detail)),
             Err(e) => Message::Error(e.into()),
         },
+        Command::UpdateFileContent(repo, path, content, message, sha, branch) => {
+            match client
+                .update_file_content(&repo, &path, &content, &message, &sha, &branch)
+                .await
+            {
+                Ok(()) => Message::CodeFileUpdated,
+                Err(e) => Message::Error(e.into()),
+            }
+        }
 
         // Settings
         Command::FetchRepoSettings(repo) => match client.get_repo(&repo).await {
