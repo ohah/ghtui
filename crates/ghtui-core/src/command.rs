@@ -28,9 +28,9 @@ pub enum Command {
     DeletePrComment(RepoId, u64),
     ChangePrBase(RepoId, u64, String), // repo, number, new_base_branch
     SetPrReviewers(RepoId, u64, Vec<String>), // repo, number, reviewer logins
-    SetPrDraft(RepoId, u64, bool),                   // repo, number, draft
-    SetAutoMerge(RepoId, u64, bool),                 // repo, number, enable
-    ResolveReviewThread(RepoId, u64, String, bool),  // repo, pr_number, thread_node_id, resolve
+    SetPrDraft(RepoId, u64, bool),     // repo, number, draft
+    SetAutoMerge(RepoId, u64, bool),   // repo, number, enable
+    ResolveReviewThread(RepoId, u64, String, bool), // repo, pr_number, thread_node_id, resolve
 
     // Issue
     FetchIssueList(RepoId, IssueFilters, u32),

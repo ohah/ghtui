@@ -3961,7 +3961,8 @@ fn find_review_comment_at_cursor(
                 let target = diff_line.new_line.or(diff_line.old_line);
                 let comment_lines =
                     count_review_comment_lines(review_comments, &file.filename, target);
-                if comment_lines > 0 && detail.diff_cursor >= code_line
+                if comment_lines > 0
+                    && detail.diff_cursor >= code_line
                     && detail.diff_cursor < code_line + 1 + comment_lines
                 {
                     // Find the first root comment at this position

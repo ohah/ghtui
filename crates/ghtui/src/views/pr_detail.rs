@@ -826,7 +826,10 @@ fn render_diff_content(
             "s:split"
         };
         let title = if detail.show_file_tree {
-            format!(" Files changed (f:tree  Tab:tree  {}  z:resolve) ", sbs_hint)
+            format!(
+                " Files changed (f:tree  Tab:tree  {}  z:resolve) ",
+                sbs_hint
+            )
         } else {
             format!(
                 " Files changed (f:tree  j/k  J/K  Enter  {}  z:resolve) ",
