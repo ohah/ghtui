@@ -8,9 +8,7 @@ pub fn render(frame: &mut Frame, area: Rect) {
     // Center the help popup
     let width = 60.min(area.width.saturating_sub(4));
     let height = 24.min(area.height.saturating_sub(4));
-    let x = (area.width.saturating_sub(width)) / 2 + area.x;
-    let y = (area.height.saturating_sub(height)) / 2 + area.y;
-    let popup_area = Rect::new(x, y, width, height);
+    let popup_area = super::components::centered_rect(width, height, area);
 
     frame.render_widget(Clear, popup_area);
 

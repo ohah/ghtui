@@ -324,9 +324,7 @@ fn render_dispatch_modal(
 
     let height = (dispatch.inputs.len() as u16 * 2 + 8).min(area.height.saturating_sub(4));
     let width = 60u16.min(area.width.saturating_sub(4));
-    let x = (area.width.saturating_sub(width)) / 2 + area.x;
-    let y = (area.height.saturating_sub(height)) / 2 + area.y;
-    let popup_area = Rect::new(x, y, width, height);
+    let popup_area = super::components::centered_rect(width, height, area);
 
     frame.render_widget(Clear, popup_area);
 

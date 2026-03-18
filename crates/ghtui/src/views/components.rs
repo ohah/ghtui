@@ -77,7 +77,6 @@ pub fn render_loading(frame: &mut Frame, theme: &Theme, area: Rect, title: &str)
     frame.render_widget(paragraph, area);
 }
 
-#[allow(dead_code)]
 pub fn centered_rect(width: u16, height: u16, area: Rect) -> Rect {
     let x = (area.width.saturating_sub(width)) / 2 + area.x;
     let y = (area.height.saturating_sub(height)) / 2 + area.y;
