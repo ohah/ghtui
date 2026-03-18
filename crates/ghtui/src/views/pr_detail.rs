@@ -80,7 +80,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     );
     let is_title_editing = matches!(edit_target, Some(PrInlineEditTarget::PrTitle));
 
-    let header_height = if is_title_editing { 6 } else { 5 };
+    let header_height = detail_state.header_height();
     let editor_height: u16 = if is_comment_editing { 10 } else { 0 };
     // Action bar on conversation and files changed tabs
     let show_action_bar = (detail_state.tab == 0 || detail_state.tab == 3)

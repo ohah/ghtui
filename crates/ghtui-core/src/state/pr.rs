@@ -183,6 +183,16 @@ impl PrDetailState {
         }
     }
 
+    /// Header height in rows (matches pr_detail.rs rendering layout).
+    /// Used by both rendering and mouse click handling.
+    pub fn header_height(&self) -> u16 {
+        if matches!(self.edit_target, Some(PrInlineEditTarget::PrTitle)) {
+            6
+        } else {
+            5
+        }
+    }
+
     pub fn is_editing(&self) -> bool {
         self.edit_target.is_some()
     }
