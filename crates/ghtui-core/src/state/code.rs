@@ -34,6 +34,10 @@ pub struct CodeViewState {
     pub editing: bool,
     pub editor: TextEditor,
 
+    // Syntax highlight cache (file content hash → highlighted spans not stored here,
+    // but we track which file was highlighted to avoid re-highlighting on every frame)
+    pub highlighted_file: Option<String>, // filename of last highlighted file
+
     // Tree view
     pub tree: Vec<TreeNode>,
     pub expanded_dirs: HashSet<String>,
@@ -70,6 +74,7 @@ impl CodeViewState {
 
             editing: false,
             editor: TextEditor::new(),
+            highlighted_file: None,
 
             tree: Vec::new(),
             expanded_dirs: HashSet::new(),
