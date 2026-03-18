@@ -609,7 +609,7 @@ fn render_file_content(
     let total_lines = content.lines().count();
     let gutter_width = format!("{}", total_lines).len();
 
-    // Syntax highlighting (Tree-sitter for 15 languages, syntect fallback)
+    // Syntax highlighting (Tree-sitter for 26 languages)
     let is_dark = theme.bg == ratatui::style::Color::Rgb(13, 17, 23);
     let highlighted = crate::highlighter::highlight_file(content, filename, is_dark);
 
