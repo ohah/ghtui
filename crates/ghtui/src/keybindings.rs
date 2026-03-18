@@ -1,4 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ghtui_core::config::KeybindingConfig;
 use ghtui_core::message::ModalKind;
 use ghtui_core::router::Route;
 use ghtui_core::state::InputMode;
@@ -41,7 +42,7 @@ pub fn key_event_to_string(key: &KeyEvent) -> String {
         KeyCode::Down => "Down".to_string(),
         KeyCode::Left => "Left".to_string(),
         KeyCode::Right => "Right".to_string(),
-        KeyCode::F(n) => format!("F{}", n),
+        KeyCode::F(n) => format!("F{n}"),
         _ => format!("{:?}", key.code),
     };
 
@@ -70,7 +71,7 @@ pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<Message> {
     }
 
     match state.input_mode {
-        InputMode::Insert => handle_insert_mode(key),
+        InputMode::Insert => handle_insert_mode(key, state),
         InputMode::Normal => handle_normal_mode(key, state),
     }
 }
@@ -86,23 +87,33 @@ fn handle_keymap_settings_keys(key: KeyEvent) -> Option<Message> {
     }
 }
 
-fn handle_insert_mode(key: KeyEvent) -> Option<Message> {
+fn handle_insert_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     let alt = key.modifiers.contains(KeyModifiers::ALT);
-    match key.code {
-        KeyCode::Esc => Some(Message::ModalClose),
-        // Ctrl+S: save/submit (reliable across all terminals)
-        KeyCode::Char('s') if ctrl => Some(Message::ModalSubmit),
-        // Ctrl+Enter / Alt+Enter: submit
-        KeyCode::Enter if ctrl || alt => Some(Message::ModalSubmit),
-        KeyCode::Enter => Some(Message::InputChanged("\n".to_string())),
-        KeyCode::Char(c) => Some(Message::InputChanged(c.to_string())),
-        KeyCode::Backspace => Some(Message::InputChanged("\x08".to_string())),
-        _ => None,
+
+    if ks == kb.edit_cancel {
+        Some(Message::ModalClose)
+    } else if ks == kb.edit_submit {
+        Some(Message::ModalSubmit)
+    } else if key.code == KeyCode::Enter && (ctrl || alt) {
+        // Ctrl+Enter / Alt+Enter: always submit as alternate
+        Some(Message::ModalSubmit)
+    } else {
+        match key.code {
+            KeyCode::Enter => Some(Message::InputChanged("\n".to_string())),
+            KeyCode::Char(c) => Some(Message::InputChanged(c.to_string())),
+            KeyCode::Backspace => Some(Message::InputChanged("\x08".to_string())),
+            _ => None,
+        }
     }
 }
 
 fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
+
     // Command palette intercepts all keys when open
     if state.command_palette.is_some() {
         return handle_palette_keys(key, state);
@@ -113,8 +124,8 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         return handle_modal_keys(key, state);
     }
 
-    // Ctrl+P opens command palette (before any other processing)
-    if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('p') {
+    // Command palette open
+    if ks == kb.palette {
         return Some(Message::PaletteOpen);
     }
 
@@ -126,17 +137,27 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         || state.code.as_ref().is_some_and(|c| c.editing);
 
     if !is_inline_editing {
-        // Global keys
+        // Global keys (configurable)
+        if ks == kb.quit {
+            return Some(Message::Quit);
+        }
+        if ks == kb.home {
+            return Some(Message::GoHome);
+        }
+        if ks == kb.help {
+            return Some(Message::ModalOpen(ModalKind::Help));
+        }
+        if ks == kb.theme_toggle {
+            return Some(Message::ToggleTheme);
+        }
+        if ks == kb.account_switch {
+            return Some(Message::ModalOpen(ModalKind::AccountSwitcher));
+        }
+        if ks == kb.search {
+            return Some(Message::SearchOpen);
+        }
+        // Tab navigation: 1-9 for global tabs (matching GitHub web)
         match key.code {
-            KeyCode::Char('q') => return Some(Message::Quit),
-            KeyCode::Char('H') => return Some(Message::GoHome), // Home / Dashboard
-            KeyCode::Char('?') => return Some(Message::ModalOpen(ModalKind::Help)),
-            KeyCode::Char('t') => return Some(Message::ToggleTheme),
-            KeyCode::Char('S') => return Some(Message::ModalOpen(ModalKind::AccountSwitcher)),
-            KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                return Some(Message::SearchOpen);
-            }
-            // Tab navigation: 1-9 for global tabs (matching GitHub web)
             KeyCode::Char('1') => return Some(Message::GlobalTabSelect(0)),
             KeyCode::Char('2') => return Some(Message::GlobalTabSelect(1)),
             KeyCode::Char('3') => return Some(Message::GlobalTabSelect(2)),
@@ -215,7 +236,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         Route::ActionsList { .. } => handle_actions_list_keys(key, state),
         Route::ActionDetail { .. } | Route::JobLog { .. } => handle_action_detail_keys(key, state),
         Route::Search { .. } => handle_search_keys(key, state),
-        Route::Notifications => handle_notification_keys(key),
+        Route::Notifications => handle_notification_keys(key, state),
         Route::Code { .. } => handle_code_keys(key, state),
         Route::Security { .. } => handle_security_keys(key, state),
         Route::Insights { .. } => handle_insights_keys(key, state),
@@ -233,14 +254,19 @@ fn handle_modal_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         _ => {
             // Account switcher modal: j/k to navigate, Enter to select
             if matches!(state.modal, Some(ModalKind::AccountSwitcher)) {
-                match key.code {
-                    KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-                    KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-                    KeyCode::Enter => state
+                let ks = key_event_to_string(&key);
+                let kb = &state.config.keybindings;
+                if nav_down(&key, &ks, kb) {
+                    Some(Message::ListSelect(1))
+                } else if nav_up(&key, &ks, kb) {
+                    Some(Message::ListSelect(usize::MAX))
+                } else if key.code == KeyCode::Enter {
+                    state
                         .accounts
                         .get(state.account_selected)
-                        .map(|account| Message::AccountSwitch(account.clone())),
-                    _ => None,
+                        .map(|account| Message::AccountSwitch(account.clone()))
+                } else {
+                    None
                 }
             } else {
                 None
@@ -286,103 +312,160 @@ fn handle_search_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         };
     }
 
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::Enter => Some(Message::SearchNavigate),
-        KeyCode::Char('/') => Some(Message::SearchOpen),
-        KeyCode::Tab => Some(Message::SearchCycleKind),
-        _ => None,
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
+
+    if nav_down(&key, &ks, kb) {
+        Some(Message::ListSelect(1))
+    } else if nav_up(&key, &ks, kb) {
+        Some(Message::ListSelect(usize::MAX))
+    } else if key.code == KeyCode::Enter {
+        Some(Message::SearchNavigate)
+    } else if ks == kb.search_start {
+        Some(Message::SearchOpen)
+    } else if key.code == KeyCode::Tab {
+        Some(Message::SearchCycleKind)
+    } else {
+        None
     }
 }
 
-fn handle_notification_keys(key: KeyEvent) -> Option<Message> {
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::Enter => Some(Message::NotificationNavigate),
-        KeyCode::Char('r') => Some(Message::Tick),
-        KeyCode::Char('m') => Some(Message::NotificationMarkRead),
-        KeyCode::Char('M') => Some(Message::NotificationMarkAllRead),
-        KeyCode::Char('u') => Some(Message::NotificationUnsubscribe),
-        KeyCode::Char('d') => Some(Message::NotificationDone),
-        KeyCode::Char('s') => Some(Message::NotificationCycleReason),
-        KeyCode::Char('e') => Some(Message::NotificationCycleType),
-        KeyCode::Char('g') => Some(Message::NotificationToggleGrouped),
-        _ => None,
+fn handle_notification_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
+
+    if nav_down(&key, &ks, kb) {
+        Some(Message::ListSelect(1))
+    } else if nav_up(&key, &ks, kb) {
+        Some(Message::ListSelect(usize::MAX))
+    } else if key.code == KeyCode::Enter {
+        Some(Message::NotificationNavigate)
+    } else if ks == kb.nav_refresh {
+        Some(Message::Tick)
+    } else {
+        match key.code {
+            KeyCode::Char('m') => Some(Message::NotificationMarkRead),
+            KeyCode::Char('M') => Some(Message::NotificationMarkAllRead),
+            KeyCode::Char('u') => Some(Message::NotificationUnsubscribe),
+            KeyCode::Char('d') => Some(Message::NotificationDone),
+            KeyCode::Char('s') => Some(Message::NotificationCycleReason),
+            KeyCode::Char('e') => Some(Message::NotificationCycleType),
+            KeyCode::Char('g') => Some(Message::NotificationToggleGrouped),
+            _ => None,
+        }
     }
 }
 
-fn handle_list_keys(key: KeyEvent) -> Option<Message> {
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::Enter => Some(Message::ListSelect(0)),
-        KeyCode::Char('r') => Some(Message::Tick), // refresh
-        _ => None,
+fn nav_down(key: &KeyEvent, ks: &str, kb: &KeybindingConfig) -> bool {
+    ks == kb.nav_down || key.code == KeyCode::Down
+}
+
+fn nav_up(key: &KeyEvent, ks: &str, kb: &KeybindingConfig) -> bool {
+    ks == kb.nav_up || key.code == KeyCode::Up
+}
+
+fn handle_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
+
+    if nav_down(&key, &ks, kb) {
+        Some(Message::ListSelect(1))
+    } else if nav_up(&key, &ks, kb) {
+        Some(Message::ListSelect(usize::MAX))
+    } else if key.code == KeyCode::Enter {
+        Some(Message::ListSelect(0))
+    } else if ks == kb.nav_refresh {
+        Some(Message::Tick)
+    } else {
+        None
     }
 }
 
 fn handle_insights_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     let sidebar_focused = state.insights.as_ref().is_some_and(|s| s.sidebar_focused);
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
 
     if sidebar_focused {
-        return match key.code {
-            KeyCode::Char('j') | KeyCode::Down => Some(Message::TabChanged(1)),
-            KeyCode::Char('k') | KeyCode::Up => Some(Message::TabChanged(usize::MAX)),
-            KeyCode::Enter | KeyCode::Tab => Some(Message::InsightsSidebarFocus), // → content
-            KeyCode::BackTab => Some(Message::GlobalTabPrev),                     // ← 상위 탭
-            _ => None,
-        };
-    }
-
-    // Content focused
-    match key.code {
-        KeyCode::Tab => Some(Message::GlobalTabNext), // → 다음 글로벌 탭
-        KeyCode::BackTab | KeyCode::Esc => Some(Message::InsightsSidebarFocus), // ← sidebar
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::PageDown => Some(Message::ScrollDown),
-        KeyCode::PageUp => Some(Message::ScrollUp),
-        _ => None,
+        if nav_down(&key, &ks, kb) {
+            Some(Message::TabChanged(1))
+        } else if nav_up(&key, &ks, kb) {
+            Some(Message::TabChanged(usize::MAX))
+        } else {
+            match key.code {
+                KeyCode::Enter | KeyCode::Tab => Some(Message::InsightsSidebarFocus), // → content
+                KeyCode::BackTab => Some(Message::GlobalTabPrev),                     // ← 상위 탭
+                _ => None,
+            }
+        }
+    } else {
+        // Content focused
+        if nav_down(&key, &ks, kb) {
+            Some(Message::ListSelect(1))
+        } else if nav_up(&key, &ks, kb) {
+            Some(Message::ListSelect(usize::MAX))
+        } else {
+            match key.code {
+                KeyCode::Tab => Some(Message::GlobalTabNext),
+                KeyCode::BackTab | KeyCode::Esc => Some(Message::InsightsSidebarFocus),
+                KeyCode::PageDown => Some(Message::ScrollDown),
+                KeyCode::PageUp => Some(Message::ScrollUp),
+                _ => None,
+            }
+        }
     }
 }
 
 fn handle_security_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     let sidebar_focused = state.security.as_ref().is_some_and(|s| s.sidebar_focused);
     let detail_open = state.security.as_ref().is_some_and(|s| s.detail_open);
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
 
     if detail_open {
-        return match key.code {
-            KeyCode::Esc | KeyCode::Enter => Some(Message::SecurityToggleDetail),
-            KeyCode::Char('j') | KeyCode::Down | KeyCode::PageDown => Some(Message::ScrollDown),
-            KeyCode::Char('k') | KeyCode::Up | KeyCode::PageUp => Some(Message::ScrollUp),
-            KeyCode::Char('o') => Some(Message::SecurityOpenInBrowser),
-            _ => None,
-        };
-    }
-
-    if sidebar_focused {
-        return match key.code {
-            KeyCode::Char('j') | KeyCode::Down => Some(Message::TabChanged(1)),
-            KeyCode::Char('k') | KeyCode::Up => Some(Message::TabChanged(usize::MAX)),
-            KeyCode::Enter | KeyCode::Tab => Some(Message::SecuritySidebarFocus), // → content
-            KeyCode::BackTab => Some(Message::GlobalTabPrev),                     // ← 상위 탭
-            _ => None,
-        };
-    }
-
-    // Content focused
-    match key.code {
-        KeyCode::Tab => Some(Message::GlobalTabNext), // → 다음 글로벌 탭
-        KeyCode::BackTab | KeyCode::Esc => Some(Message::SecuritySidebarFocus), // ← sidebar
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::Enter => Some(Message::SecurityToggleDetail),
-        KeyCode::Char('o') => Some(Message::SecurityOpenInBrowser),
-        KeyCode::Char('d') => Some(Message::SecurityDismissAlert),
-        KeyCode::Char('r') => Some(Message::SecurityReopenAlert),
-        _ => None,
+        if nav_down(&key, &ks, kb) || key.code == KeyCode::PageDown {
+            Some(Message::ScrollDown)
+        } else if nav_up(&key, &ks, kb) || key.code == KeyCode::PageUp {
+            Some(Message::ScrollUp)
+        } else if ks == kb.open_browser {
+            Some(Message::SecurityOpenInBrowser)
+        } else {
+            match key.code {
+                KeyCode::Esc | KeyCode::Enter => Some(Message::SecurityToggleDetail),
+                _ => None,
+            }
+        }
+    } else if sidebar_focused {
+        if nav_down(&key, &ks, kb) {
+            Some(Message::TabChanged(1))
+        } else if nav_up(&key, &ks, kb) {
+            Some(Message::TabChanged(usize::MAX))
+        } else {
+            match key.code {
+                KeyCode::Enter | KeyCode::Tab => Some(Message::SecuritySidebarFocus),
+                KeyCode::BackTab => Some(Message::GlobalTabPrev),
+                _ => None,
+            }
+        }
+    } else {
+        // Content focused
+        if nav_down(&key, &ks, kb) {
+            Some(Message::ListSelect(1))
+        } else if nav_up(&key, &ks, kb) {
+            Some(Message::ListSelect(usize::MAX))
+        } else if ks == kb.open_browser {
+            Some(Message::SecurityOpenInBrowser)
+        } else if ks == kb.delete {
+            Some(Message::SecurityDismissAlert)
+        } else {
+            match key.code {
+                KeyCode::Tab => Some(Message::GlobalTabNext),
+                KeyCode::BackTab | KeyCode::Esc => Some(Message::SecuritySidebarFocus),
+                KeyCode::Enter => Some(Message::SecurityToggleDetail),
+                KeyCode::Char('r') => Some(Message::SecurityReopenAlert),
+                _ => None,
+            }
+        }
     }
 }
 
@@ -393,6 +476,8 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     let show_commits = code.is_some_and(|c| c.show_commits);
     let has_commit_detail = code.is_some_and(|c| c.commit_detail.is_some());
     let is_editing = code.is_some_and(|c| c.editing);
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
 
     // File editing mode — fullscreen editor
     if is_editing {
@@ -402,12 +487,22 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         let alt = key.modifiers.contains(KeyModifiers::ALT);
         let cmd = ctrl || super_key; // Cmd on macOS, Ctrl on Linux/Windows
 
+        // Configurable editor bindings
+        if ks == kb.edit_cancel {
+            return Some(Message::CodeEditCancel);
+        }
+        if ks == kb.edit_submit {
+            return Some(Message::CodeEditSubmit);
+        }
+        if ks == kb.edit_undo {
+            return Some(Message::CodeEditUndo);
+        }
+        if ks == kb.edit_redo {
+            return Some(Message::CodeEditRedo);
+        }
+
         return match key.code {
-            KeyCode::Esc => Some(Message::CodeEditCancel),
-            // Cmd shortcuts
-            KeyCode::Char('s') if cmd => Some(Message::CodeEditSubmit),
-            KeyCode::Char('z') if cmd => Some(Message::CodeEditUndo),
-            KeyCode::Char('y') if cmd => Some(Message::CodeEditRedo),
+            // Cmd shortcuts (non-configurable editor commands)
             KeyCode::Char('a') if cmd => Some(Message::CodeEditSelectAll),
             KeyCode::Char('x') if cmd => Some(Message::CodeEditCut),
             KeyCode::Char('c') if cmd => Some(Message::CodeEditCopy),
@@ -460,9 +555,12 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
 
     // Ref picker mode
     if ref_picker_open {
+        if nav_down(&key, &ks, kb) {
+            return Some(Message::ListSelect(1));
+        } else if nav_up(&key, &ks, kb) {
+            return Some(Message::ListSelect(usize::MAX));
+        }
         return match key.code {
-            KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-            KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
             KeyCode::Enter => Some(Message::CodeSelectRef),
             KeyCode::Esc => Some(Message::CodeCloseRefPicker),
             _ => None,
@@ -471,25 +569,31 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
 
     // Commit detail view
     if has_commit_detail {
+        if nav_down(&key, &ks, kb) || key.code == KeyCode::PageDown {
+            return Some(Message::ScrollDown);
+        } else if nav_up(&key, &ks, kb) || key.code == KeyCode::PageUp {
+            return Some(Message::ScrollUp);
+        }
         return match key.code {
             KeyCode::Esc | KeyCode::Backspace => Some(Message::CodeCloseCommitDetail),
-            KeyCode::Char('j') | KeyCode::Down => Some(Message::ScrollDown),
-            KeyCode::Char('k') | KeyCode::Up => Some(Message::ScrollUp),
-            KeyCode::PageDown => Some(Message::ScrollDown),
-            KeyCode::PageUp => Some(Message::ScrollUp),
             _ => None,
         };
     }
 
     // Commit list mode
     if show_commits && sidebar_focused {
+        if nav_down(&key, &ks, kb) {
+            return Some(Message::ListSelect(1));
+        } else if nav_up(&key, &ks, kb) {
+            return Some(Message::ListSelect(usize::MAX));
+        } else if ks == kb.code_commits {
+            return Some(Message::CodeToggleCommits);
+        } else if ks == kb.code_branch {
+            return Some(Message::CodeOpenRefPicker);
+        }
         return match key.code {
-            KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-            KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
             KeyCode::Enter => Some(Message::CodeOpenCommitDetail),
-            KeyCode::Char('c') => Some(Message::CodeToggleCommits),
             KeyCode::Esc => Some(Message::CodeToggleCommits),
-            KeyCode::Char('b') => Some(Message::CodeOpenRefPicker),
             KeyCode::Tab => Some(Message::CodeSidebarFocus), // → content
             KeyCode::BackTab => Some(Message::GlobalTabPrev), // ← 상위 탭
             _ => None,
@@ -498,45 +602,62 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
 
     if sidebar_focused {
         // File tree focused
+        if nav_down(&key, &ks, kb) {
+            return Some(Message::ListSelect(1));
+        } else if nav_up(&key, &ks, kb) {
+            return Some(Message::ListSelect(usize::MAX));
+        } else if ks == kb.code_branch {
+            return Some(Message::CodeOpenRefPicker);
+        } else if ks == kb.code_commits {
+            return Some(Message::CodeToggleCommits);
+        }
         return match key.code {
-            KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-            KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
             KeyCode::Enter | KeyCode::Char('l') | KeyCode::Right => Some(Message::CodeNavigateInto),
             KeyCode::Backspace | KeyCode::Char('h') | KeyCode::Left => {
                 Some(Message::CodeNavigateBack)
             }
             KeyCode::Tab => Some(Message::CodeSidebarFocus), // → content
             KeyCode::BackTab => Some(Message::GlobalTabPrev), // ← 상위 탭
-            KeyCode::Char('b') => Some(Message::CodeOpenRefPicker),
-            KeyCode::Char('c') => Some(Message::CodeToggleCommits),
             _ => None,
         };
     }
 
     // Content focused: scroll + edit
-    match key.code {
-        KeyCode::Tab => Some(Message::GlobalTabNext), // → 다음 글로벌 탭
-        KeyCode::BackTab | KeyCode::Esc => Some(Message::CodeSidebarFocus), // ← sidebar
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::PageDown => Some(Message::ScrollDown),
-        KeyCode::PageUp => Some(Message::ScrollUp),
-        KeyCode::Backspace => Some(Message::CodeNavigateBack),
-        KeyCode::Char('b') => Some(Message::CodeOpenRefPicker),
-        KeyCode::Char('c') => Some(Message::CodeToggleCommits),
-        KeyCode::Char('e') => Some(Message::CodeStartEdit),
-        _ => None,
+    if nav_down(&key, &ks, kb) {
+        Some(Message::ListSelect(1))
+    } else if nav_up(&key, &ks, kb) {
+        Some(Message::ListSelect(usize::MAX))
+    } else if ks == kb.code_branch {
+        Some(Message::CodeOpenRefPicker)
+    } else if ks == kb.code_commits {
+        Some(Message::CodeToggleCommits)
+    } else if ks == kb.code_edit {
+        Some(Message::CodeStartEdit)
+    } else {
+        match key.code {
+            KeyCode::Tab => Some(Message::GlobalTabNext),
+            KeyCode::BackTab | KeyCode::Esc => Some(Message::CodeSidebarFocus),
+            KeyCode::PageDown => Some(Message::ScrollDown),
+            KeyCode::PageUp => Some(Message::ScrollUp),
+            KeyCode::Backspace => Some(Message::CodeNavigateBack),
+            _ => None,
+        }
     }
 }
 
 fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     let is_editing = state.settings.as_ref().is_some_and(|s| s.is_editing());
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
 
     if is_editing {
-        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        if ks == kb.edit_cancel {
+            return Some(Message::SettingsEditCancel);
+        }
+        if ks == kb.edit_submit {
+            return Some(Message::SettingsEditSubmit);
+        }
         return match key.code {
-            KeyCode::Esc => Some(Message::SettingsEditCancel),
-            KeyCode::Char('s') if ctrl => Some(Message::SettingsEditSubmit),
             KeyCode::Enter => Some(Message::SettingsEditSubmit),
             KeyCode::Char(c) => Some(Message::SettingsEditChar(c)),
             KeyCode::Backspace => Some(Message::SettingsEditBackspace),
@@ -552,9 +673,12 @@ fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
 
     if sidebar_focused {
         // Sidebar focused: j/k navigate tabs, Enter/Tab switch to content
+        if nav_down(&key, &ks, kb) {
+            return Some(Message::TabChanged(1));
+        } else if nav_up(&key, &ks, kb) {
+            return Some(Message::TabChanged(usize::MAX));
+        }
         return match key.code {
-            KeyCode::Char('j') | KeyCode::Down => Some(Message::TabChanged(1)),
-            KeyCode::Char('k') | KeyCode::Up => Some(Message::TabChanged(usize::MAX)),
             KeyCode::Enter | KeyCode::Tab => Some(Message::SettingsSidebarFocus), // → content
             KeyCode::BackTab => Some(Message::GlobalTabPrev),                     // ← 상위 탭
             _ => None,
@@ -569,46 +693,53 @@ fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     let on_webhooks = current_tab == 3;
     let on_deploy_keys = current_tab == 4;
 
-    match key.code {
-        KeyCode::Tab => Some(Message::GlobalTabNext), // → 다음 글로벌 탭
-        KeyCode::BackTab | KeyCode::Esc => Some(Message::SettingsSidebarFocus), // ← sidebar
-        // j/k navigate items in content
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::PageDown => Some(Message::ScrollDown),
-        KeyCode::PageUp => Some(Message::ScrollUp),
-        // Edit keys (only on General tab)
-        KeyCode::Char('d') if on_general => {
-            Some(Message::SettingsStartEdit("description".to_string()))
+    if nav_down(&key, &ks, kb) {
+        Some(Message::ListSelect(1))
+    } else if nav_up(&key, &ks, kb) {
+        Some(Message::ListSelect(usize::MAX))
+    } else {
+        match key.code {
+            KeyCode::Tab => Some(Message::GlobalTabNext),
+            KeyCode::BackTab | KeyCode::Esc => Some(Message::SettingsSidebarFocus),
+            KeyCode::PageDown => Some(Message::ScrollDown),
+            KeyCode::PageUp => Some(Message::ScrollUp),
+            // Edit keys (only on General tab)
+            KeyCode::Char('d') if on_general => {
+                Some(Message::SettingsStartEdit("description".to_string()))
+            }
+            KeyCode::Char('b') if on_general => {
+                Some(Message::SettingsStartEdit("default_branch".to_string()))
+            }
+            KeyCode::Char('T') if on_general => {
+                Some(Message::SettingsStartEdit("topics".to_string()))
+            }
+            // Feature toggles (on General tab)
+            KeyCode::Char('I') if on_general => {
+                Some(Message::SettingsToggleFeature("has_issues".to_string()))
+            }
+            KeyCode::Char('P') if on_general => {
+                Some(Message::SettingsToggleFeature("has_projects".to_string()))
+            }
+            KeyCode::Char('W') if on_general => {
+                Some(Message::SettingsToggleFeature("has_wiki".to_string()))
+            }
+            KeyCode::Char('V') if on_general => Some(Message::SettingsToggleVisibility),
+            // Collaborator tab: d to delete
+            KeyCode::Char('d') if on_collaborators => Some(Message::SettingsDeleteCollaborator),
+            // Webhook tab: d to delete, a to toggle active
+            KeyCode::Char('d') if on_webhooks => Some(Message::SettingsDeleteWebhook),
+            KeyCode::Char('a') if on_webhooks => Some(Message::SettingsToggleWebhook),
+            // Deploy key tab: d to delete
+            KeyCode::Char('d') if on_deploy_keys => Some(Message::SettingsDeleteDeployKey),
+            // Branch protection tab: d to delete, e to toggle enforce admins
+            KeyCode::Char('d') if on_branch_protection => {
+                Some(Message::SettingsDeleteBranchProtection)
+            }
+            KeyCode::Char('e') if on_branch_protection => {
+                Some(Message::SettingsToggleBranchEnforceAdmins)
+            }
+            _ => None,
         }
-        KeyCode::Char('b') if on_general => {
-            Some(Message::SettingsStartEdit("default_branch".to_string()))
-        }
-        KeyCode::Char('T') if on_general => Some(Message::SettingsStartEdit("topics".to_string())),
-        // Feature toggles (on General tab)
-        KeyCode::Char('I') if on_general => {
-            Some(Message::SettingsToggleFeature("has_issues".to_string()))
-        }
-        KeyCode::Char('P') if on_general => {
-            Some(Message::SettingsToggleFeature("has_projects".to_string()))
-        }
-        KeyCode::Char('W') if on_general => {
-            Some(Message::SettingsToggleFeature("has_wiki".to_string()))
-        }
-        KeyCode::Char('V') if on_general => Some(Message::SettingsToggleVisibility),
-        // Collaborator tab: d to delete
-        KeyCode::Char('d') if on_collaborators => Some(Message::SettingsDeleteCollaborator),
-        // Webhook tab: d to delete, a to toggle active
-        KeyCode::Char('d') if on_webhooks => Some(Message::SettingsDeleteWebhook),
-        KeyCode::Char('a') if on_webhooks => Some(Message::SettingsToggleWebhook),
-        // Deploy key tab: d to delete
-        KeyCode::Char('d') if on_deploy_keys => Some(Message::SettingsDeleteDeployKey),
-        // Branch protection tab: d to delete, e to toggle enforce admins
-        KeyCode::Char('d') if on_branch_protection => Some(Message::SettingsDeleteBranchProtection),
-        KeyCode::Char('e') if on_branch_protection => {
-            Some(Message::SettingsToggleBranchEnforceAdmins)
-        }
-        _ => None,
     }
 }
 
@@ -625,6 +756,9 @@ fn handle_actions_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         };
     }
 
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
+
     // Dispatch modal keys
     if let Some(ref dispatch) = list.dispatch {
         if dispatch.editing {
@@ -635,22 +769,30 @@ fn handle_actions_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
                 _ => None,
             };
         }
-        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        if ks == kb.edit_submit {
+            return Some(Message::ActionsDispatchSubmit);
+        }
+        if nav_down(&key, &ks, kb) {
+            return Some(Message::ActionsDispatchFieldNext);
+        }
+        if nav_up(&key, &ks, kb) {
+            return Some(Message::ActionsDispatchFieldPrev);
+        }
         return match key.code {
             KeyCode::Esc => Some(Message::ActionsDispatchClose),
-            KeyCode::Char('s') if ctrl => Some(Message::ActionsDispatchSubmit),
             KeyCode::Enter => Some(Message::ActionsDispatchEditStart),
-            KeyCode::Char('j') | KeyCode::Down => Some(Message::ActionsDispatchFieldNext),
-            KeyCode::Char('k') | KeyCode::Up => Some(Message::ActionsDispatchFieldPrev),
             _ => None,
         };
     }
 
     // Workflow sidebar keys
     if list.show_workflow_sidebar && list.workflow_sidebar_focused {
+        if nav_down(&key, &ks, kb) {
+            return Some(Message::ActionsWorkflowSidebarDown);
+        } else if nav_up(&key, &ks, kb) {
+            return Some(Message::ActionsWorkflowSidebarUp);
+        }
         return match key.code {
-            KeyCode::Char('j') | KeyCode::Down => Some(Message::ActionsWorkflowSidebarDown),
-            KeyCode::Char('k') | KeyCode::Up => Some(Message::ActionsWorkflowSidebarUp),
             KeyCode::Enter => Some(Message::ActionsWorkflowSidebarSelect),
             KeyCode::Char('w') => Some(Message::ActionsToggleWorkflowSidebar),
             KeyCode::Char('d') => Some(Message::ActionsDispatchOpen),
@@ -660,23 +802,35 @@ fn handle_actions_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         };
     }
 
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::Enter => Some(Message::ListSelect(0)),
-        KeyCode::Char('r') => Some(Message::Tick),
-        KeyCode::Char('s') => Some(Message::ActionsToggleStatus),
-        KeyCode::Char('e') => Some(Message::ActionsCycleEvent),
-        KeyCode::Char('n') => Some(Message::ActionsNextPage),
-        KeyCode::Char('p') => Some(Message::ActionsPrevPage),
-        KeyCode::Char('/') => Some(Message::ActionsSearchStart),
-        KeyCode::Char('o') => Some(Message::ActionsOpenInBrowser),
-        KeyCode::Char('F') => Some(Message::ActionsFilterClear),
-        KeyCode::Char('x') => Some(Message::ActionsCancelRun),
-        KeyCode::Char('R') => Some(Message::ActionsRerunRun),
-        KeyCode::Char('w') => Some(Message::ActionsToggleWorkflowSidebar),
-        KeyCode::Char('d') => Some(Message::ActionsDispatchOpen),
-        _ => None,
+    if nav_down(&key, &ks, kb) {
+        Some(Message::ListSelect(1))
+    } else if nav_up(&key, &ks, kb) {
+        Some(Message::ListSelect(usize::MAX))
+    } else if ks == kb.nav_open {
+        Some(Message::ListSelect(0))
+    } else if ks == kb.nav_refresh {
+        Some(Message::Tick)
+    } else if ks == kb.filter_toggle {
+        Some(Message::ActionsToggleStatus)
+    } else if ks == kb.nav_next_page {
+        Some(Message::ActionsNextPage)
+    } else if ks == kb.nav_prev_page {
+        Some(Message::ActionsPrevPage)
+    } else if ks == kb.search_start {
+        Some(Message::ActionsSearchStart)
+    } else if ks == kb.open_browser {
+        Some(Message::ActionsOpenInBrowser)
+    } else if ks == kb.filter_clear {
+        Some(Message::ActionsFilterClear)
+    } else {
+        match key.code {
+            KeyCode::Char('e') => Some(Message::ActionsCycleEvent),
+            KeyCode::Char('x') => Some(Message::ActionsCancelRun),
+            KeyCode::Char('R') => Some(Message::ActionsRerunRun),
+            KeyCode::Char('w') => Some(Message::ActionsToggleWorkflowSidebar),
+            KeyCode::Char('d') => Some(Message::ActionsDispatchOpen),
+            _ => None,
+        }
     }
 }
 
@@ -688,6 +842,8 @@ fn handle_action_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message>
         .as_ref()
         .map(|d| d.focus)
         .unwrap_or(ActionDetailFocus::Jobs);
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
 
     match focus {
         ActionDetailFocus::ActionBar => match key.code {
@@ -699,42 +855,55 @@ fn handle_action_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message>
             }
             _ => None,
         },
-        ActionDetailFocus::Log => match key.code {
-            KeyCode::Char('j') | KeyCode::Down | KeyCode::PageDown => Some(Message::ScrollDown),
-            KeyCode::Char('k') | KeyCode::Up | KeyCode::PageUp => Some(Message::ScrollUp),
-            KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+        ActionDetailFocus::Log => {
+            if nav_down(&key, &ks, kb) || key.code == KeyCode::PageDown {
                 Some(Message::ScrollDown)
-            }
-            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            } else if nav_up(&key, &ks, kb) || key.code == KeyCode::PageUp {
                 Some(Message::ScrollUp)
+            } else if ks == kb.open_browser {
+                Some(Message::ActionDetailOpenInBrowser)
+            } else {
+                match key.code {
+                    KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        Some(Message::ScrollDown)
+                    }
+                    KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        Some(Message::ScrollUp)
+                    }
+                    KeyCode::Tab => Some(Message::ActionDetailFocusJobs),
+                    KeyCode::BackTab => Some(Message::ActionDetailActionBarFocus),
+                    KeyCode::Char('x') => Some(Message::ActionDetailActionBarFocus),
+                    _ => None,
+                }
             }
-            KeyCode::Tab => Some(Message::ActionDetailFocusJobs),
-            KeyCode::BackTab => Some(Message::ActionDetailActionBarFocus),
-            KeyCode::Char('x') => Some(Message::ActionDetailActionBarFocus),
-            KeyCode::Char('o') => Some(Message::ActionDetailOpenInBrowser),
-            _ => None,
-        },
-        ActionDetailFocus::Jobs => match key.code {
-            KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-            KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-            KeyCode::Enter => Some(Message::ListSelect(0)),
-            KeyCode::Tab => Some(Message::ActionDetailFocusLog),
-            KeyCode::BackTab => Some(Message::ActionDetailActionBarFocus), // Shift+Tab → action bar
-            // Step fold/unfold: toggle all steps for selected job
-            KeyCode::Char('h') | KeyCode::Left => Some(Message::ActionDetailToggleStep(0)),
-            KeyCode::Char('l') | KeyCode::Right => Some(Message::ActionDetailToggleStep(0)),
-            KeyCode::PageDown => Some(Message::ScrollDown),
-            KeyCode::PageUp => Some(Message::ScrollUp),
-            KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                Some(Message::ScrollDown)
+        }
+        ActionDetailFocus::Jobs => {
+            if nav_down(&key, &ks, kb) {
+                Some(Message::ListSelect(1))
+            } else if nav_up(&key, &ks, kb) {
+                Some(Message::ListSelect(usize::MAX))
+            } else if ks == kb.open_browser {
+                Some(Message::ActionDetailOpenInBrowser)
+            } else {
+                match key.code {
+                    KeyCode::Enter => Some(Message::ListSelect(0)),
+                    KeyCode::Tab => Some(Message::ActionDetailFocusLog),
+                    KeyCode::BackTab => Some(Message::ActionDetailActionBarFocus),
+                    KeyCode::Char('h') | KeyCode::Left => Some(Message::ActionDetailToggleStep(0)),
+                    KeyCode::Char('l') | KeyCode::Right => Some(Message::ActionDetailToggleStep(0)),
+                    KeyCode::PageDown => Some(Message::ScrollDown),
+                    KeyCode::PageUp => Some(Message::ScrollUp),
+                    KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        Some(Message::ScrollDown)
+                    }
+                    KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        Some(Message::ScrollUp)
+                    }
+                    KeyCode::Char('x') => Some(Message::ActionDetailActionBarFocus),
+                    _ => None,
+                }
             }
-            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                Some(Message::ScrollUp)
-            }
-            KeyCode::Char('x') => Some(Message::ActionDetailActionBarFocus), // x → action bar (quick)
-            KeyCode::Char('o') => Some(Message::ActionDetailOpenInBrowser),
-            _ => None,
-        },
+        }
     }
 }
 
@@ -751,24 +920,40 @@ fn handle_pr_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         };
     }
 
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::Enter => Some(Message::ListSelect(0)),
-        KeyCode::Char('r') => Some(Message::Tick),
-        KeyCode::Char('s') => Some(Message::PrToggleStateFilter),
-        KeyCode::Char('n') => Some(Message::PrNextPage),
-        KeyCode::Char('p') => Some(Message::PrPrevPage),
-        KeyCode::Char('c') => Some(Message::ModalOpen(ModalKind::CreatePr)),
-        KeyCode::Char('/') => Some(Message::PrSearchStart),
-        KeyCode::Char('o') => Some(Message::PrSortCycle),
-        KeyCode::Char('F') => Some(Message::PrFilterClear),
-        _ => None,
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
+
+    if nav_down(&key, &ks, kb) {
+        Some(Message::ListSelect(1))
+    } else if nav_up(&key, &ks, kb) {
+        Some(Message::ListSelect(usize::MAX))
+    } else if ks == kb.nav_open {
+        Some(Message::ListSelect(0))
+    } else if ks == kb.nav_refresh {
+        Some(Message::Tick)
+    } else if ks == kb.filter_toggle {
+        Some(Message::PrToggleStateFilter)
+    } else if ks == kb.nav_next_page {
+        Some(Message::PrNextPage)
+    } else if ks == kb.nav_prev_page {
+        Some(Message::PrPrevPage)
+    } else if ks == kb.create {
+        Some(Message::ModalOpen(ModalKind::CreatePr))
+    } else if ks == kb.search_start {
+        Some(Message::PrSearchStart)
+    } else if ks == kb.sort_cycle {
+        Some(Message::PrSortCycle)
+    } else if ks == kb.filter_clear {
+        Some(Message::PrFilterClear)
+    } else {
+        None
     }
 }
 
 fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     let is_editing = state.pr_detail.as_ref().is_some_and(|d| d.is_editing());
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
 
     if is_editing {
         let is_title_edit = state
@@ -779,13 +964,23 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
         let alt = key.modifiers.contains(KeyModifiers::ALT);
 
+        // Configurable editor bindings
+        if ks == kb.edit_cancel {
+            return Some(Message::PrEditCancel);
+        }
+        if ks == kb.edit_submit {
+            return Some(Message::PrEditSubmit);
+        }
+        if ks == kb.edit_undo {
+            return Some(Message::PrEditUndo);
+        }
+        if ks == kb.edit_redo {
+            return Some(Message::PrEditRedo);
+        }
+
         return match key.code {
-            KeyCode::Esc => Some(Message::PrEditCancel),
-            KeyCode::Char('s') if ctrl => Some(Message::PrEditSubmit),
             KeyCode::Enter if ctrl || alt || is_title_edit => Some(Message::PrEditSubmit),
             KeyCode::Enter => Some(Message::PrEditNewline),
-            KeyCode::Char('z') if ctrl => Some(Message::PrEditUndo),
-            KeyCode::Char('y') if ctrl => Some(Message::PrEditRedo),
             KeyCode::Char(c) => Some(Message::PrEditChar(c)),
             KeyCode::Backspace => Some(Message::PrEditBackspace),
             KeyCode::Delete => Some(Message::PrEditDelete),
@@ -810,40 +1005,49 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     if has_picker {
         if let Some(ref detail) = state.pr_detail {
             if detail.label_picker.is_some() {
+                if nav_down(&key, &ks, kb) {
+                    return Some(Message::ListSelect(1));
+                } else if nav_up(&key, &ks, kb) {
+                    return Some(Message::ListSelect(usize::MAX));
+                }
                 return match key.code {
                     KeyCode::Esc => Some(Message::PrLabelCancel),
                     KeyCode::Enter | KeyCode::Char(' ') => detail
                         .label_picker
                         .as_ref()
                         .map(|p| Message::PrLabelSelect(p.cursor)),
-                    KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-                    KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
                     KeyCode::Char('s') => Some(Message::PrLabelApply),
                     _ => None,
                 };
             }
             if detail.assignee_picker.is_some() {
+                if nav_down(&key, &ks, kb) {
+                    return Some(Message::ListSelect(1));
+                } else if nav_up(&key, &ks, kb) {
+                    return Some(Message::ListSelect(usize::MAX));
+                }
                 return match key.code {
                     KeyCode::Esc => Some(Message::PrAssigneeCancel),
                     KeyCode::Enter | KeyCode::Char(' ') => detail
                         .assignee_picker
                         .as_ref()
                         .map(|p| Message::PrAssigneeSelect(p.cursor)),
-                    KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-                    KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
                     KeyCode::Char('s') => Some(Message::PrAssigneeApply),
                     _ => None,
                 };
             }
             if detail.milestone_picker.is_some() {
+                if nav_down(&key, &ks, kb) {
+                    return Some(Message::ListSelect(1));
+                } else if nav_up(&key, &ks, kb) {
+                    return Some(Message::ListSelect(usize::MAX));
+                }
                 return match key.code {
                     KeyCode::Esc => Some(Message::PrMilestoneCancel),
                     KeyCode::Enter | KeyCode::Char(' ') => detail
                         .milestone_picker
                         .as_ref()
                         .map(|p| Message::PrMilestoneSelect(p.cursor)),
-                    KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-                    KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
                     KeyCode::Char('s') => Some(Message::PrMilestoneApply),
                     KeyCode::Char('0') => Some(Message::PrMilestoneClear),
                     _ => None,
@@ -866,10 +1070,15 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         if diff_commenting {
             let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
             let alt = key.modifiers.contains(KeyModifiers::ALT);
+
+            if ks == kb.edit_cancel {
+                return Some(Message::PrDiffCommentCancel);
+            }
+            if ks == kb.edit_submit {
+                return Some(Message::PrDiffCommentSubmit);
+            }
+
             return match key.code {
-                KeyCode::Esc => Some(Message::PrDiffCommentCancel),
-                // Ctrl+S: save/submit (reliable across all terminals)
-                KeyCode::Char('s') if ctrl => Some(Message::PrDiffCommentSubmit),
                 // Alt+Enter: submit fallback
                 KeyCode::Enter if alt => Some(Message::PrDiffCommentSubmit),
                 // Ctrl+Enter: submit (works in some terminals)
@@ -895,22 +1104,41 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             .is_some_and(|d| d.file_tree_focused && d.show_file_tree);
 
         if tree_focused {
+            if nav_down(&key, &ks, kb) {
+                return Some(Message::PrDiffTreeDown);
+            } else if nav_up(&key, &ks, kb) {
+                return Some(Message::PrDiffTreeUp);
+            } else if ks == kb.open_browser {
+                return Some(Message::PrOpenInBrowser);
+            }
             return match key.code {
-                KeyCode::Char('j') | KeyCode::Down => Some(Message::PrDiffTreeDown),
-                KeyCode::Char('k') | KeyCode::Up => Some(Message::PrDiffTreeUp),
                 KeyCode::Enter => Some(Message::PrDiffTreeSelect),
                 KeyCode::Char('f') => Some(Message::PrDiffToggleTree),
                 KeyCode::Char('V') => Some(Message::PrDiffMarkViewed),
                 KeyCode::Tab => Some(Message::PrDiffTreeFocus), // switch to diff
                 KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
                 KeyCode::Esc => Some(Message::PrDiffTreeFocus), // unfocus tree
-                KeyCode::Char('o') => Some(Message::PrOpenInBrowser),
                 _ => None,
             };
         }
 
         // Diff focused
         let shift = key.modifiers.contains(KeyModifiers::SHIFT);
+
+        if shift && nav_down(&key, &ks, kb) {
+            return Some(Message::PrDiffSelectDown);
+        } else if shift && nav_up(&key, &ks, kb) {
+            return Some(Message::PrDiffSelectUp);
+        }
+
+        if nav_down(&key, &ks, kb) {
+            return Some(Message::PrDiffCursorDown);
+        } else if nav_up(&key, &ks, kb) {
+            return Some(Message::PrDiffCursorUp);
+        } else if ks == kb.open_browser {
+            return Some(Message::PrOpenInBrowser);
+        }
+
         return match key.code {
             KeyCode::Tab => {
                 // If tree is visible, focus tree; otherwise next global tab
@@ -923,12 +1151,8 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             }
             KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
             KeyCode::Char('f') => Some(Message::PrDiffToggleTree),
-            KeyCode::Char('j') | KeyCode::Down if shift => Some(Message::PrDiffSelectDown),
-            KeyCode::Char('k') | KeyCode::Up if shift => Some(Message::PrDiffSelectUp),
             KeyCode::Char('J') => Some(Message::PrDiffSelectDown),
             KeyCode::Char('K') => Some(Message::PrDiffSelectUp),
-            KeyCode::Char('j') | KeyCode::Down => Some(Message::PrDiffCursorDown),
-            KeyCode::Char('k') | KeyCode::Up => Some(Message::PrDiffCursorUp),
             KeyCode::Enter => Some(Message::PrDiffToggleCollapse),
             KeyCode::Char('l') | KeyCode::Right => Some(Message::PrDiffExpand),
             KeyCode::Char('h') | KeyCode::Left => Some(Message::PrDiffCollapse),
@@ -938,7 +1162,6 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             KeyCode::PageUp => Some(Message::ScrollUp),
             KeyCode::Char('s') => Some(Message::PrDiffToggleSideBySide),
             KeyCode::Char('z') => Some(Message::PrReviewThreadToggleResolve),
-            KeyCode::Char('o') => Some(Message::PrOpenInBrowser),
             _ => None,
         };
     }
@@ -961,32 +1184,38 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     }
 
     // Normal mode (conversation/checks tabs)
-    match key.code {
-        KeyCode::Tab => Some(Message::TabChanged(1)),
-        KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::Char('e') => Some(Message::PrStartEditBody),
-        KeyCode::Char('c') => Some(Message::PrStartComment),
-        KeyCode::Char('r') => Some(Message::PrStartReply),
-        KeyCode::Char('l') => Some(Message::PrLabelToggle),
-        KeyCode::Char('a') => Some(Message::PrAssigneeToggle),
-        KeyCode::Char('v') => Some(Message::PrReviewerToggle),
-        KeyCode::Char('m') => Some(Message::ModalOpen(ModalKind::MergePr)),
-        KeyCode::Char('d') => Some(Message::PrDeleteComment),
-        KeyCode::Char('x') => Some(Message::PrToggleState),
-        KeyCode::Char('A') => Some(Message::PrApprove),
-        KeyCode::Char('R') => Some(Message::PrRequestChanges),
-        KeyCode::Char('D') => Some(Message::PrDraftToggle),
-        KeyCode::Char('G') => Some(Message::PrAutoMergeToggle),
-        KeyCode::Char('M') => Some(Message::PrMilestoneToggle),
-        KeyCode::Char('b') => Some(Message::PrChangeBase),
-        KeyCode::Char('o') => Some(Message::PrOpenInBrowser),
-        KeyCode::Char('+') => Some(Message::PrAddReaction("+1".to_string())),
-        KeyCode::Char('-') => Some(Message::PrAddReaction("-1".to_string())),
-        KeyCode::PageDown => Some(Message::ScrollDown),
-        KeyCode::PageUp => Some(Message::ScrollUp),
-        _ => None,
+    if nav_down(&key, &ks, kb) {
+        Some(Message::ListSelect(1))
+    } else if nav_up(&key, &ks, kb) {
+        Some(Message::ListSelect(usize::MAX))
+    } else if ks == kb.open_browser {
+        Some(Message::PrOpenInBrowser)
+    } else if ks == kb.delete {
+        Some(Message::PrDeleteComment)
+    } else {
+        match key.code {
+            KeyCode::Tab => Some(Message::TabChanged(1)),
+            KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
+            KeyCode::Char('e') => Some(Message::PrStartEditBody),
+            KeyCode::Char('c') => Some(Message::PrStartComment),
+            KeyCode::Char('r') => Some(Message::PrStartReply),
+            KeyCode::Char('l') => Some(Message::PrLabelToggle),
+            KeyCode::Char('a') => Some(Message::PrAssigneeToggle),
+            KeyCode::Char('v') => Some(Message::PrReviewerToggle),
+            KeyCode::Char('m') => Some(Message::ModalOpen(ModalKind::MergePr)),
+            KeyCode::Char('x') => Some(Message::PrToggleState),
+            KeyCode::Char('A') => Some(Message::PrApprove),
+            KeyCode::Char('R') => Some(Message::PrRequestChanges),
+            KeyCode::Char('D') => Some(Message::PrDraftToggle),
+            KeyCode::Char('G') => Some(Message::PrAutoMergeToggle),
+            KeyCode::Char('M') => Some(Message::PrMilestoneToggle),
+            KeyCode::Char('b') => Some(Message::PrChangeBase),
+            KeyCode::Char('+') => Some(Message::PrAddReaction("+1".to_string())),
+            KeyCode::Char('-') => Some(Message::PrAddReaction("-1".to_string())),
+            KeyCode::PageDown => Some(Message::ScrollDown),
+            KeyCode::PageUp => Some(Message::ScrollUp),
+            _ => None,
+        }
     }
 }
 
@@ -1004,24 +1233,40 @@ fn handle_issue_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         };
     }
 
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::Enter => Some(Message::ListSelect(0)),
-        KeyCode::Char('r') => Some(Message::Tick),
-        KeyCode::Char('s') => Some(Message::IssueToggleStateFilter),
-        KeyCode::Char('n') => Some(Message::IssueNextPage),
-        KeyCode::Char('p') => Some(Message::IssuePrevPage),
-        KeyCode::Char('c') => Some(Message::ModalOpen(ModalKind::CreateIssue)),
-        KeyCode::Char('/') => Some(Message::IssueSearchStart),
-        KeyCode::Char('o') => Some(Message::IssueSortCycle),
-        KeyCode::Char('F') => Some(Message::IssueFilterClear), // Shift+F: clear filters
-        _ => None,
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
+
+    if nav_down(&key, &ks, kb) {
+        Some(Message::ListSelect(1))
+    } else if nav_up(&key, &ks, kb) {
+        Some(Message::ListSelect(usize::MAX))
+    } else if ks == kb.nav_open {
+        Some(Message::ListSelect(0))
+    } else if ks == kb.nav_refresh {
+        Some(Message::Tick)
+    } else if ks == kb.filter_toggle {
+        Some(Message::IssueToggleStateFilter)
+    } else if ks == kb.nav_next_page {
+        Some(Message::IssueNextPage)
+    } else if ks == kb.nav_prev_page {
+        Some(Message::IssuePrevPage)
+    } else if ks == kb.create {
+        Some(Message::ModalOpen(ModalKind::CreateIssue))
+    } else if ks == kb.search_start {
+        Some(Message::IssueSearchStart)
+    } else if ks == kb.sort_cycle {
+        Some(Message::IssueSortCycle)
+    } else if ks == kb.filter_clear {
+        Some(Message::IssueFilterClear)
+    } else {
+        None
     }
 }
 
 fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     let is_editing = state.issue_detail.as_ref().is_some_and(|d| d.is_editing());
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
 
     if is_editing {
         // Inline editing mode
@@ -1033,15 +1278,23 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
         let alt = key.modifiers.contains(KeyModifiers::ALT);
 
+        // Configurable editor bindings
+        if ks == kb.edit_cancel {
+            return Some(Message::IssueEditCancel);
+        }
+        if ks == kb.edit_submit {
+            return Some(Message::IssueEditSubmit);
+        }
+        if ks == kb.edit_undo {
+            return Some(Message::IssueEditUndo);
+        }
+        if ks == kb.edit_redo {
+            return Some(Message::IssueEditRedo);
+        }
+
         return match key.code {
-            KeyCode::Esc => Some(Message::IssueEditCancel),
-            KeyCode::Char('s') if ctrl => Some(Message::IssueEditSubmit),
             KeyCode::Enter if ctrl || alt || is_title_edit => Some(Message::IssueEditSubmit),
             KeyCode::Enter => Some(Message::IssueEditNewline),
-            // Ctrl+Z/Y undo/redo
-            KeyCode::Char('z') if ctrl => Some(Message::IssueEditUndo),
-            KeyCode::Char('y') if ctrl => Some(Message::IssueEditRedo),
-            // Regular char input
             KeyCode::Char(c) => Some(Message::IssueEditChar(c)),
             KeyCode::Backspace => Some(Message::IssueEditBackspace),
             KeyCode::Delete => Some(Message::IssueEditDelete),
@@ -1068,40 +1321,49 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
         if let Some(ref detail) = state.issue_detail {
             // Determine which picker is active
             if detail.label_picker.is_some() {
+                if nav_down(&key, &ks, kb) {
+                    return Some(Message::ListSelect(1));
+                } else if nav_up(&key, &ks, kb) {
+                    return Some(Message::ListSelect(usize::MAX));
+                }
                 return match key.code {
                     KeyCode::Esc => Some(Message::IssueLabelCancel),
                     KeyCode::Enter | KeyCode::Char(' ') => detail
                         .label_picker
                         .as_ref()
                         .map(|p| Message::IssueLabelSelect(p.cursor)),
-                    KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-                    KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
                     KeyCode::Char('s') => Some(Message::IssueLabelApply),
                     _ => None,
                 };
             }
             if detail.assignee_picker.is_some() {
+                if nav_down(&key, &ks, kb) {
+                    return Some(Message::ListSelect(1));
+                } else if nav_up(&key, &ks, kb) {
+                    return Some(Message::ListSelect(usize::MAX));
+                }
                 return match key.code {
                     KeyCode::Esc => Some(Message::IssueAssigneeCancel),
                     KeyCode::Enter | KeyCode::Char(' ') => detail
                         .assignee_picker
                         .as_ref()
                         .map(|p| Message::IssueAssigneeSelect(p.cursor)),
-                    KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-                    KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
                     KeyCode::Char('s') => Some(Message::IssueAssigneeApply),
                     _ => None,
                 };
             }
             if detail.milestone_picker.is_some() {
+                if nav_down(&key, &ks, kb) {
+                    return Some(Message::ListSelect(1));
+                } else if nav_up(&key, &ks, kb) {
+                    return Some(Message::ListSelect(usize::MAX));
+                }
                 return match key.code {
                     KeyCode::Esc => Some(Message::IssueMilestoneCancel),
                     KeyCode::Enter | KeyCode::Char(' ') => detail
                         .milestone_picker
                         .as_ref()
                         .map(|p| Message::IssueMilestoneSelect(p.cursor)),
-                    KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-                    KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
                     KeyCode::Char('s') => Some(Message::IssueMilestoneApply),
                     KeyCode::Char('0') => Some(Message::IssueMilestoneClear),
                     _ => None,
@@ -1112,81 +1374,112 @@ fn handle_issue_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
     }
 
     // Normal section navigation mode
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)), // focus next section
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)), // focus prev
-        KeyCode::Char('e') => Some(Message::IssueStartEditBody),            // edit focused item
-        KeyCode::Char('c') => Some(Message::IssueStartComment),
-        KeyCode::Char('r') => Some(Message::IssueStartReply),
-        KeyCode::Char('l') => Some(Message::IssueLabelToggle),
-        KeyCode::Char('a') => Some(Message::IssueAssigneeToggle),
-        KeyCode::Char('m') => Some(Message::IssueMilestoneToggle),
-        KeyCode::Char('d') => Some(Message::IssueDeleteComment),
-        KeyCode::Char('x') => Some(Message::IssueToggleState),
-        KeyCode::Char('L') => Some(Message::IssueLockToggle),
-        KeyCode::Char('P') => Some(Message::IssuePinToggle),
-        KeyCode::Char('X') => Some(Message::IssueTransfer), // Shift+X: transfer
-        KeyCode::Char('o') => Some(Message::IssueOpenInBrowser),
-        // Quick reactions
-        KeyCode::Char('+') => Some(Message::IssueAddReaction("+1".to_string())),
-        KeyCode::Char('-') => Some(Message::IssueAddReaction("-1".to_string())),
-        KeyCode::PageDown => Some(Message::ScrollDown),
-        KeyCode::PageUp => Some(Message::ScrollUp),
-        _ => None,
+    if nav_down(&key, &ks, kb) {
+        Some(Message::ListSelect(1))
+    } else if nav_up(&key, &ks, kb) {
+        Some(Message::ListSelect(usize::MAX))
+    } else if ks == kb.open_browser {
+        Some(Message::IssueOpenInBrowser)
+    } else if ks == kb.delete {
+        Some(Message::IssueDeleteComment)
+    } else {
+        match key.code {
+            KeyCode::Char('e') => Some(Message::IssueStartEditBody),
+            KeyCode::Char('c') => Some(Message::IssueStartComment),
+            KeyCode::Char('r') => Some(Message::IssueStartReply),
+            KeyCode::Char('l') => Some(Message::IssueLabelToggle),
+            KeyCode::Char('a') => Some(Message::IssueAssigneeToggle),
+            KeyCode::Char('m') => Some(Message::IssueMilestoneToggle),
+            KeyCode::Char('x') => Some(Message::IssueToggleState),
+            KeyCode::Char('L') => Some(Message::IssueLockToggle),
+            KeyCode::Char('P') => Some(Message::IssuePinToggle),
+            KeyCode::Char('X') => Some(Message::IssueTransfer), // Shift+X: transfer
+            // Quick reactions
+            KeyCode::Char('+') => Some(Message::IssueAddReaction("+1".to_string())),
+            KeyCode::Char('-') => Some(Message::IssueAddReaction("-1".to_string())),
+            KeyCode::PageDown => Some(Message::ScrollDown),
+            KeyCode::PageUp => Some(Message::ScrollUp),
+            _ => None,
+        }
     }
 }
 
-fn handle_discussions_keys(key: KeyEvent, _state: &AppState) -> Option<Message> {
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::Char('o') | KeyCode::Enter => Some(Message::DiscussionsOpenInBrowser),
-        KeyCode::Esc => Some(Message::Back),
-        _ => None,
+fn handle_discussions_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
+
+    if nav_down(&key, &ks, kb) {
+        Some(Message::ListSelect(1))
+    } else if nav_up(&key, &ks, kb) {
+        Some(Message::ListSelect(usize::MAX))
+    } else if ks == kb.open_browser || key.code == KeyCode::Enter {
+        Some(Message::DiscussionsOpenInBrowser)
+    } else if key.code == KeyCode::Esc {
+        Some(Message::Back)
+    } else {
+        None
     }
 }
 
-fn handle_gists_keys(key: KeyEvent, _state: &AppState) -> Option<Message> {
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::Char('o') | KeyCode::Enter => Some(Message::GistsOpenInBrowser),
-        KeyCode::Esc => Some(Message::Back),
-        _ => None,
+fn handle_gists_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
+
+    if nav_down(&key, &ks, kb) {
+        Some(Message::ListSelect(1))
+    } else if nav_up(&key, &ks, kb) {
+        Some(Message::ListSelect(usize::MAX))
+    } else if ks == kb.open_browser || key.code == KeyCode::Enter {
+        Some(Message::GistsOpenInBrowser)
+    } else if key.code == KeyCode::Esc {
+        Some(Message::Back)
+    } else {
+        None
     }
 }
 
-fn handle_org_keys(key: KeyEvent, _state: &AppState) -> Option<Message> {
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::Esc => Some(Message::Back),
-        _ => None,
+fn handle_org_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
+
+    if nav_down(&key, &ks, kb) {
+        Some(Message::ListSelect(1))
+    } else if nav_up(&key, &ks, kb) {
+        Some(Message::ListSelect(usize::MAX))
+    } else if key.code == KeyCode::Esc {
+        Some(Message::Back)
+    } else {
+        None
     }
 }
 
 fn handle_dashboard_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     if state.recent_repos.is_empty() {
-        return handle_list_keys(key);
+        return handle_list_keys(key, state);
     }
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
-        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
-        KeyCode::Enter => {
-            // Navigate to the selected repo's Code tab
-            if let Some(repo) = state.recent_repos.get(state.dashboard_selected) {
-                let parts: Vec<&str> = repo.full_name.splitn(2, '/').collect();
-                if parts.len() == 2 {
-                    let repo_id = ghtui_core::types::common::RepoId::new(parts[0], parts[1]);
-                    return Some(Message::Navigate(Route::Code {
-                        repo: repo_id,
-                        path: String::new(),
-                        git_ref: repo.default_branch.clone(),
-                    }));
-                }
+
+    let ks = key_event_to_string(&key);
+    let kb = &state.config.keybindings;
+
+    if nav_down(&key, &ks, kb) {
+        Some(Message::ListSelect(1))
+    } else if nav_up(&key, &ks, kb) {
+        Some(Message::ListSelect(usize::MAX))
+    } else if key.code == KeyCode::Enter {
+        // Navigate to the selected repo's Code tab
+        if let Some(repo) = state.recent_repos.get(state.dashboard_selected) {
+            let parts: Vec<&str> = repo.full_name.splitn(2, '/').collect();
+            if parts.len() == 2 {
+                let repo_id = ghtui_core::types::common::RepoId::new(parts[0], parts[1]);
+                return Some(Message::Navigate(Route::Code {
+                    repo: repo_id,
+                    path: String::new(),
+                    git_ref: repo.default_branch.clone(),
+                }));
             }
-            None
         }
-        _ => None,
+        None
+    } else {
+        None
     }
 }

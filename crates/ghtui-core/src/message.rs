@@ -313,12 +313,12 @@ pub enum Message {
     CodeTreeLoaded(Vec<crate::types::code::TreeNode>),
     CodeToggleExpand,
     CodeContentsLoaded(Vec<crate::types::code::FileEntry>),
-    CodeFileLoaded(String, String),   // filename, content
-    CodeImageLoaded(String, Vec<u8>), // filename, raw image bytes
-    CodeReadmeLoaded(String),         // readme content
-    CodeNavigateInto,                 // Enter on dir -> navigate into; on file -> view
-    CodeNavigateBack,                 // Backspace/Esc -> go up
-    CodeSidebarFocus,                 // Toggle sidebar/content focus
+    CodeFileLoaded(String, String, String), // path, filename, content
+    CodeImageLoaded(String, String, Vec<u8>), // path, filename, raw image bytes
+    CodeReadmeLoaded(String),               // readme content
+    CodeNavigateInto,                       // Enter on dir -> navigate into; on file -> view
+    CodeNavigateBack,                       // Backspace/Esc -> go up
+    CodeSidebarFocus,                       // Toggle sidebar/content focus
     CodeBranchesLoaded(Vec<String>),
     CodeTagsLoaded(Vec<String>),
     CodeOpenRefPicker,

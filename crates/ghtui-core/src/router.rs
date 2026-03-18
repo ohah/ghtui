@@ -128,6 +128,29 @@ impl Route {
         }
     }
 
+    /// Returns the repo associated with this route, if any.
+    pub fn repo(&self) -> Option<&RepoId> {
+        match self {
+            Route::Code { repo, .. }
+            | Route::IssueList { repo, .. }
+            | Route::IssueDetail { repo, .. }
+            | Route::PrList { repo, .. }
+            | Route::PrDetail { repo, .. }
+            | Route::ActionsList { repo, .. }
+            | Route::ActionDetail { repo, .. }
+            | Route::JobLog { repo, .. }
+            | Route::Security { repo }
+            | Route::Insights { repo }
+            | Route::Settings { repo }
+            | Route::Discussions { repo } => Some(repo),
+            Route::Dashboard
+            | Route::Notifications
+            | Route::Search { .. }
+            | Route::Gists
+            | Route::Organizations => None,
+        }
+    }
+
     /// Returns which global tab index this route belongs to, if any
     pub fn tab_index(&self) -> Option<usize> {
         match self {

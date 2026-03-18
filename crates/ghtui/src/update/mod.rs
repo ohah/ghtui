@@ -4180,7 +4180,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.loading.remove("code_contents");
             let mut cmds = vec![];
             if let (Some(code), Some(repo)) = (&mut state.code, &state.current_repo) {
-                // Detect README in root
+                // Detect README in root — use dedicated FetchReadme with known path
                 if code.readme_content.is_none() {
                     if let Some(readme_node) = nodes.iter().find(|n| {
                         n.depth == 0 && !n.is_dir && {
@@ -4189,10 +4189,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         }
                     }) {
                         state.loading.insert("code_readme".to_string());
-                        cmds.push(Command::FetchFileContent(
+                        cmds.push(Command::FetchReadme(
                             repo.clone(),
-                            readme_node.path.clone(),
                             code.git_ref.clone(),
+                            Some(readme_node.path.clone()),
                         ));
                     }
                 }
@@ -4219,7 +4219,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::CodeContentsLoaded(entries) => {
             state.loading.remove("code_contents");
             let mut cmds = vec![];
-            // Auto-detect README in root directory listing
+            // Auto-detect README in root directory listing — use dedicated FetchReadme with known path
             if let (Some(code), Some(repo)) = (&mut state.code, &state.current_repo) {
                 if code.current_path.is_empty() && code.readme_content.is_none() {
                     if let Some(readme) = entries.iter().find(|e| {
@@ -4227,10 +4227,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         lower == "readme.md" || lower == "readme" || lower == "readme.txt"
                     }) {
                         state.loading.insert("code_readme".to_string());
-                        cmds.push(Command::FetchFileContent(
+                        cmds.push(Command::FetchReadme(
                             repo.clone(),
-                            readme.path.clone(),
                             code.git_ref.clone(),
+                            Some(readme.path.clone()),
                         ));
                     }
                 }
@@ -4239,41 +4239,37 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             cmds
         }
-        Message::CodeFileLoaded(filename, content) => {
+        Message::CodeFileLoaded(path, filename, content) => {
             state.loading.remove("code_file");
-            state.loading.remove("code_readme");
             if let Some(ref mut code) = state.code {
-                // If this is a README file loaded from root, store as readme_content
-                let lower = filename.to_lowercase();
-                if code.current_path.is_empty()
-                    && (lower == "readme.md" || lower == "readme" || lower == "readme.txt")
-                    && code.file_content.is_none()
-                {
-                    code.readme_content = Some(content);
-                } else {
+                // Only accept if this matches the currently expected file (race guard)
+                if code.file_path.as_deref() == Some(path.as_str()) {
                     code.file_content = Some(content);
                     code.file_name = Some(filename);
                     code.scroll = 0;
-                    // Don't auto-switch focus — user navigates manually
                 }
             }
             vec![]
         }
-        Message::CodeImageLoaded(filename, bytes) => {
+        Message::CodeImageLoaded(path, filename, bytes) => {
             state.loading.remove("code_file");
             if let Some(ref mut code) = state.code {
-                code.image_data = Some(bytes);
-                code.file_content = None;
-                code.file_name = Some(filename);
-                code.scroll = 0;
-                // Don't auto-switch focus — user navigates manually
+                // Only accept if this matches the currently expected file (race guard)
+                if code.file_path.as_deref() == Some(path.as_str()) {
+                    code.image_data = Some(bytes);
+                    code.file_content = None;
+                    code.file_name = Some(filename);
+                    code.scroll = 0;
+                }
             }
             vec![]
         }
         Message::CodeReadmeLoaded(content) => {
             state.loading.remove("code_readme");
             if let Some(ref mut code) = state.code {
-                code.readme_content = Some(content);
+                if !content.is_empty() {
+                    code.readme_content = Some(content);
+                }
             }
             vec![]
         }
@@ -4285,6 +4281,11 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         if node.is_dir {
                             code.toggle_expand();
                         } else if let Some(ref repo) = state.current_repo {
+                            // Clear previous file immediately to prevent stale display
+                            code.file_content = None;
+                            code.file_name = None;
+                            code.image_data = None;
+                            code.scroll = 0;
                             code.file_path = Some(node.path.clone());
                             state.loading.insert("code_file".to_string());
                             let filename = node.path.rsplit('/').next().unwrap_or(&node.path);
@@ -4437,26 +4438,12 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 if let Some((ref_name, _is_branch)) =
                     code.ref_picker_items.get(code.ref_picker_selected).cloned()
                 {
-                    code.ref_picker_open = false;
-                    code.git_ref = ref_name;
-                    code.file_content = None;
-                    code.file_name = None;
-                    code.file_path = None;
-                    code.readme_content = None;
-                    code.entries.clear();
-                    code.path_stack.clear();
-                    code.current_path.clear();
-                    code.selected = 0;
-                    code.scroll = 0;
-                    code.commits.clear();
-                    code.commit_detail = None;
-                    code.show_commits = false;
-                    code.commit_selected = 0;
-                    // Clear tree state
-                    code.tree.clear();
-                    code.expanded_dirs.clear();
-                    code.tree_visible.clear();
-                    code.tree_loaded = false;
+                    // Reset to fresh state, preserving only branches/tags
+                    let branches = std::mem::take(&mut code.branches);
+                    let tags = std::mem::take(&mut code.tags);
+                    *code = ghtui_core::state::CodeViewState::new(ref_name);
+                    code.branches = branches;
+                    code.tags = tags;
                     if let Some(ref repo) = state.current_repo {
                         state.loading.insert("code_tree".to_string());
                         state.loading.insert("code_contents".to_string());
