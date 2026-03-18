@@ -281,9 +281,9 @@ fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
 }
 
 fn handle_actions_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
-    let search_mode = state.actions_list.as_ref().is_some_and(|l| l.search_mode);
+    let list = state.actions_list.as_ref()?;
 
-    if search_mode {
+    if list.search_mode {
         return match key.code {
             KeyCode::Esc => Some(Message::ActionsSearchCancel),
             KeyCode::Enter => Some(Message::ActionsSearchSubmit),
@@ -294,17 +294,8 @@ fn handle_actions_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
     }
 
     // Dispatch modal keys
-    let has_dispatch = state
-        .actions_list
-        .as_ref()
-        .is_some_and(|l| l.dispatch.is_some());
-    if has_dispatch {
-        let editing = state
-            .actions_list
-            .as_ref()
-            .and_then(|l| l.dispatch.as_ref())
-            .is_some_and(|d| d.editing);
-        if editing {
+    if let Some(ref dispatch) = list.dispatch {
+        if dispatch.editing {
             return match key.code {
                 KeyCode::Esc | KeyCode::Enter => Some(Message::ActionsDispatchEditDone),
                 KeyCode::Char(c) => Some(Message::ActionsDispatchEditChar(c)),
@@ -324,26 +315,14 @@ fn handle_actions_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
     }
 
     // Workflow sidebar keys
-    let sidebar_focused = state
-        .actions_list
-        .as_ref()
-        .is_some_and(|l| l.show_workflow_sidebar && l.workflow_sidebar_focused);
-    if sidebar_focused {
+    if list.show_workflow_sidebar && list.workflow_sidebar_focused {
         return match key.code {
             KeyCode::Char('j') | KeyCode::Down => Some(Message::ActionsWorkflowSidebarDown),
             KeyCode::Char('k') | KeyCode::Up => Some(Message::ActionsWorkflowSidebarUp),
             KeyCode::Enter => Some(Message::ActionsWorkflowSidebarSelect),
             KeyCode::Char('w') => Some(Message::ActionsToggleWorkflowSidebar),
             KeyCode::Char('d') => Some(Message::ActionsDispatchOpen),
-            KeyCode::Tab => {
-                // Switch focus to run list
-                if let Some(ref list) = state.actions_list {
-                    if list.show_workflow_sidebar {
-                        return Some(Message::ActionsToggleWorkflowSidebar);
-                    }
-                }
-                None
-            }
+            KeyCode::Tab => Some(Message::ActionsToggleWorkflowSidebar),
             KeyCode::Esc => Some(Message::ActionsToggleWorkflowSidebar),
             _ => None,
         };

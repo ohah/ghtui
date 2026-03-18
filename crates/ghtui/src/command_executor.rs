@@ -518,15 +518,8 @@ fn parse_workflow_inputs(yaml_content: &str) -> Vec<ghtui_core::types::WorkflowI
             let description = val["description"].as_str().map(|s| s.to_string());
             let default = val["default"]
                 .as_str()
-                .or_else(|| val["default"].as_bool().map(|_| "false"))
                 .map(|s| s.to_string())
-                .or_else(|| {
-                    if val["default"].is_boolean() {
-                        Some(val["default"].as_bool().unwrap().to_string())
-                    } else {
-                        None
-                    }
-                });
+                .or_else(|| val["default"].as_bool().map(|b| b.to_string()));
             let options = val["options"]
                 .as_array()
                 .map(|arr| {
