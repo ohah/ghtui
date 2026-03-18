@@ -47,6 +47,9 @@ pub struct EditorView<'a> {
     show_line_numbers: bool,
     show_status_bar: bool,
     status_hint: &'a str,
+    /// Optional syntax-highlighted spans per line (absolute line index → spans).
+    /// If provided, uses these colors instead of default text color.
+    highlighted: Option<&'a [Vec<Span<'a>>]>,
 }
 
 impl<'a> EditorView<'a> {
@@ -58,7 +61,13 @@ impl<'a> EditorView<'a> {
             show_line_numbers: true,
             show_status_bar: true,
             status_hint: "Ctrl+S: Submit  Esc: Cancel",
+            highlighted: None,
         }
+    }
+
+    pub fn highlighted(mut self, spans: &'a [Vec<Span<'a>>]) -> Self {
+        self.highlighted = Some(spans);
+        self
     }
 
     pub fn theme(mut self, theme: EditorTheme) -> Self {
@@ -209,6 +218,11 @@ impl Widget for EditorView<'_> {
                     after.to_string(),
                     Style::default().fg(self.theme.text),
                 ));
+            } else if let Some(hl) = self.highlighted.and_then(|h| h.get(i)) {
+                // Use syntax-highlighted spans (clone to 'static)
+                for s in hl {
+                    spans.push(Span::styled(s.content.to_string(), s.style));
+                }
             } else {
                 spans.push(Span::styled(
                     line.clone(),
