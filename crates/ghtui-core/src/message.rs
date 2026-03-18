@@ -264,6 +264,15 @@ pub enum Message {
     SettingsRepoLoaded(Box<settings::Repository>),
     SettingsBranchProtectionsLoaded(Vec<settings::BranchProtection>),
     SettingsCollaboratorsLoaded(Vec<settings::Collaborator>),
+    SettingsWebhooksLoaded(Vec<settings::Webhook>),
+    SettingsDeployKeysLoaded(Vec<settings::DeployKey>),
+    SettingsRepoUpdated(Box<settings::Repository>),
+    SettingsStartEdit(String), // field name
+    SettingsEditChar(char),
+    SettingsEditBackspace,
+    SettingsEditSubmit,
+    SettingsEditCancel,
+    SettingsToggleFeature(String), // feature name (has_issues, has_wiki, etc.)
 
     // Mouse
     ScrollUp,

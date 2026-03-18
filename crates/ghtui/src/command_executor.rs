@@ -450,6 +450,18 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Ok(collaborators) => Message::SettingsCollaboratorsLoaded(collaborators),
             Err(e) => Message::Error(e.into()),
         },
+        Command::FetchWebhooks(repo) => match client.list_webhooks(&repo).await {
+            Ok(hooks) => Message::SettingsWebhooksLoaded(hooks),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::FetchDeployKeys(repo) => match client.list_deploy_keys(&repo).await {
+            Ok(keys) => Message::SettingsDeployKeysLoaded(keys),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::UpdateRepo(repo, updates) => match client.update_repo(&repo, &updates).await {
+            Ok(repository) => Message::SettingsRepoUpdated(Box::new(repository)),
+            Err(e) => Message::Error(e.into()),
+        },
 
         // Utility
         Command::OpenInBrowser(url) => {

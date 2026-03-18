@@ -101,6 +101,9 @@ pub enum Command {
     FetchRepoSettings(RepoId),
     FetchBranchProtections(RepoId),
     FetchCollaborators(RepoId),
+    FetchWebhooks(RepoId),
+    FetchDeployKeys(RepoId),
+    UpdateRepo(RepoId, serde_json::Value),
 
     // Utility
     OpenInBrowser(String),

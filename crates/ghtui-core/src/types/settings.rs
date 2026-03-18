@@ -83,6 +83,34 @@ pub struct Collaborator {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Webhook {
+    pub id: u64,
+    pub name: String,
+    pub active: bool,
+    pub events: Vec<String>,
+    pub config: WebhookConfig,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WebhookConfig {
+    pub url: Option<String>,
+    pub content_type: Option<String>,
+    pub insecure_ssl: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeployKey {
+    pub id: u64,
+    pub key: String,
+    pub title: String,
+    pub verified: bool,
+    pub read_only: bool,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CollaboratorPermissions {
     #[serde(default)]
     pub admin: bool,

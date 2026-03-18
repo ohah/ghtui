@@ -2,6 +2,7 @@ use ghtui_core::router::Route;
 use ghtui_core::state::actions::ActionBarItem;
 use ghtui_core::state::issue::InlineEditTarget;
 use ghtui_core::state::pr::PrInlineEditTarget;
+use ghtui_core::state::settings::SettingsEditField;
 use ghtui_core::state::*;
 use ghtui_core::types::{ActionsFilters, IssueFilters, IssueState, PrFilters, PrState};
 use ghtui_core::{AppState, Command, Message};
@@ -2650,6 +2651,92 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::SettingsWebhooksLoaded(hooks) => {
+            state.loading.remove("webhooks");
+            if let Some(ref mut settings) = state.settings {
+                settings.webhooks = hooks;
+            }
+            vec![]
+        }
+        Message::SettingsDeployKeysLoaded(keys) => {
+            state.loading.remove("deploy_keys");
+            if let Some(ref mut settings) = state.settings {
+                settings.deploy_keys = keys;
+            }
+            vec![]
+        }
+        Message::SettingsRepoUpdated(repo) => {
+            state.push_toast("Settings updated".to_string(), ToastLevel::Success);
+            if let Some(ref mut settings) = state.settings {
+                settings.repo = *repo;
+                settings.cancel_edit();
+            }
+            vec![]
+        }
+        Message::SettingsStartEdit(field) => {
+            if let Some(ref mut settings) = state.settings {
+                let edit_field = match field.as_str() {
+                    "description" => SettingsEditField::Description,
+                    "default_branch" => SettingsEditField::DefaultBranch,
+                    "topics" => SettingsEditField::Topics,
+                    _ => return vec![],
+                };
+                settings.start_edit(edit_field);
+            }
+            vec![]
+        }
+        Message::SettingsEditChar(c) => {
+            if let Some(ref mut settings) = state.settings {
+                settings.edit_buffer.push(c);
+            }
+            vec![]
+        }
+        Message::SettingsEditBackspace => {
+            if let Some(ref mut settings) = state.settings {
+                settings.edit_buffer.pop();
+            }
+            vec![]
+        }
+        Message::SettingsEditCancel => {
+            if let Some(ref mut settings) = state.settings {
+                settings.cancel_edit();
+            }
+            vec![]
+        }
+        Message::SettingsEditSubmit => {
+            if let (Some(settings), Some(repo)) = (&state.settings, &state.current_repo) {
+                let updates = match &settings.editing {
+                    Some(SettingsEditField::Description) => {
+                        serde_json::json!({ "description": settings.edit_buffer })
+                    }
+                    Some(SettingsEditField::DefaultBranch) => {
+                        serde_json::json!({ "default_branch": settings.edit_buffer })
+                    }
+                    Some(SettingsEditField::Topics) => {
+                        let topics: Vec<&str> =
+                            settings.edit_buffer.split(',').map(|s| s.trim()).collect();
+                        serde_json::json!({ "topics": topics })
+                    }
+                    None => return vec![],
+                };
+                return vec![Command::UpdateRepo(repo.clone(), updates)];
+            }
+            vec![]
+        }
+        Message::SettingsToggleFeature(feature) => {
+            if let (Some(settings), Some(repo)) = (&state.settings, &state.current_repo) {
+                let current = match feature.as_str() {
+                    "has_issues" => settings.repo.has_issues,
+                    "has_projects" => settings.repo.has_projects,
+                    "has_wiki" => settings.repo.has_wiki,
+                    "has_discussions" => settings.repo.has_discussions.unwrap_or(false),
+                    _ => return vec![],
+                };
+                let updates = serde_json::json!({ feature: !current });
+                return vec![Command::UpdateRepo(repo.clone(), updates)];
+            }
+            vec![]
+        }
 
         // Mouse click
         Message::MouseClick(_col, row) => {
@@ -3325,7 +3412,13 @@ fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command> {
         }
         Route::Settings { repo } => {
             state.loading.insert("settings".to_string());
-            vec![Command::FetchRepoSettings(repo.clone())]
+            state.loading.insert("webhooks".to_string());
+            state.loading.insert("deploy_keys".to_string());
+            vec![
+                Command::FetchRepoSettings(repo.clone()),
+                Command::FetchWebhooks(repo.clone()),
+                Command::FetchDeployKeys(repo.clone()),
+            ]
         }
         Route::Dashboard => vec![],
     };

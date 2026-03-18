@@ -941,6 +941,7 @@ dependencies = [
  "ghtui-widgets",
  "open",
  "ratatui",
+ "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",
