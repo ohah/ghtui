@@ -262,6 +262,7 @@ fn handle_insights_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             KeyCode::Char('j') | KeyCode::Down => Some(Message::TabChanged(1)),
             KeyCode::Char('k') | KeyCode::Up => Some(Message::TabChanged(usize::MAX)),
             KeyCode::Enter | KeyCode::Tab => Some(Message::InsightsSidebarFocus), // → content
+            KeyCode::BackTab => Some(Message::GlobalTabPrev),                     // ← 상위 탭
             _ => None,
         };
     }
@@ -296,6 +297,7 @@ fn handle_security_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             KeyCode::Char('j') | KeyCode::Down => Some(Message::TabChanged(1)),
             KeyCode::Char('k') | KeyCode::Up => Some(Message::TabChanged(usize::MAX)),
             KeyCode::Enter | KeyCode::Tab => Some(Message::SecuritySidebarFocus), // → content
+            KeyCode::BackTab => Some(Message::GlobalTabPrev),                     // ← 상위 탭
             _ => None,
         };
     }
@@ -346,19 +348,27 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
                     .unwrap_or_default();
                 Some(Message::CodeEditPaste(text))
             }
-            // Shift+Arrow for selection
-            KeyCode::Left if shift => Some(Message::CodeEditSelectLeft),
-            KeyCode::Right if shift => Some(Message::CodeEditSelectRight),
-            KeyCode::Up if shift => Some(Message::CodeEditSelectUp),
-            KeyCode::Down if shift => Some(Message::CodeEditSelectDown),
-            // Cmd+Arrow for line/doc navigation
+            // Cmd+Shift+Arrow — select to line start/end, doc top/bottom
+            KeyCode::Left if cmd && shift => Some(Message::CodeEditSelectToLineStart),
+            KeyCode::Right if cmd && shift => Some(Message::CodeEditSelectToLineEnd),
+            KeyCode::Up if cmd && shift => Some(Message::CodeEditSelectToDocTop),
+            KeyCode::Down if cmd && shift => Some(Message::CodeEditSelectToDocBottom),
+            // Alt+Shift+Arrow — select word
+            KeyCode::Left if alt && shift => Some(Message::CodeEditSelectWordLeft),
+            KeyCode::Right if alt && shift => Some(Message::CodeEditSelectWordRight),
+            // Cmd+Arrow — line/doc navigation (no selection)
             KeyCode::Left if cmd => Some(Message::CodeEditMoveLineStart),
             KeyCode::Right if cmd => Some(Message::CodeEditMoveLineEnd),
             KeyCode::Up if cmd => Some(Message::CodeEditMoveDocTop),
             KeyCode::Down if cmd => Some(Message::CodeEditMoveDocBottom),
-            // Alt/Option+Arrow for word movement
+            // Alt/Option+Arrow — word movement
             KeyCode::Left if alt => Some(Message::CodeEditWordLeft),
             KeyCode::Right if alt => Some(Message::CodeEditWordRight),
+            // Shift+Arrow — char selection
+            KeyCode::Left if shift => Some(Message::CodeEditSelectLeft),
+            KeyCode::Right if shift => Some(Message::CodeEditSelectRight),
+            KeyCode::Up if shift => Some(Message::CodeEditSelectUp),
+            KeyCode::Down if shift => Some(Message::CodeEditSelectDown),
             // Regular keys
             KeyCode::Char(c) => Some(Message::CodeEditChar(c)),
             KeyCode::Enter => Some(Message::CodeEditNewline),
@@ -410,6 +420,7 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             KeyCode::Esc => Some(Message::CodeToggleCommits),
             KeyCode::Char('b') => Some(Message::CodeOpenRefPicker),
             KeyCode::Tab => Some(Message::CodeSidebarFocus), // → content
+            KeyCode::BackTab => Some(Message::GlobalTabPrev), // ← 상위 탭
             _ => None,
         };
     }
@@ -424,6 +435,7 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
                 Some(Message::CodeNavigateBack)
             }
             KeyCode::Tab => Some(Message::CodeSidebarFocus), // → content
+            KeyCode::BackTab => Some(Message::GlobalTabPrev), // ← 상위 탭
             KeyCode::Char('b') => Some(Message::CodeOpenRefPicker),
             KeyCode::Char('c') => Some(Message::CodeToggleCommits),
             _ => None,
@@ -472,6 +484,7 @@ fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             KeyCode::Char('j') | KeyCode::Down => Some(Message::TabChanged(1)),
             KeyCode::Char('k') | KeyCode::Up => Some(Message::TabChanged(usize::MAX)),
             KeyCode::Enter | KeyCode::Tab => Some(Message::SettingsSidebarFocus), // → content
+            KeyCode::BackTab => Some(Message::GlobalTabPrev),                     // ← 상위 탭
             _ => None,
         };
     }

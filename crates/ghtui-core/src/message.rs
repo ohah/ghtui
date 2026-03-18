@@ -355,14 +355,20 @@ pub enum Message {
     CodeEditSelectRight,
     CodeEditSelectUp,
     CodeEditSelectDown,
-    CodeEditSelectAll,     // Cmd+A / Ctrl+A
-    CodeEditCut,           // Cmd+X / Ctrl+X
-    CodeEditCopy,          // Cmd+C / Ctrl+C
-    CodeEditPaste(String), // Cmd+V / Ctrl+V (carries clipboard text)
-    CodeEditMoveLineStart, // Cmd+Left / Home
-    CodeEditMoveLineEnd,   // Cmd+Right / End
-    CodeEditMoveDocTop,    // Cmd+Up
-    CodeEditMoveDocBottom, // Cmd+Down
+    CodeEditSelectAll,         // Cmd+A / Ctrl+A
+    CodeEditCut,               // Cmd+X / Ctrl+X
+    CodeEditCopy,              // Cmd+C / Ctrl+C
+    CodeEditPaste(String),     // Cmd+V / Ctrl+V (carries clipboard text)
+    CodeEditMoveLineStart,     // Cmd+Left / Home
+    CodeEditMoveLineEnd,       // Cmd+Right / End
+    CodeEditMoveDocTop,        // Cmd+Up
+    CodeEditMoveDocBottom,     // Cmd+Down
+    CodeEditSelectToLineStart, // Cmd+Shift+Left
+    CodeEditSelectToLineEnd,   // Cmd+Shift+Right
+    CodeEditSelectToDocTop,    // Cmd+Shift+Up
+    CodeEditSelectToDocBottom, // Cmd+Shift+Down
+    CodeEditSelectWordLeft,    // Alt+Shift+Left
+    CodeEditSelectWordRight,   // Alt+Shift+Right
 
     // Mouse
     ScrollUp,

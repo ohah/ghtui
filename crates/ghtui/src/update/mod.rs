@@ -4447,6 +4447,43 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        // Cmd+Shift selecting movements
+        Message::CodeEditSelectToLineStart => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_home_selecting();
+            }
+            vec![]
+        }
+        Message::CodeEditSelectToLineEnd => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_end_selecting();
+            }
+            vec![]
+        }
+        Message::CodeEditSelectToDocTop => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_to_top_selecting();
+            }
+            vec![]
+        }
+        Message::CodeEditSelectToDocBottom => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_to_bottom_selecting();
+            }
+            vec![]
+        }
+        Message::CodeEditSelectWordLeft => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_word_left_selecting();
+            }
+            vec![]
+        }
+        Message::CodeEditSelectWordRight => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_word_right_selecting();
+            }
+            vec![]
+        }
 
         // Discussions
         Message::DiscussionsLoaded(discussions) => {
