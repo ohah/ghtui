@@ -650,14 +650,8 @@ fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     let kb = &state.config.keybindings;
 
     // Form modal intercept
-    let has_form = state.settings.as_ref().is_some_and(|s| s.form.is_some());
-    if has_form {
-        let form_editing = state
-            .settings
-            .as_ref()
-            .and_then(|s| s.form.as_ref())
-            .is_some_and(|f| f.editing);
-        if form_editing {
+    if let Some(form) = state.settings.as_ref().and_then(|s| s.form.as_ref()) {
+        if form.field_editing {
             return match key.code {
                 KeyCode::Esc | KeyCode::Enter => Some(Message::SettingsFormEditDone),
                 KeyCode::Char(c) => Some(Message::SettingsFormEditChar(c)),

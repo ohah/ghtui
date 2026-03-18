@@ -42,6 +42,9 @@ pub enum SettingsFieldType {
     Select(Vec<String>),
 }
 
+static PERMISSIONS: &[&str] = &["pull", "triage", "push", "maintain", "admin"];
+static CONTENT_TYPES: &[&str] = &["json", "form"];
+
 #[derive(Debug, Clone)]
 pub struct SettingsFormField {
     pub label: String,
@@ -50,264 +53,168 @@ pub struct SettingsFormField {
     pub required: bool,
 }
 
+impl SettingsFormField {
+    fn text(label: &str, value: &str, required: bool) -> Self {
+        Self {
+            label: label.into(),
+            value: value.into(),
+            field_type: SettingsFieldType::Text,
+            required,
+        }
+    }
+
+    fn bool(label: &str, value: bool) -> Self {
+        Self {
+            label: label.into(),
+            value: value.to_string(),
+            field_type: SettingsFieldType::Bool,
+            required: false,
+        }
+    }
+
+    fn select(label: &str, value: &str, options: &[&str]) -> Self {
+        Self {
+            label: label.into(),
+            value: value.into(),
+            field_type: SettingsFieldType::Select(options.iter().map(|s| (*s).into()).collect()),
+            required: true,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct SettingsFormState {
     pub kind: SettingsFormKind,
     pub fields: Vec<SettingsFormField>,
     pub focused_field: usize,
-    pub editing: bool,
-    pub edit_buffer: String,
+    pub field_editing: bool,
+    pub field_buffer: String,
 }
 
 impl SettingsFormState {
-    pub fn branch_protection_create() -> Self {
+    fn new(kind: SettingsFormKind, fields: Vec<SettingsFormField>) -> Self {
         Self {
-            kind: SettingsFormKind::CreateBranchProtection,
-            fields: vec![
-                SettingsFormField {
-                    label: "Branch".into(),
-                    value: String::new(),
-                    field_type: SettingsFieldType::Text,
-                    required: true,
-                },
-                SettingsFormField {
-                    label: "Strict status checks".into(),
-                    value: "false".into(),
-                    field_type: SettingsFieldType::Bool,
-                    required: false,
-                },
-                SettingsFormField {
-                    label: "Status check contexts".into(),
-                    value: String::new(),
-                    field_type: SettingsFieldType::Text,
-                    required: false,
-                },
-                SettingsFormField {
-                    label: "Enforce admins".into(),
-                    value: "false".into(),
-                    field_type: SettingsFieldType::Bool,
-                    required: false,
-                },
-                SettingsFormField {
-                    label: "Required reviews".into(),
-                    value: "0".into(),
-                    field_type: SettingsFieldType::Text,
-                    required: false,
-                },
-                SettingsFormField {
-                    label: "Dismiss stale reviews".into(),
-                    value: "false".into(),
-                    field_type: SettingsFieldType::Bool,
-                    required: false,
-                },
-                SettingsFormField {
-                    label: "Require code owner reviews".into(),
-                    value: "false".into(),
-                    field_type: SettingsFieldType::Bool,
-                    required: false,
-                },
-            ],
+            kind,
+            fields,
             focused_field: 0,
-            editing: false,
-            edit_buffer: String::new(),
+            field_editing: false,
+            field_buffer: String::new(),
         }
+    }
+
+    /// Look up a field value by label. Returns empty string if not found.
+    pub fn get_value(&self, label: &str) -> &str {
+        self.fields
+            .iter()
+            .find(|f| f.label == label)
+            .map(|f| f.value.as_str())
+            .unwrap_or("")
+    }
+
+    /// Look up a boolean field by label.
+    pub fn get_bool(&self, label: &str) -> bool {
+        self.get_value(label) == "true"
+    }
+
+    fn branch_protection_fields(
+        branch: &str,
+        strict: bool,
+        contexts: &str,
+        enforce_admins: bool,
+        reviews: &str,
+        dismiss_stale: bool,
+        require_codeowner: bool,
+    ) -> Vec<SettingsFormField> {
+        vec![
+            SettingsFormField::text("Branch", branch, true),
+            SettingsFormField::bool("Strict status checks", strict),
+            SettingsFormField::text("Status check contexts", contexts, false),
+            SettingsFormField::bool("Enforce admins", enforce_admins),
+            SettingsFormField::text("Required reviews", reviews, false),
+            SettingsFormField::bool("Dismiss stale reviews", dismiss_stale),
+            SettingsFormField::bool("Require code owner reviews", require_codeowner),
+        ]
+    }
+
+    pub fn branch_protection_create() -> Self {
+        Self::new(
+            SettingsFormKind::CreateBranchProtection,
+            Self::branch_protection_fields("", false, "", false, "0", false, false),
+        )
     }
 
     pub fn branch_protection_edit(bp: &BranchProtection) -> Self {
         let sc = bp.required_status_checks.as_ref();
         let pr = bp.required_pull_request_reviews.as_ref();
-        let ea = bp
-            .enforce_admins
-            .as_ref()
-            .map(|e| e.enabled)
-            .unwrap_or(false);
-        Self {
-            kind: SettingsFormKind::EditBranchProtection(bp.pattern.clone()),
-            fields: vec![
-                SettingsFormField {
-                    label: "Branch".into(),
-                    value: bp.pattern.clone(),
-                    field_type: SettingsFieldType::Text,
-                    required: true,
-                },
-                SettingsFormField {
-                    label: "Strict status checks".into(),
-                    value: sc.map(|s| s.strict).unwrap_or(false).to_string(),
-                    field_type: SettingsFieldType::Bool,
-                    required: false,
-                },
-                SettingsFormField {
-                    label: "Status check contexts".into(),
-                    value: sc.map(|s| s.contexts.join(", ")).unwrap_or_default(),
-                    field_type: SettingsFieldType::Text,
-                    required: false,
-                },
-                SettingsFormField {
-                    label: "Enforce admins".into(),
-                    value: ea.to_string(),
-                    field_type: SettingsFieldType::Bool,
-                    required: false,
-                },
-                SettingsFormField {
-                    label: "Required reviews".into(),
-                    value: pr
-                        .and_then(|p| p.required_approving_review_count)
-                        .unwrap_or(0)
-                        .to_string(),
-                    field_type: SettingsFieldType::Text,
-                    required: false,
-                },
-                SettingsFormField {
-                    label: "Dismiss stale reviews".into(),
-                    value: pr
-                        .map(|p| p.dismiss_stale_reviews)
-                        .unwrap_or(false)
-                        .to_string(),
-                    field_type: SettingsFieldType::Bool,
-                    required: false,
-                },
-                SettingsFormField {
-                    label: "Require code owner reviews".into(),
-                    value: pr
-                        .map(|p| p.require_code_owner_reviews)
-                        .unwrap_or(false)
-                        .to_string(),
-                    field_type: SettingsFieldType::Bool,
-                    required: false,
-                },
-            ],
-            focused_field: 0,
-            editing: false,
-            edit_buffer: String::new(),
-        }
+        let ea = bp.enforce_admins.as_ref().is_some_and(|e| e.enabled);
+        Self::new(
+            SettingsFormKind::EditBranchProtection(bp.pattern.clone()),
+            Self::branch_protection_fields(
+                &bp.pattern,
+                sc.map(|s| s.strict).unwrap_or(false),
+                &sc.map(|s| s.contexts.join(", ")).unwrap_or_default(),
+                ea,
+                &pr.and_then(|p| p.required_approving_review_count)
+                    .unwrap_or(0)
+                    .to_string(),
+                pr.map(|p| p.dismiss_stale_reviews).unwrap_or(false),
+                pr.map(|p| p.require_code_owner_reviews).unwrap_or(false),
+            ),
+        )
     }
 
     pub fn add_collaborator() -> Self {
-        Self {
-            kind: SettingsFormKind::AddCollaborator,
-            fields: vec![
-                SettingsFormField {
-                    label: "Username".into(),
-                    value: String::new(),
-                    field_type: SettingsFieldType::Text,
-                    required: true,
-                },
-                SettingsFormField {
-                    label: "Permission".into(),
-                    value: "push".into(),
-                    field_type: SettingsFieldType::Select(vec![
-                        "pull".into(),
-                        "triage".into(),
-                        "push".into(),
-                        "maintain".into(),
-                        "admin".into(),
-                    ]),
-                    required: true,
-                },
+        Self::new(
+            SettingsFormKind::AddCollaborator,
+            vec![
+                SettingsFormField::text("Username", "", true),
+                SettingsFormField::select("Permission", "push", PERMISSIONS),
             ],
-            focused_field: 0,
-            editing: false,
-            edit_buffer: String::new(),
-        }
+        )
+    }
+
+    fn webhook_fields(
+        url: &str,
+        content_type: &str,
+        events: &str,
+        active: bool,
+    ) -> Vec<SettingsFormField> {
+        vec![
+            SettingsFormField::text("URL", url, true),
+            SettingsFormField::select("Content type", content_type, CONTENT_TYPES),
+            SettingsFormField::text("Events", events, true),
+            SettingsFormField::bool("Active", active),
+        ]
     }
 
     pub fn create_webhook() -> Self {
-        Self {
-            kind: SettingsFormKind::CreateWebhook,
-            fields: vec![
-                SettingsFormField {
-                    label: "URL".into(),
-                    value: String::new(),
-                    field_type: SettingsFieldType::Text,
-                    required: true,
-                },
-                SettingsFormField {
-                    label: "Content type".into(),
-                    value: "json".into(),
-                    field_type: SettingsFieldType::Select(vec!["json".into(), "form".into()]),
-                    required: true,
-                },
-                SettingsFormField {
-                    label: "Events".into(),
-                    value: "push".into(),
-                    field_type: SettingsFieldType::Text,
-                    required: true,
-                },
-                SettingsFormField {
-                    label: "Active".into(),
-                    value: "true".into(),
-                    field_type: SettingsFieldType::Bool,
-                    required: false,
-                },
-            ],
-            focused_field: 0,
-            editing: false,
-            edit_buffer: String::new(),
-        }
+        Self::new(
+            SettingsFormKind::CreateWebhook,
+            Self::webhook_fields("", "json", "push", true),
+        )
     }
 
     pub fn edit_webhook(hook: &Webhook) -> Self {
-        Self {
-            kind: SettingsFormKind::EditWebhook(hook.id),
-            fields: vec![
-                SettingsFormField {
-                    label: "URL".into(),
-                    value: hook.config.url.clone().unwrap_or_default(),
-                    field_type: SettingsFieldType::Text,
-                    required: true,
-                },
-                SettingsFormField {
-                    label: "Content type".into(),
-                    value: hook.config.content_type.clone().unwrap_or("json".into()),
-                    field_type: SettingsFieldType::Select(vec!["json".into(), "form".into()]),
-                    required: true,
-                },
-                SettingsFormField {
-                    label: "Events".into(),
-                    value: hook.events.join(", "),
-                    field_type: SettingsFieldType::Text,
-                    required: true,
-                },
-                SettingsFormField {
-                    label: "Active".into(),
-                    value: hook.active.to_string(),
-                    field_type: SettingsFieldType::Bool,
-                    required: false,
-                },
-            ],
-            focused_field: 0,
-            editing: false,
-            edit_buffer: String::new(),
-        }
+        Self::new(
+            SettingsFormKind::EditWebhook(hook.id),
+            Self::webhook_fields(
+                hook.config.url.as_deref().unwrap_or_default(),
+                hook.config.content_type.as_deref().unwrap_or("json"),
+                &hook.events.join(", "),
+                hook.active,
+            ),
+        )
     }
 
     pub fn create_deploy_key() -> Self {
-        Self {
-            kind: SettingsFormKind::CreateDeployKey,
-            fields: vec![
-                SettingsFormField {
-                    label: "Title".into(),
-                    value: String::new(),
-                    field_type: SettingsFieldType::Text,
-                    required: true,
-                },
-                SettingsFormField {
-                    label: "Key (public key)".into(),
-                    value: String::new(),
-                    field_type: SettingsFieldType::Text,
-                    required: true,
-                },
-                SettingsFormField {
-                    label: "Read only".into(),
-                    value: "true".into(),
-                    field_type: SettingsFieldType::Bool,
-                    required: false,
-                },
+        Self::new(
+            SettingsFormKind::CreateDeployKey,
+            vec![
+                SettingsFormField::text("Title", "", true),
+                SettingsFormField::text("Key (public key)", "", true),
+                SettingsFormField::bool("Read only", true),
             ],
-            focused_field: 0,
-            editing: false,
-            edit_buffer: String::new(),
-        }
+        )
     }
 
     pub fn title(&self) -> &str {

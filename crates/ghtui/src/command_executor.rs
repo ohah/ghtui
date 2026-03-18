@@ -639,16 +639,7 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             }
         }
 
-        Command::CreateBranchProtection(repo, branch, body) => {
-            match client
-                .create_or_update_branch_protection(&repo, &branch, &body)
-                .await
-            {
-                Ok(()) => Message::SettingsItemUpdated(1),
-                Err(e) => Message::Error(e.into()),
-            }
-        }
-        Command::UpdateBranchProtection(repo, branch, body) => {
+        Command::SaveBranchProtection(repo, branch, body) => {
             match client
                 .create_or_update_branch_protection(&repo, &branch, &body)
                 .await

@@ -130,8 +130,7 @@ pub enum Command {
     DeleteDeployKey(RepoId, u64),           // repo, key_id
     DeleteBranchProtection(RepoId, String), // repo, branch_name
     ToggleBranchEnforceAdmins(RepoId, String, bool), // repo, branch, enable
-    CreateBranchProtection(RepoId, String, serde_json::Value), // repo, branch, body
-    UpdateBranchProtection(RepoId, String, serde_json::Value), // repo, branch, body
+    SaveBranchProtection(RepoId, String, serde_json::Value), // repo, branch, body (PUT upsert)
     AddCollaborator(RepoId, String, String), // repo, username, permission
     CreateWebhook(RepoId, serde_json::Value),
     UpdateWebhook(RepoId, u64, serde_json::Value), // repo, hook_id, body
