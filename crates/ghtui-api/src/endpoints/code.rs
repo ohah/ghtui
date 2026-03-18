@@ -1,5 +1,7 @@
 use base64::Engine;
-use ghtui_core::types::code::{CommitDetail, CommitEntry, CommitFile, FileEntry, FileEntryType};
+use ghtui_core::types::code::{
+    CommitDetail, CommitEntry, CommitFile, FileChangeStatus, FileEntry, FileEntryType,
+};
 use ghtui_core::types::common::RepoId;
 
 use crate::client::GithubClient;
@@ -184,7 +186,9 @@ impl GithubClient {
                     .filter_map(|f| {
                         Some(CommitFile {
                             filename: f["filename"].as_str()?.to_string(),
-                            status: f["status"].as_str().unwrap_or("modified").to_string(),
+                            status: FileChangeStatus::parse(
+                                f["status"].as_str().unwrap_or("modified"),
+                            ),
                             additions: f["additions"].as_u64().unwrap_or(0),
                             deletions: f["deletions"].as_u64().unwrap_or(0),
                         })
