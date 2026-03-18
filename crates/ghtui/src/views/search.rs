@@ -223,19 +223,27 @@ fn render_result_item<'a>(
                 theme.danger
             };
             let state_icon = "● ";
-            // Line 1: state icon + title + labels
-            let mut line1_spans = vec![
+            // Line 1: state icon + title
+            let line1_spans = vec![
                 Span::styled(
                     format!("  {}", state_icon),
                     Style::default().fg(state_color),
                 ),
                 Span::styled(title.as_str(), title_style),
             ];
-            for label in labels {
-                line1_spans.push(Span::raw(" "));
-                line1_spans.push(super::components::label_span(&label.name, &label.color));
+            let mut result_lines = vec![Line::from(line1_spans)];
+
+            // Line 2 (optional): labels
+            if !labels.is_empty() {
+                let mut label_spans: Vec<Span> = vec![Span::raw("    ")];
+                for label in labels {
+                    label_spans.push(super::components::label_span(&label.name, &label.color));
+                    label_spans.push(Span::raw(" "));
+                }
+                result_lines.push(Line::from(label_spans));
             }
-            // Line 2: #number + repo + time ago + author
+
+            // Line 2/3: #number + repo + time ago + author
             let mut line2_spans = vec![
                 Span::styled(format!("    #{}", number), Style::default().fg(theme.fg_muted)),
                 Span::styled(format!("  {}", repo), Style::default().fg(theme.fg_dim)),
@@ -252,7 +260,8 @@ fn render_result_item<'a>(
                     Style::default().fg(theme.fg_dim),
                 ));
             }
-            vec![Line::from(line1_spans), Line::from(line2_spans)]
+            result_lines.push(Line::from(line2_spans));
+            result_lines
         }
         SearchResultItem::Code {
             repo,
