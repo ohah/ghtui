@@ -13,6 +13,7 @@ pub struct SecurityState {
     pub scroll: usize,
     pub detail_open: bool,
     pub detail_scroll: usize,
+    pub sidebar_focused: bool,
 }
 
 impl SecurityState {
@@ -27,6 +28,7 @@ impl SecurityState {
             scroll: 0,
             detail_open: false,
             detail_scroll: 0,
+            sidebar_focused: true,
         }
     }
 

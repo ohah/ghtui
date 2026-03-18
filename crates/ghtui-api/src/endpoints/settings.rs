@@ -172,4 +172,33 @@ impl GithubClient {
         let path = format!("/repos/{}/{}/keys/{}", repo.owner, repo.name, key_id);
         self.delete(&path).await
     }
+
+    /// Delete branch protection for a branch
+    pub async fn delete_branch_protection(
+        &self,
+        repo: &RepoId,
+        branch: &str,
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/branches/{}/protection",
+            repo.owner, repo.name, branch
+        );
+        self.delete(&path).await?;
+        Ok(())
+    }
+
+    /// Update branch protection settings
+    pub async fn update_branch_protection(
+        &self,
+        repo: &RepoId,
+        branch: &str,
+        settings: &serde_json::Value,
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/branches/{}/protection",
+            repo.owner, repo.name, branch
+        );
+        self.put(&path, settings).await?;
+        Ok(())
+    }
 }
