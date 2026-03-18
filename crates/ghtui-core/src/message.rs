@@ -95,21 +95,21 @@ pub enum Message {
     PrMilestoneApply,
     PrMilestoneClear,
     PrMilestoneCancel,
-    PrDraftToggle,          // Toggle draft status
-    PrAutoMergeToggle,      // Toggle auto-merge
-    PrDiffMarkViewed,       // Mark file as viewed (local)
+    PrDraftToggle,               // Toggle draft status
+    PrAutoMergeToggle,           // Toggle auto-merge
+    PrDiffMarkViewed,            // Mark file as viewed (local)
     PrDiffToggleSideBySide,      // Toggle side-by-side diff mode
     PrReviewThreadToggleResolve, // Resolve/unresolve review thread at cursor
-    PrReviewerToggle,       // Open reviewer picker
-    PrReviewerApply,        // Apply reviewer changes
-    PrReviewerCancel,       // Cancel reviewer picker
-    PrApprove,              // Approve PR
-    PrRequestChanges,       // Request changes on PR
-    PrActionBarFocus,       // Toggle focus on action bar
-    PrActionBarLeft,        // Move left in action bar
-    PrActionBarRight,       // Move right in action bar
-    PrActionBarSelect,      // Execute selected action
-    PrChangeBase,           // Change merge target branch
+    PrReviewerToggle,            // Open reviewer picker
+    PrReviewerApply,             // Apply reviewer changes
+    PrReviewerCancel,            // Cancel reviewer picker
+    PrApprove,                   // Approve PR
+    PrRequestChanges,            // Request changes on PR
+    PrActionBarFocus,            // Toggle focus on action bar
+    PrActionBarLeft,             // Move left in action bar
+    PrActionBarRight,            // Move right in action bar
+    PrActionBarSelect,           // Execute selected action
+    PrChangeBase,                // Change merge target branch
 
     // Issue
     IssueListLoaded(Vec<Issue>, Pagination, IssueFilters),
