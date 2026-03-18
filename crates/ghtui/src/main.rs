@@ -2,6 +2,7 @@ mod app;
 mod cli;
 mod command_executor;
 mod event;
+mod highlighter;
 mod keybindings;
 mod tui;
 mod update;
