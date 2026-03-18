@@ -587,6 +587,10 @@ pub(crate) fn refresh_current_view(state: &mut AppState) -> Vec<Command> {
             state.loading.insert("actions_list".to_string());
             vec![Command::FetchRuns(repo.clone(), filters.clone(), 1)]
         }
+        Route::Dashboard => {
+            state.loading.insert("recent_repos".to_string());
+            vec![Command::FetchRecentRepos]
+        }
         _ => vec![],
     }
 }
