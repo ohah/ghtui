@@ -179,6 +179,7 @@ pub struct PullRequestDetail {
     pub reviews: Vec<Review>,
     pub comments: Vec<PrComment>,
     pub review_comments: Vec<ReviewComment>,
+    pub review_threads: Vec<ReviewThread>,
     pub checks: Vec<CheckStatus>,
     pub timeline: Vec<super::issue::TimelineEvent>,
     pub commits: Vec<PrCommit>,
@@ -314,4 +315,13 @@ pub struct ReviewCommentInput {
     pub path: String,
     pub line: u32,
     pub body: String,
+}
+
+/// A review thread on a PR diff, fetched via GraphQL.
+#[derive(Debug, Clone)]
+pub struct ReviewThread {
+    pub node_id: String,
+    pub is_resolved: bool,
+    /// Database ID of the root (first) comment in this thread.
+    pub root_comment_id: u64,
 }

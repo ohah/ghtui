@@ -198,11 +198,18 @@ impl GithubClient {
             }
         }
 
+        // Fetch review threads via GraphQL for resolve/unresolve support
+        let review_threads = self
+            .get_review_threads(repo, number)
+            .await
+            .unwrap_or_default();
+
         Ok(PullRequestDetail {
             pr,
             reviews: reviews.into_iter().map(|r| r.into()).collect(),
             comments,
             review_comments: review_comments.into_iter().map(|c| c.into()).collect(),
+            review_threads,
             checks,
             commits,
             timeline,
@@ -445,6 +452,70 @@ impl GithubClient {
 
         let query = "mutation($id: ID!) { disablePullRequestAutoMerge(input: {pullRequestId: $id}) { pullRequest { autoMergeRequest { enabledAt } } } }";
         self.graphql(query, json!({"id": node_id})).await?;
+        Ok(())
+    }
+
+    pub async fn get_review_threads(
+        &self,
+        repo: &RepoId,
+        number: u64,
+    ) -> Result<Vec<ReviewThread>, ApiError> {
+        let query = r#"query($owner: String!, $name: String!, $number: Int!) {
+            repository(owner: $owner, name: $name) {
+                pullRequest(number: $number) {
+                    reviewThreads(first: 100) {
+                        nodes {
+                            id
+                            isResolved
+                            comments(first: 1) {
+                                nodes {
+                                    databaseId
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }"#;
+        let vars = json!({
+            "owner": repo.owner,
+            "name": repo.name,
+            "number": number as i64,
+        });
+        let result = self.graphql(query, vars).await?;
+        let mut threads = Vec::new();
+        if let Some(nodes) = result
+            .pointer("/data/repository/pullRequest/reviewThreads/nodes")
+            .and_then(|v| v.as_array())
+        {
+            for node in nodes {
+                let node_id = node["id"].as_str().unwrap_or_default().to_string();
+                let is_resolved = node["isResolved"].as_bool().unwrap_or(false);
+                let root_comment_id = node
+                    .pointer("/comments/nodes/0/databaseId")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
+                if !node_id.is_empty() && root_comment_id > 0 {
+                    threads.push(ReviewThread {
+                        node_id,
+                        is_resolved,
+                        root_comment_id,
+                    });
+                }
+            }
+        }
+        Ok(threads)
+    }
+
+    pub async fn resolve_review_thread(&self, thread_node_id: &str) -> Result<(), ApiError> {
+        let query = "mutation($id: ID!) { resolveReviewThread(input: {threadId: $id}) { thread { isResolved } } }";
+        self.graphql(query, json!({"id": thread_node_id})).await?;
+        Ok(())
+    }
+
+    pub async fn unresolve_review_thread(&self, thread_node_id: &str) -> Result<(), ApiError> {
+        let query = "mutation($id: ID!) { unresolveReviewThread(input: {threadId: $id}) { thread { isResolved } } }";
+        self.graphql(query, json!({"id": thread_node_id})).await?;
         Ok(())
     }
 

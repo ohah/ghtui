@@ -581,6 +581,40 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        // PR review thread resolve/unresolve
+        Message::PrReviewThreadToggleResolve => {
+            if let (Some(detail), Some(repo)) = (&state.pr_detail, &state.current_repo) {
+                if let Some(ref files) = detail.diff {
+                    let cursor_comment_id = find_review_comment_at_cursor(detail, files);
+                    if let Some(comment_id) = cursor_comment_id {
+                        // Find root of the thread (in_reply_to_id chain)
+                        let root_id =
+                            find_thread_root_id(comment_id, &detail.detail.review_comments);
+                        // Find matching thread
+                        if let Some(thread) = detail
+                            .detail
+                            .review_threads
+                            .iter()
+                            .find(|t| t.root_comment_id == root_id)
+                        {
+                            let resolve = !thread.is_resolved;
+                            let number = detail.detail.pr.number;
+                            return vec![Command::ResolveReviewThread(
+                                repo.clone(),
+                                number,
+                                thread.node_id.clone(),
+                                resolve,
+                            )];
+                        }
+                    }
+                    state.push_toast(
+                        "No review thread at cursor".to_string(),
+                        ToastLevel::Warning,
+                    );
+                }
+            }
+            vec![]
+        }
         // PR diff mark viewed (local only)
         Message::PrDiffMarkViewed => {
             if let Some(ref mut detail) = state.pr_detail {
@@ -3897,5 +3931,76 @@ fn action_bar_action(index: usize, pr_state: &ghtui_core::types::PrState) -> Opt
             _ => None,
         },
         ghtui_core::types::PrState::Merged => None,
+    }
+}
+
+/// Find a review comment ID near the diff cursor position.
+fn find_review_comment_at_cursor(
+    detail: &PrDetailState,
+    files: &[ghtui_core::types::DiffFile],
+) -> Option<u64> {
+    let review_comments = &detail.detail.review_comments;
+    let summary_lines = files.len() + 3;
+    if detail.diff_cursor < summary_lines {
+        return None;
+    }
+    let mut line = summary_lines;
+    for (fi, file) in files.iter().enumerate() {
+        let collapsed = detail.diff_collapsed.contains(&fi);
+        if collapsed {
+            line += 1;
+            continue;
+        }
+        line += 1; // file header
+        for hunk in &file.hunks {
+            line += 1; // hunk header
+            for diff_line in &hunk.lines {
+                let code_line = line;
+                line += 1;
+                let target = diff_line.new_line.or(diff_line.old_line);
+                // Count review comment lines for this position
+                if let Some(target_line) = target {
+                    let comments: Vec<&ghtui_core::types::ReviewComment> = review_comments
+                        .iter()
+                        .filter(|c| {
+                            c.path == file.filename
+                                && (c.line == Some(target_line)
+                                    || c.original_line == Some(target_line))
+                        })
+                        .collect();
+                    if !comments.is_empty() {
+                        // Comment box starts after code line
+                        let comment_start = code_line + 1;
+                        let mut comment_lines = 0;
+                        for c in &comments {
+                            comment_lines += c.body.lines().count() + 2; // header + body + border
+                        }
+                        comment_lines += 1; // box top border
+                        let comment_end = comment_start + comment_lines;
+                        if detail.diff_cursor >= code_line && detail.diff_cursor < comment_end {
+                            return Some(comments[0].id);
+                        }
+                        line += comment_lines;
+                    }
+                }
+            }
+        }
+        line += 1; // trailing empty
+    }
+    None
+}
+
+/// Trace back in_reply_to_id chain to find the root comment ID of a thread.
+fn find_thread_root_id(
+    comment_id: u64,
+    review_comments: &[ghtui_core::types::ReviewComment],
+) -> u64 {
+    let comment = review_comments.iter().find(|c| c.id == comment_id);
+    match comment {
+        Some(c) => match c.in_reply_to_id {
+            Some(parent_id) => find_thread_root_id(parent_id, review_comments),
+            None => c.id,
+        },
+        None => comment_id,
     }
 }

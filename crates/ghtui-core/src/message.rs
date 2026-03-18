@@ -98,7 +98,8 @@ pub enum Message {
     PrDraftToggle,          // Toggle draft status
     PrAutoMergeToggle,      // Toggle auto-merge
     PrDiffMarkViewed,       // Mark file as viewed (local)
-    PrDiffToggleSideBySide, // Toggle side-by-side diff mode
+    PrDiffToggleSideBySide,      // Toggle side-by-side diff mode
+    PrReviewThreadToggleResolve, // Resolve/unresolve review thread at cursor
     PrReviewerToggle,       // Open reviewer picker
     PrReviewerApply,        // Apply reviewer changes
     PrReviewerCancel,       // Cancel reviewer picker

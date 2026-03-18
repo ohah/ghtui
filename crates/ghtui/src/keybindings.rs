@@ -568,6 +568,7 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             KeyCode::PageDown => Some(Message::ScrollDown),
             KeyCode::PageUp => Some(Message::ScrollUp),
             KeyCode::Char('s') => Some(Message::PrDiffToggleSideBySide),
+            KeyCode::Char('z') => Some(Message::PrReviewThreadToggleResolve),
             KeyCode::Char('o') => Some(Message::PrOpenInBrowser),
             _ => None,
         };
