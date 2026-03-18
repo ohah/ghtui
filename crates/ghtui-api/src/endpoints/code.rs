@@ -27,12 +27,9 @@ impl GithubClient {
         let body = self.get(&api_path).await?;
         let response: serde_json::Value = serde_json::from_str(&body)?;
 
-        let items = match response.as_array() {
-            Some(arr) => arr.clone(),
-            None => {
-                // Single file response — return empty (caller should use get_file_content)
-                return Ok(Vec::new());
-            }
+        let Some(items) = response.as_array() else {
+            // Single file response — return empty (caller should use get_file_content)
+            return Ok(Vec::new());
         };
 
         let mut entries: Vec<FileEntry> = items
@@ -78,9 +75,14 @@ impl GithubClient {
         path: &str,
         git_ref: &str,
     ) -> Result<String, ApiError> {
+        let ref_param = if git_ref.is_empty() {
+            String::new()
+        } else {
+            format!("?ref={}", git_ref)
+        };
         let api_path = format!(
-            "/repos/{}/{}/contents/{}?ref={}",
-            repo.owner, repo.name, path, git_ref
+            "/repos/{}/{}/contents/{}{}",
+            repo.owner, repo.name, path, ref_param
         );
 
         let body = self.get(&api_path).await?;

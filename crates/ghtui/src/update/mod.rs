@@ -3828,19 +3828,44 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         // Code tab
         Message::CodeContentsLoaded(entries) => {
             state.loading.remove("code_contents");
-            if let Some(ref mut code) = state.code {
+            let mut cmds = vec![];
+            // Auto-detect README in root directory listing
+            if let (Some(code), Some(repo)) = (&mut state.code, &state.current_repo) {
+                if code.current_path.is_empty() && code.readme_content.is_none() {
+                    if let Some(readme) = entries.iter().find(|e| {
+                        let lower = e.name.to_lowercase();
+                        lower == "readme.md" || lower == "readme" || lower == "readme.txt"
+                    }) {
+                        state.loading.insert("code_readme".to_string());
+                        cmds.push(Command::FetchFileContent(
+                            repo.clone(),
+                            readme.path.clone(),
+                            code.git_ref.clone(),
+                        ));
+                    }
+                }
                 code.entries = entries;
                 code.selected = 0;
             }
-            vec![]
+            cmds
         }
         Message::CodeFileLoaded(filename, content) => {
             state.loading.remove("code_file");
+            state.loading.remove("code_readme");
             if let Some(ref mut code) = state.code {
-                code.file_content = Some(content);
-                code.file_name = Some(filename);
-                code.scroll = 0;
-                code.sidebar_focused = false;
+                // If this is a README file loaded from root, store as readme_content
+                let lower = filename.to_lowercase();
+                if code.current_path.is_empty()
+                    && (lower == "readme.md" || lower == "readme" || lower == "readme.txt")
+                    && code.file_content.is_none()
+                {
+                    code.readme_content = Some(content);
+                } else {
+                    code.file_content = Some(content);
+                    code.file_name = Some(filename);
+                    code.scroll = 0;
+                    code.sidebar_focused = false;
+                }
             }
             vec![]
         }

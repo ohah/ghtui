@@ -75,11 +75,11 @@ pub(crate) fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command
             let clean_path = path.trim_matches('/').to_string();
             state.code = Some(ghtui_core::state::CodeViewState::new(git_ref.clone()));
             state.loading.insert("code_contents".to_string());
-            state.loading.insert("code_readme".to_string());
-            vec![
-                Command::FetchContents(repo.clone(), clean_path, git_ref.clone()),
-                Command::FetchReadme(repo.clone(), git_ref.clone()),
-            ]
+            vec![Command::FetchContents(
+                repo.clone(),
+                clean_path,
+                git_ref.clone(),
+            )]
         }
         Route::Security { repo } => {
             state.security = Some(SecurityState::new());
