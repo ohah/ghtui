@@ -34,33 +34,57 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         .iter()
         .enumerate()
         .map(|(i, d)| {
-            let answered = if d.is_answered { " [Answered]" } else { "" };
-            let line = Line::from(vec![
+            // Line 1: title + category badge + answered indicator
+            let title_style = if i == disc_state.selected {
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme.fg)
+            };
+
+            let mut line1_spans = vec![
+                Span::styled(format!("  {} ", d.title), title_style),
                 Span::styled(
-                    format!("#{:<5} ", d.number),
+                    format!("[{}]", d.category),
+                    Style::default().fg(theme.fg_dim),
+                ),
+            ];
+            if d.is_answered {
+                line1_spans.push(Span::styled(
+                    " [Answered]".to_string(),
+                    Style::default().fg(theme.success),
+                ));
+            }
+            let line1 = Line::from(line1_spans);
+
+            // Line 2: #number + author + comment count + relative time
+            let time_str = chrono::DateTime::parse_from_rfc3339(&d.created_at)
+                .map(|dt| {
+                    super::components::time_ago(&dt.with_timezone(&chrono::Utc))
+                })
+                .unwrap_or_default();
+
+            let line2 = Line::from(vec![
+                Span::styled(
+                    format!("  #{} ", d.number),
                     Style::default().fg(theme.fg_muted),
                 ),
                 Span::styled(
-                    d.title.clone(),
-                    if i == disc_state.selected {
-                        Style::default()
-                            .fg(theme.accent)
-                            .add_modifier(Modifier::BOLD)
-                    } else {
-                        Style::default().fg(theme.fg)
-                    },
+                    format!("@{}", d.author),
+                    Style::default().fg(theme.fg_muted),
                 ),
                 Span::styled(
-                    format!("  [{}]", d.category),
-                    Style::default().fg(theme.fg_dim),
+                    format!("  {} comments", d.comments_count),
+                    Style::default().fg(theme.fg_muted),
                 ),
-                Span::styled(answered.to_string(), Style::default().fg(theme.success)),
                 Span::styled(
-                    format!("  {} comments  @{}", d.comments_count, d.author),
+                    format!("  {}", time_str),
                     Style::default().fg(theme.fg_muted),
                 ),
             ]);
-            ListItem::new(line)
+
+            ListItem::new(vec![line1, line2])
         })
         .collect();
 

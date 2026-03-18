@@ -248,7 +248,7 @@ fn render_header(
             Style::default().fg(theme.fg_dim),
         ),
         Span::styled(
-            format!("  {}", pr.created_at.format("%Y-%m-%d")),
+            format!("  {}", super::components::time_ago(&pr.created_at)),
             Style::default().fg(theme.fg_dim),
         ),
         if pr.draft {
@@ -495,7 +495,7 @@ fn render_conversation(
             }
             let time = event
                 .created_at
-                .map(|t| t.format("%m/%d %H:%M").to_string())
+                .map(|t| super::components::time_ago(&t))
                 .unwrap_or_default();
             lines.push(Line::from(vec![
                 Span::styled(
@@ -544,7 +544,7 @@ fn render_conversation(
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                format!(" · {}", comment.created_at.format("%Y-%m-%d %H:%M")),
+                format!(" · {}", super::components::time_ago(&comment.created_at)),
                 Style::default().fg(theme.fg_muted),
             ),
         ];
@@ -921,7 +921,7 @@ fn render_commits(
             };
             let date_str = commit
                 .date
-                .map(|d| d.format("%Y-%m-%d").to_string())
+                .map(|d| super::components::time_ago(&d))
                 .unwrap_or_default();
 
             let msg_style = if is_selected {

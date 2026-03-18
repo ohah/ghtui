@@ -693,6 +693,12 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Err(e) => Message::Error(e.into()),
         },
 
+        // Repo counts
+        Command::FetchRepoCounts(repo) => match client.fetch_repo_counts(&repo).await {
+            Ok(counts) => Message::RepoCountsLoaded(counts.open_issues, counts.open_prs),
+            Err(e) => Message::Error(e.into()),
+        },
+
         // Multi-repo dashboard
         Command::FetchRecentRepos => match client.list_recent_repos().await {
             Ok(repos) => Message::RecentReposLoaded(repos),

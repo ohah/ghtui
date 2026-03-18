@@ -338,7 +338,8 @@ fn render_issue_list(
                 theme.text()
             };
 
-            let mut spans = vec![
+            // Line 1: pin icon + state icon + title + labels
+            let mut line1_spans = vec![
                 if is_pinned {
                     Span::styled("📌", Style::default().fg(theme.warning))
                 } else {
@@ -346,36 +347,49 @@ fn render_issue_list(
                 },
                 state_icon,
                 Span::styled(issue.title.clone(), title_style),
-                Span::styled(
-                    format!(" #{}", issue.number),
-                    Style::default().fg(theme.fg_muted),
-                ),
             ];
 
             for label in &issue.labels {
-                spans.push(super::components::label_span(&label.name, &label.color));
-                spans.push(Span::raw(" "));
+                line1_spans.push(Span::raw(" "));
+                line1_spans.push(super::components::label_span(&label.name, &label.color));
+            }
+
+            // Line 2: #number · opened time ago by user · assignees · comment count
+            let mut line2_spans: Vec<Span> = vec![
+                Span::raw("    "),
+                Span::styled(
+                    format!("#{}", issue.number),
+                    Style::default().fg(theme.fg_muted),
+                ),
+                Span::styled(
+                    format!(
+                        " opened {} by {}",
+                        super::components::time_ago(&issue.created_at),
+                        issue.user.login,
+                    ),
+                    Style::default().fg(theme.fg_dim),
+                ),
+            ];
+
+            if !issue.assignees.is_empty() {
+                let assignees: Vec<String> =
+                    issue.assignees.iter().map(|a| a.login.clone()).collect();
+                line2_spans.push(Span::styled(
+                    format!("  → {}", assignees.join(", ")),
+                    Style::default().fg(theme.fg_dim),
+                ));
             }
 
             if let Some(count) = issue.comments {
                 if count > 0 {
-                    spans.push(Span::styled(
+                    line2_spans.push(Span::styled(
                         format!("  💬{}", count),
                         Style::default().fg(theme.fg_dim),
                     ));
                 }
             }
 
-            if !issue.assignees.is_empty() {
-                let assignees: Vec<String> =
-                    issue.assignees.iter().map(|a| a.login.clone()).collect();
-                spans.push(Span::styled(
-                    format!("  → {}", assignees.join(", ")),
-                    Style::default().fg(theme.fg_dim),
-                ));
-            }
-
-            ListItem::new(Line::from(spans))
+            ListItem::new(vec![Line::from(line1_spans), Line::from(line2_spans)])
         })
         .collect();
 

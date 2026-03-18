@@ -194,58 +194,71 @@ fn render_pr_list(
                 theme.text()
             };
 
-            let mut spans = vec![
+            // Line 1: state icon + title + draft badge + labels
+            let mut line1_spans = vec![
                 Span::raw("  "),
                 state_icon,
                 Span::styled(pr.title.clone(), title_style),
             ];
 
             if pr.draft {
-                spans.push(Span::styled(" Draft", Style::default().fg(theme.fg_muted)));
+                line1_spans.push(Span::styled(" Draft", Style::default().fg(theme.fg_muted)));
             }
-
-            spans.push(Span::styled(
-                format!(" #{}", pr.number),
-                Style::default().fg(theme.fg_muted),
-            ));
 
             for label in &pr.labels {
-                spans.push(super::components::label_span(&label.name, &label.color));
-                spans.push(Span::raw(" "));
+                line1_spans.push(Span::raw(" "));
+                line1_spans.push(super::components::label_span(&label.name, &label.color));
             }
 
-            if let Some(count) = pr.comments {
-                if count > 0 {
-                    spans.push(Span::styled(
-                        format!("  💬{}", count),
-                        Style::default().fg(theme.fg_dim),
-                    ));
-                }
-            }
-
-            if !pr.assignees.is_empty() {
-                let assignees: Vec<String> = pr.assignees.iter().map(|a| a.login.clone()).collect();
-                spans.push(Span::styled(
-                    format!("  → {}", assignees.join(", ")),
+            // Line 2: #number · opened time ago by user · branch · +/- · assignees · comments
+            let mut line2_spans: Vec<Span> = vec![
+                Span::raw("    "),
+                Span::styled(
+                    format!("#{}", pr.number),
+                    Style::default().fg(theme.fg_muted),
+                ),
+                Span::styled(
+                    format!(
+                        " opened {} by {}",
+                        super::components::time_ago(&pr.created_at),
+                        pr.user.login,
+                    ),
                     Style::default().fg(theme.fg_dim),
-                ));
-            }
+                ),
+            ];
 
             // Show +/- stats if available
             if let (Some(additions), Some(deletions)) = (pr.additions, pr.deletions) {
                 if additions > 0 || deletions > 0 {
-                    spans.push(Span::styled(
+                    line2_spans.push(Span::styled(
                         format!("  +{}", additions),
                         Style::default().fg(theme.success),
                     ));
-                    spans.push(Span::styled(
+                    line2_spans.push(Span::styled(
                         format!(" -{}", deletions),
                         Style::default().fg(theme.danger),
                     ));
                 }
             }
 
-            ListItem::new(Line::from(spans))
+            if !pr.assignees.is_empty() {
+                let assignees: Vec<String> = pr.assignees.iter().map(|a| a.login.clone()).collect();
+                line2_spans.push(Span::styled(
+                    format!("  → {}", assignees.join(", ")),
+                    Style::default().fg(theme.fg_dim),
+                ));
+            }
+
+            if let Some(count) = pr.comments {
+                if count > 0 {
+                    line2_spans.push(Span::styled(
+                        format!("  💬{}", count),
+                        Style::default().fg(theme.fg_dim),
+                    ));
+                }
+            }
+
+            ListItem::new(vec![Line::from(line1_spans), Line::from(line2_spans)])
         })
         .collect();
 

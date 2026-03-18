@@ -98,6 +98,31 @@ pub fn label_span(name: &str, hex_color: &str) -> Span<'static> {
     Span::styled(format!(" {} ", name), Style::default().fg(fg).bg(bg))
 }
 
+/// Format a chrono DateTime as a relative time string (e.g., "3 days ago").
+pub fn time_ago(dt: &chrono::DateTime<chrono::Utc>) -> String {
+    let now = chrono::Utc::now();
+    let duration = now.signed_duration_since(*dt);
+
+    if duration.num_minutes() < 1 {
+        "just now".to_string()
+    } else if duration.num_minutes() < 60 {
+        let m = duration.num_minutes();
+        format!("{} minute{} ago", m, if m == 1 { "" } else { "s" })
+    } else if duration.num_hours() < 24 {
+        let h = duration.num_hours();
+        format!("{} hour{} ago", h, if h == 1 { "" } else { "s" })
+    } else if duration.num_days() < 30 {
+        let d = duration.num_days();
+        format!("{} day{} ago", d, if d == 1 { "" } else { "s" })
+    } else if duration.num_days() < 365 {
+        let m = duration.num_days() / 30;
+        format!("{} month{} ago", m, if m == 1 { "" } else { "s" })
+    } else {
+        let y = duration.num_days() / 365;
+        format!("{} year{} ago", y, if y == 1 { "" } else { "s" })
+    }
+}
+
 fn parse_hex_color(hex: &str) -> (u8, u8, u8) {
     let hex = hex.trim_start_matches('#');
     if hex.len() >= 6 {

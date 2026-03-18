@@ -158,31 +158,41 @@ fn render_notification_item<'a>(
         theme.text()
     };
 
-    // Reason badge
-    let reason_badge = match notif.reason.as_str() {
-        "review_requested" => Span::styled(" review ", Style::default().fg(theme.warning)),
-        "assign" => Span::styled(" assign ", Style::default().fg(theme.accent)),
-        "mention" => Span::styled(" @mention ", Style::default().fg(theme.accent)),
-        "ci_activity" => Span::styled(" CI ", Style::default().fg(theme.fg_muted)),
-        _ => Span::styled("", Style::default()),
-    };
-
-    let mut spans = vec![
+    // Line 1: unread_dot + type_icon + title + repo_name
+    let mut line1_spans = vec![
         unread,
         type_icon,
         Span::styled(&notif.subject.title, title_style),
-        reason_badge,
     ];
 
     if show_repo {
-        spans.push(Span::raw(" "));
-        spans.push(Span::styled(
+        line1_spans.push(Span::raw(" "));
+        line1_spans.push(Span::styled(
             &notif.repository.full_name,
             Style::default().fg(theme.fg_dim),
         ));
     }
 
-    ListItem::new(Line::from(spans))
+    // Line 2: (indented) reason_badge + relative_time
+    let reason_badge = match notif.reason.as_str() {
+        "review_requested" => Span::styled(" review ", Style::default().fg(theme.warning)),
+        "assign" => Span::styled(" assign ", Style::default().fg(theme.accent)),
+        "mention" => Span::styled(" @mention ", Style::default().fg(theme.accent)),
+        "ci_activity" => Span::styled(" CI ", Style::default().fg(theme.fg_muted)),
+        "subscribed" => Span::styled(" subscribed ", Style::default().fg(theme.fg_muted)),
+        _ => Span::styled("", Style::default()),
+    };
+
+    let relative_time = super::components::time_ago(&notif.updated_at);
+
+    let line2_spans = vec![
+        Span::raw("      "),
+        reason_badge,
+        Span::raw(" "),
+        Span::styled(relative_time, Style::default().fg(theme.fg_dim)),
+    ];
+
+    ListItem::new(vec![Line::from(line1_spans), Line::from(line2_spans)])
 }
 
 fn render_filter_bar(

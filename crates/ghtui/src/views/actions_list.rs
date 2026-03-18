@@ -102,8 +102,9 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 _ => Span::styled(" · ", Style::default().fg(theme.fg_muted)),
             };
 
-            let name = run.name.as_deref().unwrap_or("Unknown");
+            let workflow_name = run.name.as_deref().unwrap_or("Unknown");
             let branch = run.head_branch.as_deref().unwrap_or("");
+            let commit_sha = &run.head_sha[..7.min(run.head_sha.len())];
 
             let title_style = if is_selected {
                 theme.selected()
@@ -111,31 +112,52 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 theme.text()
             };
 
-            // Relative time
-            let elapsed = chrono::Utc::now() - run.created_at;
-            let time_str = if elapsed.num_days() > 0 {
-                format!("{}d ago", elapsed.num_days())
-            } else if elapsed.num_hours() > 0 {
-                format!("{}h ago", elapsed.num_hours())
+            let time_str = super::components::time_ago(&run.created_at);
+
+            // Duration: updated_at - created_at
+            let duration = run.updated_at - run.created_at;
+            let duration_str = if duration.num_hours() > 0 {
+                format!(
+                    "{}h {}m {}s",
+                    duration.num_hours(),
+                    duration.num_minutes() % 60,
+                    duration.num_seconds() % 60,
+                )
+            } else if duration.num_minutes() > 0 {
+                format!(
+                    "{}m {}s",
+                    duration.num_minutes(),
+                    duration.num_seconds() % 60,
+                )
             } else {
-                format!("{}m ago", elapsed.num_minutes())
+                format!("{}s", duration.num_seconds())
             };
 
-            let line = Line::from(vec![
+            // Line 1: status_icon + workflow_name + run_display_title
+            let line1 = Line::from(vec![
                 status_icon,
-                Span::styled(name, title_style),
+                Span::styled(workflow_name, title_style),
                 Span::styled(
                     format!(" #{}", run.run_number),
                     Style::default().fg(theme.fg_muted),
                 ),
-                Span::raw(" "),
-                Span::styled(format!("({})", branch), Style::default().fg(theme.accent)),
-                Span::styled(format!(" {}", run.event), Style::default().fg(theme.fg_dim)),
-                Span::raw(" "),
-                Span::styled(time_str, Style::default().fg(theme.fg_dim)),
             ]);
 
-            ListItem::new(line)
+            // Line 2: (indented) event + branch + commit_sha + relative time + duration
+            let line2 = Line::from(vec![
+                Span::raw("     "),
+                Span::styled(run.event.clone(), Style::default().fg(theme.fg_dim)),
+                Span::raw(" "),
+                Span::styled(branch.to_string(), Style::default().fg(theme.accent)),
+                Span::raw(" "),
+                Span::styled(commit_sha.to_string(), Style::default().fg(theme.fg_muted)),
+                Span::raw("  "),
+                Span::styled(time_str, Style::default().fg(theme.fg_dim)),
+                Span::raw("  "),
+                Span::styled(duration_str, Style::default().fg(theme.fg_dim)),
+            ]);
+
+            ListItem::new(vec![line1, line2])
         })
         .collect();
 
