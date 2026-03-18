@@ -3276,37 +3276,61 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
 
                 // PR/Issue detail: row 2-6 = header, row 7 area = sub-tab bar
                 // Approximate sub-tab row for detail views
+                // Get terminal width for responsive checks
+                let term_width = state.terminal_size.0;
+                let sidebar_visible = term_width >= 80;
+
                 match &state.route {
                     Route::PrDetail { .. } => {
-                        // PR header is ~5 rows, sub-tab bar at row ~7 (row-2 = 5)
-                        if content_row <= 5 {
-                            // Header area — check sub-tab click
-                            // Sub-tab bar is at the boundary between header and content
+                        // Dynamic header height based on editing state
+                        let is_title_editing = state.pr_detail.as_ref().is_some_and(|d| {
+                            matches!(
+                                d.edit_target,
+                                Some(ghtui_core::state::pr::PrInlineEditTarget::PrTitle)
+                            )
+                        });
+                        let header_rows = if is_title_editing { 6 } else { 5 };
+                        // Sub-tab bar is right after header (1 row)
+                        let tab_row = header_rows;
+
+                        if content_row == tab_row {
+                            // Click on sub-tab bar — use dynamic tab widths
                             if let Some(ref mut detail) = state.pr_detail {
-                                let tab_names =
-                                    ["Conversation", "Commits", "Checks", "Files changed"];
-                                let mut x: u16 = 0;
-                                for (i, name) in tab_names.iter().enumerate() {
-                                    let w = name.len() as u16 + 2; // padding
+                                // Rebuild tab names with counts (matching pr_detail.rs rendering)
+                                let commit_count = detail.detail.commits.len();
+                                let check_count = detail.detail.checks.len();
+                                let file_count = detail.diff.as_ref().map(|f| f.len()).unwrap_or(0);
+                                let tabs = [
+                                    "Conversation".to_string(),
+                                    format!("Commits ({})", commit_count),
+                                    if check_count > 0 {
+                                        format!("Checks ({})", check_count)
+                                    } else {
+                                        "Checks".to_string()
+                                    },
+                                    format!("Files changed ({})", file_count),
+                                ];
+                                let mut x: u16 = 1; // leading space
+                                for (i, name) in tabs.iter().enumerate() {
+                                    let w = name.len() as u16 + 2;
                                     if _col >= x && _col < x + w {
                                         detail.tab = i;
                                         return vec![];
                                     }
-                                    x += w + 1; // separator
+                                    x += w + 3; // " | " separator
                                 }
                             }
                             vec![]
-                        } else if content_row > 0 {
-                            let item_index = content_row.saturating_sub(6); // after header+tabs
+                        } else if content_row > tab_row {
+                            let item_index = content_row.saturating_sub(tab_row + 1);
                             handle_mouse_list_select(state, item_index)
                         } else {
                             vec![]
                         }
                     }
-                    // Sidebar views: left 30 cols = sidebar click, rest = content
+                    // Sidebar views: only route to sidebar if sidebar is visible
                     Route::Security { .. } | Route::Insights { .. } | Route::Settings { .. } => {
-                        if _col < 30 {
-                            // Sidebar item click — set tab directly
+                        if sidebar_visible && _col < 30 {
                             if content_row > 0 {
                                 let idx = content_row.saturating_sub(1);
                                 match &state.route {
@@ -3346,7 +3370,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     }
                     // Code view: left 35 cols = file tree click
                     Route::Code { .. } => {
-                        if _col < 35 {
+                        if sidebar_visible && _col < 35 {
                             // File tree click
                             if content_row > 0 {
                                 let idx = content_row.saturating_sub(1);
