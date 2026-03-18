@@ -350,6 +350,19 @@ pub enum Message {
     CodeEditSubmit,
     CodeEditCancel,
     CodeFileUpdated,
+    // Code editor selection & macOS Cmd support
+    CodeEditSelectLeft,
+    CodeEditSelectRight,
+    CodeEditSelectUp,
+    CodeEditSelectDown,
+    CodeEditSelectAll,     // Cmd+A / Ctrl+A
+    CodeEditCut,           // Cmd+X / Ctrl+X
+    CodeEditCopy,          // Cmd+C / Ctrl+C
+    CodeEditPaste(String), // Cmd+V / Ctrl+V (carries clipboard text)
+    CodeEditMoveLineStart, // Cmd+Left / Home
+    CodeEditMoveLineEnd,   // Cmd+Right / End
+    CodeEditMoveDocTop,    // Cmd+Up
+    CodeEditMoveDocBottom, // Cmd+Down
 
     // Mouse
     ScrollUp,

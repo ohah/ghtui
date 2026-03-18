@@ -7,6 +7,7 @@ pub struct TextEditor {
     pub cursor_col: usize, // character index, not byte index
     pub scroll_offset: usize,
     pub viewport_height: usize,
+    pub selection_anchor: Option<(usize, usize)>, // (row, col) where selection started
     undo_stack: Vec<EditorSnapshot>,
     redo_stack: Vec<EditorSnapshot>,
 }
@@ -26,6 +27,7 @@ impl Default for TextEditor {
             cursor_col: 0,
             scroll_offset: 0,
             viewport_height: 20,
+            selection_anchor: None,
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
         }
@@ -99,6 +101,7 @@ impl TextEditor {
             self.lines = snapshot.lines;
             self.cursor_row = snapshot.cursor_row;
             self.cursor_col = snapshot.cursor_col;
+            self.selection_anchor = None;
             self.ensure_scroll();
         }
     }
@@ -113,8 +116,170 @@ impl TextEditor {
             self.lines = snapshot.lines;
             self.cursor_row = snapshot.cursor_row;
             self.cursor_col = snapshot.cursor_col;
+            self.selection_anchor = None;
             self.ensure_scroll();
         }
+    }
+
+    // === Selection ===
+
+    /// Start or extend selection from current cursor position.
+    pub fn start_selection(&mut self) {
+        if self.selection_anchor.is_none() {
+            self.selection_anchor = Some((self.cursor_row, self.cursor_col));
+        }
+    }
+
+    /// Clear selection.
+    pub fn clear_selection(&mut self) {
+        self.selection_anchor = None;
+    }
+
+    /// Get selection range as ((start_row, start_col), (end_row, end_col)).
+    pub fn selection_range(&self) -> Option<((usize, usize), (usize, usize))> {
+        self.selection_anchor.map(|(ar, ac)| {
+            let cursor = (self.cursor_row, self.cursor_col);
+            let anchor = (ar, ac);
+            if anchor <= cursor {
+                (anchor, cursor)
+            } else {
+                (cursor, anchor)
+            }
+        })
+    }
+
+    /// Get selected text.
+    pub fn selected_text(&self) -> Option<String> {
+        let ((sr, sc), (er, ec)) = self.selection_range()?;
+        if sr == er {
+            // Single line selection
+            let line = self.lines.get(sr)?;
+            let start = char_to_byte(line, sc.min(char_count(line)));
+            let end = char_to_byte(line, ec.min(char_count(line)));
+            Some(line[start..end].to_string())
+        } else {
+            let mut result = String::new();
+            // First line from sc to end
+            if let Some(line) = self.lines.get(sr) {
+                let start = char_to_byte(line, sc.min(char_count(line)));
+                result.push_str(&line[start..]);
+            }
+            // Middle lines (full)
+            for row in (sr + 1)..er {
+                result.push('\n');
+                if let Some(line) = self.lines.get(row) {
+                    result.push_str(line);
+                }
+            }
+            // Last line from start to ec
+            result.push('\n');
+            if let Some(line) = self.lines.get(er) {
+                let end = char_to_byte(line, ec.min(char_count(line)));
+                result.push_str(&line[..end]);
+            }
+            Some(result)
+        }
+    }
+
+    /// Delete selected text and place cursor at selection start. Returns true if selection was deleted.
+    pub fn delete_selection(&mut self) -> bool {
+        let range = self.selection_range();
+        if let Some(((sr, sc), (er, ec))) = range {
+            self.save_undo();
+            if sr == er {
+                // Single line
+                if let Some(line) = self.lines.get_mut(sr) {
+                    let start = char_to_byte(line, sc.min(char_count(line)));
+                    let end = char_to_byte(line, ec.min(char_count(line)));
+                    line.drain(start..end);
+                }
+            } else {
+                // Get the part after selection on the last line
+                let tail = self
+                    .lines
+                    .get(er)
+                    .map(|line| {
+                        let end = char_to_byte(line, ec.min(char_count(line)));
+                        line[end..].to_string()
+                    })
+                    .unwrap_or_default();
+                // Truncate the first line at selection start
+                if let Some(line) = self.lines.get_mut(sr) {
+                    let start = char_to_byte(line, sc.min(char_count(line)));
+                    line.truncate(start);
+                    line.push_str(&tail);
+                }
+                // Remove lines between sr+1..=er
+                if er > sr {
+                    self.lines.drain((sr + 1)..=er);
+                }
+            }
+            self.cursor_row = sr;
+            self.cursor_col = sc;
+            self.selection_anchor = None;
+            self.ensure_scroll();
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Select all text (Cmd+A).
+    pub fn select_all(&mut self) {
+        self.selection_anchor = Some((0, 0));
+        let last_row = self.lines.len().saturating_sub(1);
+        self.cursor_row = last_row;
+        self.cursor_col = self.lines.get(last_row).map(|l| char_count(l)).unwrap_or(0);
+        self.ensure_scroll();
+    }
+
+    // Selecting movement variants: set anchor then move cursor without clearing selection.
+
+    pub fn move_left_selecting(&mut self) {
+        self.start_selection();
+        if self.cursor_col > 0 {
+            self.cursor_col -= 1;
+        } else if self.cursor_row > 0 {
+            self.cursor_row -= 1;
+            self.cursor_col = char_count(&self.lines[self.cursor_row]);
+        }
+        self.ensure_scroll();
+    }
+
+    pub fn move_right_selecting(&mut self) {
+        self.start_selection();
+        let line_len = self
+            .lines
+            .get(self.cursor_row)
+            .map(|l| char_count(l))
+            .unwrap_or(0);
+        if self.cursor_col < line_len {
+            self.cursor_col += 1;
+        } else if self.cursor_row < self.lines.len() - 1 {
+            self.cursor_row += 1;
+            self.cursor_col = 0;
+        }
+        self.ensure_scroll();
+    }
+
+    pub fn move_up_selecting(&mut self) {
+        self.start_selection();
+        if self.cursor_row > 0 {
+            self.cursor_row -= 1;
+            let line_len = char_count(&self.lines[self.cursor_row]);
+            self.cursor_col = self.cursor_col.min(line_len);
+        }
+        self.ensure_scroll();
+    }
+
+    pub fn move_down_selecting(&mut self) {
+        self.start_selection();
+        if self.cursor_row < self.lines.len() - 1 {
+            self.cursor_row += 1;
+            let line_len = char_count(&self.lines[self.cursor_row]);
+            self.cursor_col = self.cursor_col.min(line_len);
+        }
+        self.ensure_scroll();
     }
 
     // === Text Mutation ===
@@ -124,6 +289,7 @@ impl TextEditor {
             self.insert_newline();
             return;
         }
+        self.delete_selection();
         self.save_undo();
         if let Some(line) = self.lines.get_mut(self.cursor_row) {
             let col = self.cursor_col.min(char_count(line));
@@ -134,6 +300,7 @@ impl TextEditor {
     }
 
     pub fn insert_str(&mut self, text: &str) {
+        self.delete_selection();
         self.save_undo();
         for c in text.chars() {
             if c == '\n' {
@@ -157,6 +324,7 @@ impl TextEditor {
     }
 
     pub fn insert_newline(&mut self) {
+        self.delete_selection();
         self.save_undo();
         if let Some(line) = self.lines.get_mut(self.cursor_row) {
             let col = self.cursor_col.min(char_count(line));
@@ -171,6 +339,7 @@ impl TextEditor {
     }
 
     pub fn insert_tab(&mut self) {
+        self.delete_selection();
         self.save_undo();
         if let Some(line) = self.lines.get_mut(self.cursor_row) {
             let col = self.cursor_col.min(char_count(line));
@@ -181,6 +350,9 @@ impl TextEditor {
     }
 
     pub fn backspace(&mut self) {
+        if self.delete_selection() {
+            return;
+        }
         if self.cursor_col > 0 {
             self.save_undo();
             if let Some(line) = self.lines.get_mut(self.cursor_row) {
@@ -205,6 +377,9 @@ impl TextEditor {
     }
 
     pub fn delete(&mut self) {
+        if self.delete_selection() {
+            return;
+        }
         let line_len = self
             .lines
             .get(self.cursor_row)
@@ -231,6 +406,7 @@ impl TextEditor {
     // === Cursor Movement ===
 
     pub fn move_left(&mut self) {
+        self.clear_selection();
         if self.cursor_col > 0 {
             self.cursor_col -= 1;
         } else if self.cursor_row > 0 {
@@ -241,6 +417,7 @@ impl TextEditor {
     }
 
     pub fn move_right(&mut self) {
+        self.clear_selection();
         let line_len = self
             .lines
             .get(self.cursor_row)
@@ -256,6 +433,7 @@ impl TextEditor {
     }
 
     pub fn move_up(&mut self) {
+        self.clear_selection();
         if self.cursor_row > 0 {
             self.cursor_row -= 1;
             let line_len = char_count(&self.lines[self.cursor_row]);
@@ -265,6 +443,7 @@ impl TextEditor {
     }
 
     pub fn move_down(&mut self) {
+        self.clear_selection();
         if self.cursor_row < self.lines.len() - 1 {
             self.cursor_row += 1;
             let line_len = char_count(&self.lines[self.cursor_row]);
@@ -274,8 +453,13 @@ impl TextEditor {
     }
 
     pub fn move_word_left(&mut self) {
+        self.clear_selection();
         if self.cursor_col == 0 {
-            self.move_left();
+            if self.cursor_row > 0 {
+                self.cursor_row -= 1;
+                self.cursor_col = char_count(&self.lines[self.cursor_row]);
+            }
+            self.ensure_scroll();
             return;
         }
         if let Some(line) = self.lines.get(self.cursor_row) {
@@ -294,6 +478,7 @@ impl TextEditor {
     }
 
     pub fn move_word_right(&mut self) {
+        self.clear_selection();
         if let Some(line) = self.lines.get(self.cursor_row) {
             let chars: Vec<char> = line.chars().collect();
             let len = chars.len();
@@ -308,33 +493,42 @@ impl TextEditor {
             }
             self.cursor_col = col;
         } else {
-            self.move_right();
+            self.cursor_col = 0;
+            if self.cursor_row < self.lines.len() - 1 {
+                self.cursor_row += 1;
+            }
         }
+        self.ensure_scroll();
     }
 
     pub fn move_home(&mut self) {
+        self.clear_selection();
         self.cursor_col = 0;
     }
 
     pub fn move_end(&mut self) {
+        self.clear_selection();
         if let Some(line) = self.lines.get(self.cursor_row) {
             self.cursor_col = char_count(line);
         }
     }
 
     pub fn move_to_top(&mut self) {
+        self.clear_selection();
         self.cursor_row = 0;
         self.cursor_col = 0;
         self.ensure_scroll();
     }
 
     pub fn move_to_bottom(&mut self) {
+        self.clear_selection();
         self.cursor_row = self.lines.len().saturating_sub(1);
         self.cursor_col = 0;
         self.ensure_scroll();
     }
 
     pub fn page_up(&mut self) {
+        self.clear_selection();
         let jump = self.viewport_height.saturating_sub(2);
         self.cursor_row = self.cursor_row.saturating_sub(jump);
         let line_len = char_count(&self.lines[self.cursor_row]);
@@ -343,6 +537,7 @@ impl TextEditor {
     }
 
     pub fn page_down(&mut self) {
+        self.clear_selection();
         let jump = self.viewport_height.saturating_sub(2);
         self.cursor_row = (self.cursor_row + jump).min(self.lines.len().saturating_sub(1));
         let line_len = char_count(&self.lines[self.cursor_row]);
@@ -389,6 +584,29 @@ impl TextEditor {
     /// Is the cursor on this absolute line index?
     pub fn is_cursor_line(&self, line_idx: usize) -> bool {
         line_idx == self.cursor_row
+    }
+
+    /// Get the byte range for a selection on a given line, if any.
+    /// Returns (byte_start, byte_end) relative to the line string.
+    pub fn selection_byte_range_for_line(&self, line_idx: usize) -> Option<(usize, usize)> {
+        let ((sr, sc), (er, ec)) = self.selection_range()?;
+        let line = self.lines.get(line_idx)?;
+        let len = char_count(line);
+
+        if line_idx < sr || line_idx > er {
+            return None;
+        }
+
+        let start_col = if line_idx == sr { sc.min(len) } else { 0 };
+        let end_col = if line_idx == er { ec.min(len) } else { len };
+
+        if start_col == end_col {
+            return None;
+        }
+
+        let byte_start = char_to_byte(line, start_col);
+        let byte_end = char_to_byte(line, end_col);
+        Some((byte_start, byte_end))
     }
 }
 
