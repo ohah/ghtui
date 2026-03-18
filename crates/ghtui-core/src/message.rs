@@ -280,7 +280,7 @@ pub enum Message {
     SecurityOpenInBrowser,
     SecurityDismissAlert,
     SecurityReopenAlert,
-    SecurityAlertUpdated,
+    SecurityAlertUpdated(usize), // tab index: 0=dependabot, 1=code, 2=secret
 
     // Settings
     SettingsRepoLoaded(Box<settings::Repository>),
@@ -301,7 +301,7 @@ pub enum Message {
     SettingsDeleteWebhook,         // Delete selected webhook
     SettingsToggleWebhook,         // Toggle webhook active/inactive
     SettingsDeleteDeployKey,       // Delete selected deploy key
-    SettingsItemUpdated,           // Generic refresh after settings mutation
+    SettingsItemUpdated(usize),    // tab index: 2=collaborators, 3=webhooks, 4=deploy_keys
 
     // Mouse
     ScrollUp,
