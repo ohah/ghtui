@@ -3441,9 +3441,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         vec![]
                     }
                     // List views: double-click → open detail
+                    // filter bar (1) + border (1) + header (1) = 3 rows before items
                     Route::IssueList { .. } | Route::PrList { .. } | Route::ActionsList { .. } => {
-                        if content_row > 0 {
-                            let item_index = content_row.saturating_sub(1);
+                        if content_row > 2 {
+                            let item_index = content_row.saturating_sub(3);
                             let cmds = handle_mouse_list_select(state, item_index);
                             if !cmds.is_empty() {
                                 return cmds;
