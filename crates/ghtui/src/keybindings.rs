@@ -44,7 +44,8 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
     let is_inline_editing = state.issue_detail.as_ref().is_some_and(|d| d.is_editing())
         || state.pr_detail.as_ref().is_some_and(|d| {
             d.is_editing() || d.diff_comment_target.is_some() || d.action_bar_focused
-        });
+        })
+        || state.code.as_ref().is_some_and(|c| c.editing);
 
     if !is_inline_editing {
         // Global keys
