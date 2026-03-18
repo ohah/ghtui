@@ -67,7 +67,20 @@ pub(crate) fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command
                 vec![]
             }
         }
-        Route::Code { .. } => vec![],
+        Route::Code {
+            repo,
+            path,
+            git_ref,
+        } => {
+            let clean_path = path.trim_matches('/').to_string();
+            state.code = Some(ghtui_core::state::CodeViewState::new(git_ref.clone()));
+            state.loading.insert("code_contents".to_string());
+            state.loading.insert("code_readme".to_string());
+            vec![
+                Command::FetchContents(repo.clone(), clean_path, git_ref.clone()),
+                Command::FetchReadme(repo.clone(), git_ref.clone()),
+            ]
+        }
         Route::Security { repo } => {
             state.security = Some(SecurityState::new());
             state.loading.insert("security".to_string());
@@ -356,6 +369,24 @@ pub(crate) fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Comm
                             }
                         }
                         _ => {}
+                    }
+                }
+            }
+        }
+        Route::Code { .. } => {
+            if let Some(ref mut code) = state.code {
+                if code.sidebar_focused {
+                    if delta == usize::MAX {
+                        code.select_prev();
+                    } else if delta > 0 {
+                        code.select_next();
+                    }
+                } else {
+                    // Content focused: scroll file content
+                    if delta == usize::MAX {
+                        code.scroll = code.scroll.saturating_sub(1);
+                    } else if delta > 0 {
+                        code.scroll += 1;
                     }
                 }
             }

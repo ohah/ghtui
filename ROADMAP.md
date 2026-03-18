@@ -249,14 +249,14 @@
 
 ## Phase 9 — Code 탭 (작업량 최대)
 
-- [ ] GitHub Contents API 연동
-- [ ] 파일 트리 브라우저 (접기/펼치기)
-- [ ] 파일 내용 뷰어 (syntax highlighting)
+- [x] GitHub Contents API 연동
+- [x] 파일 트리 브라우저 (사이드바, Enter:열기, Backspace:뒤로)
+- [x] 파일 내용 뷰어 (라인 번호, 스크롤)
 - [ ] 간단한 파일 편집 (인라인 수정 → commit)
 - [ ] 브랜치/태그 전환
 - [ ] 커밋 히스토리 (log with graph)
 - [ ] 커밋 상세 (diff, 메시지, 메타데이터)
-- [ ] README.md 실제 렌더링
+- [x] README.md 실제 렌더링 (마크다운 렌더링)
 
 ## Phase 10 — UX 개선
 

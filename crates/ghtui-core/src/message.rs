@@ -309,6 +309,14 @@ pub enum Message {
     SettingsToggleBranchEnforceAdmins, // Toggle enforce_admins on selected rule
     SettingsItemUpdated(usize), // tab index: 1=branch, 2=collaborators, 3=webhooks, 4=deploy_keys
 
+    // Code tab
+    CodeContentsLoaded(Vec<crate::types::code::FileEntry>),
+    CodeFileLoaded(String, String), // filename, content
+    CodeReadmeLoaded(String),       // readme content
+    CodeNavigateInto,               // Enter on dir -> navigate into; on file -> view
+    CodeNavigateBack,               // Backspace/Esc -> go up
+    CodeSidebarFocus,               // Toggle sidebar/content focus
+
     // Mouse
     ScrollUp,
     ScrollDown,

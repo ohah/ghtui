@@ -105,6 +105,11 @@ pub enum Command {
     DismissCodeScanningAlert(RepoId, u64, String),
     ResolveSecretScanningAlert(RepoId, u64, String),
 
+    // Code
+    FetchContents(RepoId, String, String), // repo, path, git_ref
+    FetchFileContent(RepoId, String, String), // repo, path, git_ref
+    FetchReadme(RepoId, String),           // repo, git_ref
+
     // Settings
     FetchRepoSettings(RepoId),
     FetchBranchProtections(RepoId),
