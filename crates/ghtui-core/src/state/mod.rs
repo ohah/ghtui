@@ -306,6 +306,21 @@ impl AppState {
         }
     }
 
+    /// Clear all repo-specific view state. Does NOT clear current_repo
+    /// so tab navigation still works after going home.
+    pub fn reset_repo_state(&mut self) {
+        self.code = None;
+        self.pr_list = None;
+        self.pr_detail = None;
+        self.issue_list = None;
+        self.issue_detail = None;
+        self.actions_list = None;
+        self.action_detail = None;
+        self.security = None;
+        self.insights = None;
+        self.settings = None;
+    }
+
     pub fn push_toast(&mut self, message: String, level: ToastLevel) {
         self.toasts.push_back(Toast {
             message,
