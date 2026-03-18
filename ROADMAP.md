@@ -264,7 +264,7 @@
 - [x] 커스텀 키바인딩 설정 (config.toml — quit/help/theme/search/palette)
 - [x] 마우스 지원 (클릭, 스크롤)
 - [x] 반응형 레이아웃 (터미널 width<80 시 사이드바 자동 숨김)
-- [ ] 이미지 미리보기 (sixel/kitty protocol — 터미널 호환성 이슈로 보류)
+- [x] 이미지 미리보기 (ratatui-image — halfblock/sixel/kitty 자동감지, PNG/JPG/GIF)
 
 ## Phase 11 — 배포 & 에코시스템
 

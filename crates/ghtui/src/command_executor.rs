@@ -515,6 +515,15 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 Err(e) => Message::Error(e.into()),
             }
         }
+        Command::FetchFileBytes(repo, path, git_ref) => {
+            match client.get_file_bytes(&repo, &path, &git_ref).await {
+                Ok(bytes) => {
+                    let filename = path.rsplit('/').next().unwrap_or(&path).to_string();
+                    Message::CodeImageLoaded(filename, bytes)
+                }
+                Err(e) => Message::Error(e.into()),
+            }
+        }
         Command::FetchReadme(repo, git_ref) => {
             // Try README.md, then readme.md, then README
             for name in &["README.md", "readme.md", "README"] {

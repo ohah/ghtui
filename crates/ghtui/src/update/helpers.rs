@@ -3,6 +3,15 @@ use ghtui_core::state::SecurityState;
 use ghtui_core::state::pr::PrDetailState;
 use ghtui_core::{AppState, Command, Message};
 
+/// Check if a filename has an image extension.
+pub(crate) fn is_image_file(filename: &str) -> bool {
+    let ext = filename.rsplit('.').next().unwrap_or("").to_lowercase();
+    matches!(
+        ext.as_str(),
+        "png" | "jpg" | "jpeg" | "gif" | "bmp" | "webp" | "svg" | "ico"
+    )
+}
+
 pub(crate) fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command> {
     let cmds = match &route {
         Route::PrList { repo, filters } => {

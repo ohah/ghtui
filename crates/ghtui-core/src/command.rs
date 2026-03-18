@@ -109,6 +109,7 @@ pub enum Command {
     FetchTree(RepoId, String),                // repo, git_ref
     FetchContents(RepoId, String, String),    // repo, path, git_ref
     FetchFileContent(RepoId, String, String), // repo, path, git_ref
+    FetchFileBytes(RepoId, String, String),   // repo, path, git_ref (for binary/image files)
     FetchReadme(RepoId, String),              // repo, git_ref
     FetchBranches(RepoId),
     FetchTags(RepoId),

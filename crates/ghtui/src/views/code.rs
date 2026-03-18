@@ -383,6 +383,12 @@ fn render_content(
         return;
     }
 
+    // If viewing an image file
+    if let (Some(image_bytes), Some(filename)) = (&code.image_data, &code.file_name) {
+        render_image_preview(frame, theme, image_bytes, filename, border_style, area);
+        return;
+    }
+
     // If viewing a file
     if let (Some(content), Some(filename)) = (&code.file_content, &code.file_name) {
         render_file_content(
@@ -595,6 +601,57 @@ fn render_ref_picker(
         list_state.select(Some(code.ref_picker_selected));
     }
     frame.render_stateful_widget(list, picker_area, &mut list_state);
+}
+
+fn render_image_preview(
+    frame: &mut Frame,
+    theme: &ghtui_core::theme::Theme,
+    image_bytes: &[u8],
+    filename: &str,
+    border_style: Style,
+    area: Rect,
+) {
+    let block = Block::default()
+        .title(Span::styled(
+            format!(" {} (image) ", filename),
+            Style::default().fg(theme.fg),
+        ))
+        .borders(Borders::ALL)
+        .border_style(border_style);
+
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    match image::load_from_memory(image_bytes) {
+        Ok(dyn_img) => {
+            let picker = ratatui_image::picker::Picker::halfblocks();
+            let resize = ratatui_image::Resize::Fit(None);
+            match picker.new_protocol(dyn_img, inner, resize) {
+                Ok(protocol) => {
+                    let image_widget = ratatui_image::Image::new(&protocol);
+                    frame.render_widget(image_widget, inner);
+                }
+                Err(_) => {
+                    let fallback = Paragraph::new(format!(
+                        "  [Image: {} - unable to render protocol]",
+                        filename
+                    ))
+                    .style(Style::default().fg(theme.fg_dim));
+                    frame.render_widget(fallback, inner);
+                }
+            }
+        }
+        Err(_) => {
+            let (w, h) = (image_bytes.len(), 0usize);
+            let _ = h; // suppress unused
+            let info = format!(
+                "  [Binary image file: {} ({} bytes) - unable to decode]",
+                filename, w
+            );
+            let fallback = Paragraph::new(info).style(Style::default().fg(theme.fg_dim));
+            frame.render_widget(fallback, inner);
+        }
+    }
 }
 
 fn render_file_content(
