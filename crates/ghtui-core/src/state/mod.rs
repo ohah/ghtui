@@ -58,6 +58,11 @@ impl CommandPaletteState {
     pub fn new() -> Self {
         let items = vec![
             PaletteItem {
+                label: "Home (Dashboard)".into(),
+                category: "Navigate".into(),
+                message: Message::GoHome,
+            },
+            PaletteItem {
                 label: "Code".into(),
                 category: "Navigate".into(),
                 message: Message::GlobalTabSelect(0),

@@ -3224,6 +3224,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         // Mouse click
         Message::MouseClick(_col, row) => {
             // Row 0 = repo header, Row 1 = tab bar, Row 2+ = content
+            if row == 0 {
+                // Click on repo header → go to dashboard
+                return update(state, Message::GoHome);
+            }
             if row == 1 {
                 // Tab bar click — compute which tab was clicked based on column position
                 // Tab labels with spacing: " N Label " format
@@ -3439,6 +3443,21 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 return navigate_to_tab(state);
             }
             vec![]
+        }
+        Message::GoHome => {
+            state.route = Route::Dashboard;
+            state.current_repo = None;
+            state.code = None;
+            state.pr_list = None;
+            state.pr_detail = None;
+            state.issue_list = None;
+            state.issue_detail = None;
+            state.actions_list = None;
+            state.action_detail = None;
+            state.security = None;
+            state.insights = None;
+            state.settings = None;
+            refresh_current_view(state)
         }
         Message::GlobalTabNext => {
             let total = ghtui_core::router::TAB_LABELS.len();

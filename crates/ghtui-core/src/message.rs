@@ -379,6 +379,7 @@ pub enum Message {
     InputChanged(String),
     ListSelect(usize),
     TabChanged(usize),
+    GoHome, // Navigate to dashboard (home screen)
     GlobalTabNext,
     GlobalTabPrev,
     GlobalTabSelect(usize),
