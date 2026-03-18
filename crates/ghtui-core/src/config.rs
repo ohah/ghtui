@@ -19,6 +19,8 @@ pub struct AppConfig {
     pub keybindings: KeybindingConfig,
     #[serde(default)]
     pub enterprise_url: Option<String>,
+    #[serde(default = "default_offline_cache")]
+    pub offline_cache: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,6 +65,10 @@ fn default_palette() -> String {
     "Ctrl+p".to_string()
 }
 
+fn default_offline_cache() -> bool {
+    true
+}
+
 fn default_per_page() -> u32 {
     30
 }
@@ -81,6 +87,7 @@ impl Default for AppConfig {
             theme: ThemeMode::Dark,
             keybindings: KeybindingConfig::default(),
             enterprise_url: None,
+            offline_cache: default_offline_cache(),
         }
     }
 }

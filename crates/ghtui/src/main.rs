@@ -71,6 +71,11 @@ async fn main() -> Result<()> {
         GithubClient::new(token)?
     };
 
+    // Cleanup stale disk cache entries on startup
+    if config.offline_cache {
+        client.cleanup_disk_cache();
+    }
+
     // Run app
     let mut app = App::new(config, client, repo, current_account, accounts);
     app.run().await

@@ -284,7 +284,7 @@
 - [x] Discussions 탭 (`8`키 — GraphQL API, 카테고리/답변 표시)
 - [x] Gists 뷰 (Command palette → Gists, 공개/비밀 뱃지)
 - [x] Organization 탐색 (Command palette → Organizations, 멤버 목록)
-- [ ] 오프라인 모드 (캐시 기반)
+- [x] 오프라인 모드 (디스크 캐시 — ~/.cache/ghtui/api/, 24시간 TTL, 자동 fallback)
 - [ ] 플러그인 시스템
 
 ## 보류 (UI에서 제거됨)
