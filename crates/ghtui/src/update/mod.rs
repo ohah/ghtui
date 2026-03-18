@@ -3935,6 +3935,7 @@ fn action_bar_action(index: usize, pr_state: &ghtui_core::types::PrState) -> Opt
 }
 
 /// Find a review comment ID near the diff cursor position.
+/// Reuses `count_review_comment_lines` to stay consistent with rendering.
 fn find_review_comment_at_cursor(
     detail: &PrDetailState,
     files: &[ghtui_core::types::DiffFile],
@@ -3958,31 +3959,20 @@ fn find_review_comment_at_cursor(
                 let code_line = line;
                 line += 1;
                 let target = diff_line.new_line.or(diff_line.old_line);
-                // Count review comment lines for this position
-                if let Some(target_line) = target {
-                    let comments: Vec<&ghtui_core::types::ReviewComment> = review_comments
-                        .iter()
-                        .filter(|c| {
-                            c.path == file.filename
-                                && (c.line == Some(target_line)
-                                    || c.original_line == Some(target_line))
-                        })
-                        .collect();
-                    if !comments.is_empty() {
-                        // Comment box starts after code line
-                        let comment_start = code_line + 1;
-                        let mut comment_lines = 0;
-                        for c in &comments {
-                            comment_lines += c.body.lines().count() + 2; // header + body + border
-                        }
-                        comment_lines += 1; // box top border
-                        let comment_end = comment_start + comment_lines;
-                        if detail.diff_cursor >= code_line && detail.diff_cursor < comment_end {
-                            return Some(comments[0].id);
-                        }
-                        line += comment_lines;
-                    }
+                let comment_lines =
+                    count_review_comment_lines(review_comments, &file.filename, target);
+                if comment_lines > 0 && detail.diff_cursor >= code_line
+                    && detail.diff_cursor < code_line + 1 + comment_lines
+                {
+                    // Find the first root comment at this position
+                    let root = review_comments.iter().find(|c| {
+                        c.path == file.filename
+                            && c.in_reply_to_id.is_none()
+                            && (c.line == target || c.original_line == target)
+                    });
+                    return root.map(|c| c.id);
                 }
+                line += comment_lines;
             }
         }
         line += 1; // trailing empty
@@ -3992,15 +3982,15 @@ fn find_review_comment_at_cursor(
 
 /// Trace back in_reply_to_id chain to find the root comment ID of a thread.
 fn find_thread_root_id(
-    comment_id: u64,
+    mut comment_id: u64,
     review_comments: &[ghtui_core::types::ReviewComment],
 ) -> u64 {
-    let comment = review_comments.iter().find(|c| c.id == comment_id);
-    match comment {
-        Some(c) => match c.in_reply_to_id {
-            Some(parent_id) => find_thread_root_id(parent_id, review_comments),
-            None => c.id,
-        },
-        None => comment_id,
+    let mut visited = std::collections::HashSet::new();
+    while let Some(c) = review_comments.iter().find(|c| c.id == comment_id) {
+        match c.in_reply_to_id {
+            Some(parent_id) if visited.insert(comment_id) => comment_id = parent_id,
+            _ => return c.id,
+        }
     }
+    comment_id
 }
