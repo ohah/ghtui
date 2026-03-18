@@ -202,22 +202,73 @@ impl Widget for EditorView<'_> {
                 }
             } else if is_cursor_line {
                 let byte_col = self.editor.cursor_byte_col();
-                let before = &line[..byte_col];
-                let after = &line[byte_col..];
-                spans.push(Span::styled(
-                    before.to_string(),
-                    Style::default().fg(self.theme.text),
-                ));
-                spans.push(Span::styled(
+                let cursor_span = Span::styled(
                     "\u{2588}",
                     Style::default()
                         .fg(self.theme.cursor)
                         .add_modifier(Modifier::SLOW_BLINK),
-                ));
-                spans.push(Span::styled(
-                    after.to_string(),
-                    Style::default().fg(self.theme.text),
-                ));
+                );
+
+                if let Some(hl) = self.highlighted.and_then(|h| h.get(i)) {
+                    if !hl.is_empty() {
+                        // Render highlighted spans with cursor block inserted at byte_col
+                        let mut byte_pos: usize = 0;
+                        let mut cursor_inserted = false;
+                        for s in hl {
+                            let span_len = s.content.len();
+                            let span_start = byte_pos;
+                            let span_end = byte_pos + span_len;
+
+                            if !cursor_inserted && byte_col >= span_start && byte_col <= span_end {
+                                // Cursor falls within (or at boundary of) this span
+                                let offset = byte_col - span_start;
+                                let text = s.content.as_ref();
+                                if offset > 0 {
+                                    spans.push(Span::styled(text[..offset].to_string(), s.style));
+                                }
+                                spans.push(cursor_span.clone());
+                                cursor_inserted = true;
+                                if offset < span_len {
+                                    spans.push(Span::styled(text[offset..].to_string(), s.style));
+                                }
+                            } else {
+                                spans.push(Span::styled(s.content.to_string(), s.style));
+                            }
+
+                            byte_pos = span_end;
+                        }
+                        if !cursor_inserted {
+                            // Cursor is past all spans (e.g., end of line)
+                            spans.push(cursor_span);
+                        }
+                    } else {
+                        // Empty highlights — fall back to single color
+                        let before = &line[..byte_col];
+                        let after = &line[byte_col..];
+                        spans.push(Span::styled(
+                            before.to_string(),
+                            Style::default().fg(self.theme.text),
+                        ));
+                        spans.push(cursor_span);
+                        spans.push(Span::styled(
+                            after.to_string(),
+                            Style::default().fg(self.theme.text),
+                        ));
+                    }
+                } else {
+                    // No highlights available — fall back to single color
+                    let before = &line[..byte_col];
+                    let after = &line[byte_col..];
+                    spans.push(Span::styled(
+                        before.to_string(),
+                        Style::default().fg(self.theme.text),
+                    ));
+                    spans.push(cursor_span);
+                    spans.push(Span::styled(
+                        after.to_string(),
+                        Style::default().fg(self.theme.text),
+                    ));
+                }
             } else if let Some(hl) = self.highlighted.and_then(|h| h.get(i)) {
                 // Use syntax-highlighted spans (clone to 'static)
                 for s in hl {

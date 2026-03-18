@@ -43,7 +43,7 @@ pub fn highlight_file<'a>(content: &str, filename: &str, is_dark: bool) -> Vec<V
     let basename = filename.rsplit('/').next().unwrap_or(filename);
     let lang = get_tree_sitter_language(ext).or_else(|| get_tree_sitter_language_by_name(basename));
     let tokens = if let Some(lang) = lang {
-        highlight_with_tree_sitter(content, lang, is_dark)
+        highlight_with_tree_sitter(content, lang, is_dark, ext)
     } else {
         // No Tree-sitter grammar — render as plain text
         plain_tokens(content, is_dark)
@@ -220,37 +220,152 @@ fn categorize_node(kind: &str) -> NodeCategory {
     }
 }
 
-/// Map node category to color based on theme.
-fn node_color(kind: &str, is_dark: bool) -> (u8, u8, u8) {
+/// Default dark theme colors (GitHub-inspired).
+fn default_dark_color(cat: &NodeCategory) -> (u8, u8, u8) {
+    match cat {
+        NodeCategory::Keyword => (255, 123, 114),    // #ff7b72 red
+        NodeCategory::Type => (121, 192, 255),       // #79c0ff light blue
+        NodeCategory::Identifier => (210, 168, 255), // #d2a8ff purple
+        NodeCategory::StringLit => (165, 214, 255),  // #a5d6ff cyan
+        NodeCategory::Number => (121, 192, 255),     // #79c0ff blue
+        NodeCategory::Heading => (255, 166, 87),     // orange — headings
+        NodeCategory::Link => (88, 166, 255),        // blue — links
+        NodeCategory::Comment => (139, 148, 158),    // #8b949e gray
+        NodeCategory::Operator => (230, 237, 243),   // white
+        NodeCategory::Macro => (121, 184, 255),      // blue
+        NodeCategory::Default => (230, 237, 243),    // white
+    }
+}
+
+/// Default light theme colors.
+fn default_light_color(cat: &NodeCategory) -> (u8, u8, u8) {
+    match cat {
+        NodeCategory::Keyword => (207, 34, 46),     // red
+        NodeCategory::Type => (5, 80, 174),         // blue
+        NodeCategory::Identifier => (102, 57, 186), // purple
+        NodeCategory::StringLit => (10, 104, 71),   // green
+        NodeCategory::Number => (5, 80, 174),       // blue
+        NodeCategory::Heading => (207, 34, 46),     // red — headings
+        NodeCategory::Link => (5, 80, 174),         // blue — links
+        NodeCategory::Comment => (110, 119, 129),   // gray
+        NodeCategory::Operator => (31, 35, 40),     // dark
+        NodeCategory::Macro => (5, 80, 174),        // blue
+        NodeCategory::Default => (31, 35, 40),      // dark
+    }
+}
+
+/// Map node kind to color based on theme and language (file extension).
+fn node_color(kind: &str, is_dark: bool, ext: &str) -> (u8, u8, u8) {
     let cat = categorize_node(kind);
     if is_dark {
-        match cat {
-            NodeCategory::Keyword => (255, 123, 114),    // red
-            NodeCategory::Type => (121, 192, 255),       // light blue
-            NodeCategory::Identifier => (210, 168, 255), // purple
-            NodeCategory::StringLit => (165, 214, 255),  // cyan
-            NodeCategory::Number => (121, 192, 255),     // blue
-            NodeCategory::Heading => (255, 166, 87),     // orange — headings
-            NodeCategory::Link => (88, 166, 255),        // blue — links
-            NodeCategory::Comment => (139, 148, 158),    // gray
-            NodeCategory::Operator => (230, 237, 243),   // white
-            NodeCategory::Macro => (121, 184, 255),      // blue
-            NodeCategory::Default => (230, 237, 243),    // white
+        match ext {
+            // ── Rust ──
+            "rs" => match cat {
+                NodeCategory::Keyword => (255, 123, 114),    // #ff7b72 red
+                NodeCategory::Type => (255, 166, 87),        // #ffa657 orange (NOT blue)
+                NodeCategory::Identifier => (210, 168, 255), // #d2a8ff purple
+                NodeCategory::Macro => (121, 192, 255),      // #79c0ff blue
+                NodeCategory::StringLit => (165, 214, 255),  // #a5d6ff light blue
+                NodeCategory::Comment => (139, 148, 158),    // #8b949e gray
+                _ => default_dark_color(&cat),
+            },
+            // ── JavaScript / TypeScript ──
+            "js" | "mjs" | "cjs" | "ts" | "tsx" | "jsx" => match kind {
+                // JSX tags get green
+                "tag_name"
+                | "jsx_opening_element"
+                | "jsx_closing_element"
+                | "jsx_self_closing_element" => (126, 231, 135), // #7ee787 green
+                _ => match cat {
+                    NodeCategory::Keyword => (255, 123, 114),    // #ff7b72 red
+                    NodeCategory::Type => (121, 192, 255),       // #79c0ff blue
+                    NodeCategory::Identifier => (210, 168, 255), // #d2a8ff purple
+                    NodeCategory::StringLit => (165, 214, 255),  // #a5d6ff light blue
+                    NodeCategory::Number => (121, 192, 255),     // #79c0ff blue
+                    _ => default_dark_color(&cat),
+                },
+            },
+            // ── Python ──
+            "py" | "pyi" => match kind {
+                // self/cls as keyword-red
+                "self" | "cls" => (255, 123, 114), // #ff7b72 red
+                // Builtins
+                "print" | "len" | "range" | "type" | "int" | "str" | "float" | "list" | "dict"
+                | "set" | "tuple" | "bool" | "enumerate" | "zip" | "map" | "filter" | "sorted"
+                | "reversed" | "sum" | "min" | "max" | "abs" | "round" | "isinstance"
+                | "issubclass" | "hasattr" | "getattr" | "setattr" | "delattr" | "super"
+                | "open" | "input" | "repr" | "iter" | "next" | "any" | "all" | "hex" | "oct"
+                | "bin" | "ord" | "chr" => (121, 192, 255), // #79c0ff blue
+                // Decorators
+                "decorator" | "decorator_identifier" => (210, 168, 255), // #d2a8ff purple
+                _ => match cat {
+                    NodeCategory::Keyword => (255, 123, 114),   // #ff7b72 red
+                    NodeCategory::StringLit => (165, 214, 255), // #a5d6ff light blue
+                    _ => default_dark_color(&cat),
+                },
+            },
+            // ── Go ──
+            "go" => match kind {
+                // Package names
+                "package_identifier" => (255, 166, 87), // #ffa657 orange
+                _ => match cat {
+                    NodeCategory::Keyword => (255, 123, 114),    // #ff7b72 red
+                    NodeCategory::Type => (121, 192, 255),       // #79c0ff blue
+                    NodeCategory::Identifier => (210, 168, 255), // #d2a8ff purple
+                    NodeCategory::StringLit => (165, 214, 255),  // #a5d6ff light blue
+                    _ => default_dark_color(&cat),
+                },
+            },
+            // ── Java / Kotlin / C# ──
+            "java" | "kt" | "kts" | "cs" | "csx" => match cat {
+                NodeCategory::Keyword => (255, 123, 114),   // #ff7b72 red
+                NodeCategory::Type => (255, 166, 87),       // #ffa657 orange
+                NodeCategory::Macro => (210, 168, 255),     // #d2a8ff purple (annotations)
+                NodeCategory::StringLit => (165, 214, 255), // #a5d6ff light blue
+                _ => default_dark_color(&cat),
+            },
+            // ── HTML / CSS ──
+            "html" | "htm" => match kind {
+                "tag_name" | "start_tag" | "end_tag" => (126, 231, 135), // #7ee787 green
+                "attribute_name" => (121, 192, 255),                     // #79c0ff blue
+                _ => match cat {
+                    NodeCategory::StringLit => (165, 214, 255), // #a5d6ff light blue
+                    _ => default_dark_color(&cat),
+                },
+            },
+            "css" | "scss" => match kind {
+                "property_name" => (121, 192, 255), // #79c0ff blue
+                "tag_name" => (126, 231, 135),      // #7ee787 green
+                "class_name" => (210, 168, 255),    // #d2a8ff purple
+                "id_name" => (255, 166, 87),        // #ffa657 orange
+                _ => match cat {
+                    NodeCategory::StringLit => (165, 214, 255), // #a5d6ff light blue
+                    NodeCategory::Number => (255, 166, 87),     // #ffa657 orange
+                    _ => default_dark_color(&cat),
+                },
+            },
+            // ── YAML / JSON / TOML ──
+            "yml" | "yaml" | "json" | "jsonc" | "toml" => match kind {
+                // Keys
+                "block_mapping_pair" | "flow_pair" | "pair" | "bare_key" | "dotted_key"
+                | "property_name" => (121, 192, 255), // #79c0ff blue
+                // Booleans / nulls
+                "true" | "false" | "null" | "boolean_scalar" | "null_scalar" => {
+                    (255, 123, 114) // #ff7b72 red
+                }
+                _ => match cat {
+                    NodeCategory::StringLit => (165, 214, 255), // #a5d6ff light blue
+                    NodeCategory::Number => (255, 166, 87),     // #ffa657 orange
+                    NodeCategory::Keyword => (255, 123, 114),   // #ff7b72 red
+                    _ => default_dark_color(&cat),
+                },
+            },
+            // ── All other languages: default dark palette ──
+            _ => default_dark_color(&cat),
         }
     } else {
-        match cat {
-            NodeCategory::Keyword => (207, 34, 46),     // red
-            NodeCategory::Type => (5, 80, 174),         // blue
-            NodeCategory::Identifier => (102, 57, 186), // purple
-            NodeCategory::StringLit => (10, 104, 71),   // green
-            NodeCategory::Number => (5, 80, 174),       // blue
-            NodeCategory::Heading => (207, 34, 46),     // red — headings
-            NodeCategory::Link => (5, 80, 174),         // blue — links
-            NodeCategory::Comment => (110, 119, 129),   // gray
-            NodeCategory::Operator => (31, 35, 40),     // dark
-            NodeCategory::Macro => (5, 80, 174),        // blue
-            NodeCategory::Default => (31, 35, 40),      // dark
-        }
+        // Light theme — no language overrides for now
+        default_light_color(&cat)
     }
 }
 
@@ -258,6 +373,7 @@ fn highlight_with_tree_sitter(
     content: &str,
     language: tree_sitter::Language,
     is_dark: bool,
+    ext: &str,
 ) -> Vec<Vec<HlToken>> {
     let mut parser = tree_sitter::Parser::new();
     if parser.set_language(&language).is_err() {
@@ -273,7 +389,7 @@ fn highlight_with_tree_sitter(
 
     // Walk the AST and color each leaf node
     let mut cursor = tree.walk();
-    walk_tree(&mut cursor, &lines, &mut result, is_dark);
+    walk_tree(&mut cursor, &lines, &mut result, is_dark, ext);
 
     // Fill gaps: tokens only cover AST nodes, not whitespace/indentation between them.
     // For each line, sort tokens by position and fill gaps with default-colored text.
@@ -352,6 +468,7 @@ fn walk_tree(
     lines: &[&str],
     result: &mut Vec<Vec<HlToken>>,
     is_dark: bool,
+    ext: &str,
 ) {
     let node = cursor.node();
 
@@ -360,7 +477,7 @@ fn walk_tree(
         let start = node.start_position();
         let end = node.end_position();
         let kind = node.kind();
-        let (r, g, b) = node_color(kind, is_dark);
+        let (r, g, b) = node_color(kind, is_dark, ext);
 
         // Handle single-line nodes
         if start.row == end.row {
@@ -402,7 +519,7 @@ fn walk_tree(
     // Recurse into children
     if cursor.goto_first_child() {
         loop {
-            walk_tree(cursor, lines, result, is_dark);
+            walk_tree(cursor, lines, result, is_dark, ext);
             if !cursor.goto_next_sibling() {
                 break;
             }
