@@ -464,13 +464,13 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 .dismiss_dependabot_alert(&repo, number, &reason)
                 .await
             {
-                Ok(()) => Message::SecurityAlertUpdated,
+                Ok(()) => Message::SecurityAlertUpdated(0),
                 Err(e) => Message::Error(e.into()),
             }
         }
         Command::ReopenDependabotAlert(repo, number) => {
             match client.reopen_dependabot_alert(&repo, number).await {
-                Ok(()) => Message::SecurityAlertUpdated,
+                Ok(()) => Message::SecurityAlertUpdated(0),
                 Err(e) => Message::Error(e.into()),
             }
         }
@@ -479,7 +479,7 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 .dismiss_code_scanning_alert(&repo, number, &reason)
                 .await
             {
-                Ok(()) => Message::SecurityAlertUpdated,
+                Ok(()) => Message::SecurityAlertUpdated(1),
                 Err(e) => Message::Error(e.into()),
             }
         }
@@ -488,7 +488,7 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 .resolve_secret_scanning_alert(&repo, number, &resolution)
                 .await
             {
-                Ok(()) => Message::SecurityAlertUpdated,
+                Ok(()) => Message::SecurityAlertUpdated(2),
                 Err(e) => Message::Error(e.into()),
             }
         }
@@ -522,25 +522,25 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
         },
         Command::RemoveCollaborator(repo, username) => {
             match client.remove_collaborator(&repo, &username).await {
-                Ok(()) => Message::SettingsItemUpdated,
+                Ok(()) => Message::SettingsItemUpdated(2),
                 Err(e) => Message::Error(e.into()),
             }
         }
         Command::DeleteWebhook(repo, hook_id) => {
             match client.delete_webhook(&repo, hook_id).await {
-                Ok(()) => Message::SettingsItemUpdated,
+                Ok(()) => Message::SettingsItemUpdated(3),
                 Err(e) => Message::Error(e.into()),
             }
         }
         Command::ToggleWebhook(repo, hook_id, active) => {
             match client.toggle_webhook(&repo, hook_id, active).await {
-                Ok(()) => Message::SettingsItemUpdated,
+                Ok(()) => Message::SettingsItemUpdated(3),
                 Err(e) => Message::Error(e.into()),
             }
         }
         Command::DeleteDeployKey(repo, key_id) => {
             match client.delete_deploy_key(&repo, key_id).await {
-                Ok(()) => Message::SettingsItemUpdated,
+                Ok(()) => Message::SettingsItemUpdated(4),
                 Err(e) => Message::Error(e.into()),
             }
         }

@@ -2879,7 +2879,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         // Dependabot
                         if let Some(alert) = sec.dependabot_alerts.get(sec.selected) {
                             let number = alert.number;
-                            state.push_toast("Alert dismissed".to_string(), ToastLevel::Info);
+                            state.push_toast("Dismissing alert...".to_string(), ToastLevel::Info);
                             return vec![Command::DismissDependabotAlert(
                                 repo,
                                 number,
@@ -2891,7 +2891,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         // Code scanning
                         if let Some(alert) = sec.code_scanning_alerts.get(sec.selected) {
                             let number = alert.number;
-                            state.push_toast("Alert dismissed".to_string(), ToastLevel::Info);
+                            state.push_toast("Dismissing alert...".to_string(), ToastLevel::Info);
                             return vec![Command::DismissCodeScanningAlert(
                                 repo,
                                 number,
@@ -2903,7 +2903,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         // Secret scanning
                         if let Some(alert) = sec.secret_scanning_alerts.get(sec.selected) {
                             let number = alert.number;
-                            state.push_toast("Alert dismissed".to_string(), ToastLevel::Info);
+                            state.push_toast("Dismissing alert...".to_string(), ToastLevel::Info);
                             return vec![Command::ResolveSecretScanningAlert(
                                 repo,
                                 number,
@@ -2922,23 +2922,31 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     if let Some(alert) = sec.dependabot_alerts.get(sec.selected) {
                         let number = alert.number;
                         let repo = repo.clone();
-                        state.push_toast("Alert reopened".to_string(), ToastLevel::Info);
+                        state.push_toast("Reopening alert...".to_string(), ToastLevel::Info);
                         return vec![Command::ReopenDependabotAlert(repo, number)];
                     }
                 }
             }
             vec![]
         }
-        Message::SecurityAlertUpdated => {
-            // Refresh all security alerts
+        Message::SecurityAlertUpdated(tab) => {
             if let Some(ref repo) = state.current_repo {
                 let repo = repo.clone();
-                return vec![
-                    Command::FetchDependabotAlerts(repo.clone()),
-                    Command::FetchCodeScanningAlerts(repo.clone()),
-                    Command::FetchSecretScanningAlerts(repo.clone()),
-                    Command::FetchSecurityAdvisories(repo),
-                ];
+                return match tab {
+                    0 => {
+                        state.loading.insert("dependabot".to_string());
+                        vec![Command::FetchDependabotAlerts(repo)]
+                    }
+                    1 => {
+                        state.loading.insert("code_scanning".to_string());
+                        vec![Command::FetchCodeScanningAlerts(repo)]
+                    }
+                    2 => {
+                        state.loading.insert("secret_scanning".to_string());
+                        vec![Command::FetchSecretScanningAlerts(repo)]
+                    }
+                    _ => vec![],
+                };
             }
             vec![]
         }
@@ -3135,21 +3143,28 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
-        Message::SettingsItemUpdated => {
-            state.push_toast("Settings item updated".to_string(), ToastLevel::Success);
-            // Re-fetch collaborators, webhooks, deploy_keys
+        Message::SettingsItemUpdated(tab) => {
+            state.push_toast("Settings updated".to_string(), ToastLevel::Success);
+            if let Some(ref mut settings) = state.settings {
+                settings.selected = 0;
+            }
             if let Some(ref repo) = state.current_repo {
-                let mut cmds = Vec::new();
-                if let Some(ref mut settings) = state.settings {
-                    settings.selected = 0;
-                }
-                state.loading.insert("collaborators".to_string());
-                state.loading.insert("webhooks".to_string());
-                state.loading.insert("deploy_keys".to_string());
-                cmds.push(Command::FetchCollaborators(repo.clone()));
-                cmds.push(Command::FetchWebhooks(repo.clone()));
-                cmds.push(Command::FetchDeployKeys(repo.clone()));
-                return cmds;
+                let repo = repo.clone();
+                return match tab {
+                    2 => {
+                        state.loading.insert("collaborators".to_string());
+                        vec![Command::FetchCollaborators(repo)]
+                    }
+                    3 => {
+                        state.loading.insert("webhooks".to_string());
+                        vec![Command::FetchWebhooks(repo)]
+                    }
+                    4 => {
+                        state.loading.insert("deploy_keys".to_string());
+                        vec![Command::FetchDeployKeys(repo)]
+                    }
+                    _ => vec![],
+                };
             }
             vec![]
         }
