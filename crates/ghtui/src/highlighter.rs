@@ -90,6 +90,7 @@ fn get_tree_sitter_language(ext: &str) -> Option<tree_sitter::Language> {
         "css" | "scss" => Some(tree_sitter_css::LANGUAGE.into()),
         "sh" | "bash" | "zsh" => Some(tree_sitter_bash::LANGUAGE.into()),
         "yml" | "yaml" => Some(tree_sitter_yaml::LANGUAGE.into()),
+        "md" | "markdown" | "mdx" => Some(tree_sitter_md::LANGUAGE.into()),
         _ => None,
     }
 }
@@ -104,6 +105,8 @@ enum NodeCategory {
     Comment,
     Operator,
     Macro,
+    Heading,
+    Link,
     Default,
 }
 
@@ -133,13 +136,60 @@ fn categorize_node(kind: &str) -> NodeCategory {
         | "lifetime" => NodeCategory::Type,
         // Identifiers
         "identifier" | "field_identifier" | "method_identifier" => NodeCategory::Identifier,
-        // Strings
-        "string_literal" | "string_content" | "raw_string_literal" | "char_literal" | "string"
-        | "template_string" | "string_fragment" | "heredoc_body" => NodeCategory::StringLit,
+        // Strings (+ YAML scalars)
+        "string_literal"
+        | "string_content"
+        | "raw_string_literal"
+        | "char_literal"
+        | "string"
+        | "template_string"
+        | "string_fragment"
+        | "heredoc_body"
+        | "double_quote_scalar"
+        | "single_quote_scalar"
+        | "block_scalar" => NodeCategory::StringLit,
+        // YAML plain scalars (values) and keys
+        "plain_scalar" | "flow_node" => NodeCategory::Identifier,
+        // YAML booleans/nulls
+        "boolean_scalar" | "null_scalar" => NodeCategory::Keyword,
+        // YAML numbers
+        "integer_scalar" | "float_scalar" => NodeCategory::Number,
+        // YAML anchors/aliases/tags
+        "anchor_name"
+        | "alias_name"
+        | "tag"
+        | "tag_directive"
+        | "yaml_directive"
+        | "directive_name"
+        | "directive_parameter"
+        | "anchor"
+        | "alias" => NodeCategory::Macro,
         // Numbers
         "integer_literal" | "float_literal" | "number" | "integer" => NodeCategory::Number,
-        // Comments
+        // Comments (+ YAML)
         "line_comment" | "block_comment" | "comment" | "comment_content" => NodeCategory::Comment,
+        // Markdown headings
+        "atx_heading" | "atx_h1_marker" | "atx_h2_marker" | "atx_h3_marker" | "atx_h4_marker"
+        | "atx_h5_marker" | "atx_h6_marker" | "heading_content" | "setext_heading" => {
+            NodeCategory::Heading
+        }
+        // Markdown links/images
+        "link_destination" | "link_text" | "link_label" | "image_description" | "uri_autolink"
+        | "inline_link" => NodeCategory::Link,
+        // Markdown emphasis/strong
+        "emphasis" | "strong_emphasis" => NodeCategory::Type,
+        // Markdown code
+        "code_span" | "fenced_code_block" | "code_fence_content" | "info_string" => {
+            NodeCategory::StringLit
+        }
+        // Markdown list markers
+        "list_marker_dot"
+        | "list_marker_minus"
+        | "list_marker_plus"
+        | "list_marker_star"
+        | "list_marker_parenthesis"
+        | "task_list_marker_checked"
+        | "task_list_marker_unchecked" => NodeCategory::Operator,
         // Operators / punctuation
         "=" | "+" | "-" | "*" | "/" | "%" | "&" | "|" | "^" | "!" | "<" | ">" | "." | "," | ";"
         | ":" | "::" | "->" | "=>" | ".." | "..." | "?" | "@" | "#" | "~" | "(" | ")" | "["
@@ -162,6 +212,8 @@ fn node_color(kind: &str, is_dark: bool) -> (u8, u8, u8) {
             NodeCategory::Identifier => (210, 168, 255), // purple
             NodeCategory::StringLit => (165, 214, 255),  // cyan
             NodeCategory::Number => (121, 192, 255),     // blue
+            NodeCategory::Heading => (255, 166, 87),     // orange — headings
+            NodeCategory::Link => (88, 166, 255),        // blue — links
             NodeCategory::Comment => (139, 148, 158),    // gray
             NodeCategory::Operator => (230, 237, 243),   // white
             NodeCategory::Macro => (121, 184, 255),      // blue
@@ -174,6 +226,8 @@ fn node_color(kind: &str, is_dark: bool) -> (u8, u8, u8) {
             NodeCategory::Identifier => (102, 57, 186), // purple
             NodeCategory::StringLit => (10, 104, 71),   // green
             NodeCategory::Number => (5, 80, 174),       // blue
+            NodeCategory::Heading => (207, 34, 46),     // red — headings
+            NodeCategory::Link => (5, 80, 174),         // blue — links
             NodeCategory::Comment => (110, 119, 129),   // gray
             NodeCategory::Operator => (31, 35, 40),     // dark
             NodeCategory::Macro => (5, 80, 174),        // blue
