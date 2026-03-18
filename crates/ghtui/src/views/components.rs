@@ -98,6 +98,21 @@ pub fn label_span(name: &str, hex_color: &str) -> Span<'static> {
     Span::styled(format!(" {} ", name), Style::default().fg(fg).bg(bg))
 }
 
+/// Build a Line of label badges with indent. Returns None if labels is empty.
+pub fn label_line(labels: &[ghtui_core::types::common::Label]) -> Option<Line<'static>> {
+    if labels.is_empty() {
+        return None;
+    }
+    let mut spans: Vec<Span> = vec![Span::raw("    ")];
+    for (i, label) in labels.iter().enumerate() {
+        if i > 0 {
+            spans.push(Span::raw(" "));
+        }
+        spans.push(label_span(&label.name, &label.color));
+    }
+    Some(Line::from(spans))
+}
+
 /// Format a chrono DateTime as a relative time string (e.g., "3 days ago").
 pub fn time_ago(dt: &chrono::DateTime<chrono::Utc>) -> String {
     let now = chrono::Utc::now();

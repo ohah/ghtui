@@ -280,7 +280,7 @@ fn render_pinned_cards(
             if let Some(count) = issue.comments {
                 if count > 0 {
                     meta_spans.push(Span::styled(
-                        format!(" 💬{}", count),
+                        format!(" 💬 {}", count),
                         Style::default().fg(theme.fg_dim),
                     ));
                 }
@@ -350,15 +350,8 @@ fn render_issue_list(
             ];
 
             let mut lines = vec![Line::from(line1_spans)];
-
-            // Line 2 (optional): labels on their own line
-            if !issue.labels.is_empty() {
-                let mut label_spans: Vec<Span> = vec![Span::raw("    ")];
-                for label in &issue.labels {
-                    label_spans.push(super::components::label_span(&label.name, &label.color));
-                    label_spans.push(Span::raw(" "));
-                }
-                lines.push(Line::from(label_spans));
+            if let Some(ll) = super::components::label_line(&issue.labels) {
+                lines.push(ll);
             }
 
             // Line 2/3: #number · opened time ago by user · assignees · comment count
@@ -390,7 +383,7 @@ fn render_issue_list(
             if let Some(count) = issue.comments {
                 if count > 0 {
                     meta_spans.push(Span::styled(
-                        format!("  💬{}", count),
+                        format!("  💬 {}", count),
                         Style::default().fg(theme.fg_dim),
                     ));
                 }
