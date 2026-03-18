@@ -1,5 +1,4 @@
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use base64::Engine;
 use std::path::PathBuf;
 
 #[derive(Clone)]
@@ -14,11 +13,18 @@ impl DiskCache {
         Some(Self { dir })
     }
 
+    /// Generate a stable, collision-free cache filename from URL.
+    /// Uses URL-safe base64 encoding (stable across Rust versions,
+    /// unlike DefaultHasher which has no stability guarantee).
     fn key_path(&self, url: &str) -> PathBuf {
-        let mut hasher = DefaultHasher::new();
-        url.hash(&mut hasher);
-        let hash = hasher.finish();
-        self.dir.join(format!("{:x}.json", hash))
+        let encoded = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(url);
+        // Truncate to 200 chars to stay within filesystem limits
+        let key = if encoded.len() > 200 {
+            &encoded[..200]
+        } else {
+            &encoded
+        };
+        self.dir.join(format!("{}.json", key))
     }
 
     pub fn get(&self, url: &str) -> Option<String> {
