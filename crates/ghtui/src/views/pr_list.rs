@@ -206,15 +206,8 @@ fn render_pr_list(
             }
 
             let mut lines = vec![Line::from(line1_spans)];
-
-            // Line 2 (optional): labels on their own line
-            if !pr.labels.is_empty() {
-                let mut label_spans: Vec<Span> = vec![Span::raw("    ")];
-                for label in &pr.labels {
-                    label_spans.push(super::components::label_span(&label.name, &label.color));
-                    label_spans.push(Span::raw(" "));
-                }
-                lines.push(Line::from(label_spans));
+            if let Some(ll) = super::components::label_line(&pr.labels) {
+                lines.push(ll);
             }
 
             // Line 2/3: #number · opened time ago by user · +/- · assignees · comments
@@ -259,7 +252,7 @@ fn render_pr_list(
             if let Some(count) = pr.comments {
                 if count > 0 {
                     meta_spans.push(Span::styled(
-                        format!("  💬{}", count),
+                        format!("  💬 {}", count),
                         Style::default().fg(theme.fg_dim),
                     ));
                 }
