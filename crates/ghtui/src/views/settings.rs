@@ -313,10 +313,14 @@ fn render_branch_protections(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     }
 
+    let selected = settings.selected;
+    let content_focused = !settings.sidebar_focused;
+
     let items: Vec<ListItem> = settings
         .branch_protections
         .iter()
-        .map(|bp| {
+        .enumerate()
+        .map(|(i, bp)| {
             let mut details = Vec::new();
 
             if let Some(ref checks) = bp.required_status_checks {
@@ -346,22 +350,37 @@ fn render_branch_protections(frame: &mut Frame, state: &AppState, area: Rect) {
                 details.join(", ")
             };
 
-            ListItem::new(Line::from(vec![
-                Span::styled("  🔒 ", Style::default().fg(theme.warning)),
+            let prefix = if content_focused && i == selected {
+                "▶ 🔒 "
+            } else {
+                "  🔒 "
+            };
+            let mut item = ListItem::new(Line::from(vec![
+                Span::styled(prefix, Style::default().fg(theme.warning)),
                 Span::styled(bp.pattern.clone(), theme.text_bold()),
                 Span::styled(format!("  ({})", detail_str), theme.text_dim()),
-            ]))
+            ]));
+            if content_focused && i == selected {
+                item = item.style(Style::default().bg(theme.selection_bg));
+            }
+            item
         })
         .collect();
+
+    let border_style = if content_focused {
+        Style::default().fg(theme.accent)
+    } else {
+        theme.border_style()
+    };
 
     let list = List::new(items).block(
         Block::default()
             .title(format!(
-                " Branch Protection Rules ({}) ",
+                " Branch Protection ({}) [d:delete e:enforce admins] ",
                 settings.branch_protections.len()
             ))
             .borders(Borders::ALL)
-            .border_style(theme.border_style()),
+            .border_style(border_style),
     );
     frame.render_widget(list, area);
 }

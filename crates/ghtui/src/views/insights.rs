@@ -3,7 +3,7 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Tabs, Wrap};
+use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap};
 
 pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     let theme = &state.theme;
@@ -39,12 +39,14 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     };
 
+    // Horizontal split: sidebar (30) | content (rest)
     let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(2), Constraint::Min(0)])
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(30), Constraint::Min(0)])
         .split(area);
 
-    let tab_titles = vec![
+    // Sidebar
+    let sidebar_titles = [
         format!("Contributors ({})", insights.contributors.len()),
         "Commit Activity".to_string(),
         "Traffic".to_string(),
@@ -52,22 +54,47 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         format!("Forks ({})", insights.forks.len()),
         format!("Dependencies ({})", insights.dependencies.len()),
     ];
-    let tabs = Tabs::new(tab_titles)
-        .select(insights.tab)
-        .style(Style::default().fg(theme.fg_muted))
-        .highlight_style(
-            Style::default()
-                .fg(theme.tab_active_fg)
-                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
-        )
-        .divider(" │ ")
-        .block(
-            Block::default()
-                .borders(Borders::BOTTOM)
-                .border_style(theme.border_style()),
-        );
-    frame.render_widget(tabs, chunks[0]);
 
+    let sidebar_items: Vec<ListItem> = sidebar_titles
+        .iter()
+        .enumerate()
+        .map(|(i, title)| {
+            let style = if i == insights.tab {
+                if insights.sidebar_focused {
+                    Style::default()
+                        .fg(theme.tab_active_fg)
+                        .add_modifier(Modifier::BOLD)
+                        .bg(theme.selection_bg)
+                } else {
+                    Style::default()
+                        .fg(theme.tab_active_fg)
+                        .add_modifier(Modifier::BOLD)
+                }
+            } else {
+                Style::default().fg(theme.fg_muted)
+            };
+            ListItem::new(Line::from(Span::styled(format!("  {} ", title), style)))
+        })
+        .collect();
+
+    let sidebar_border = if insights.sidebar_focused {
+        Style::default().fg(theme.accent)
+    } else {
+        theme.border_style()
+    };
+
+    let sidebar = List::new(sidebar_items).block(
+        Block::default()
+            .title(" Insights ")
+            .borders(Borders::ALL)
+            .border_style(sidebar_border),
+    );
+
+    let mut sidebar_state = ListState::default();
+    sidebar_state.select(Some(insights.tab));
+    frame.render_stateful_widget(sidebar, chunks[0], &mut sidebar_state);
+
+    // Content
     match insights.tab {
         0 => render_contributors(frame, state, chunks[1]),
         1 => render_commit_activity(frame, state, chunks[1]),

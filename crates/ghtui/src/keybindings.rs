@@ -128,7 +128,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         Route::Search { .. } => handle_search_keys(key, state),
         Route::Notifications => handle_notification_keys(key),
         Route::Security { .. } => handle_security_keys(key, state),
-        Route::Insights { .. } => handle_settings_keys(key, state),
+        Route::Insights { .. } => handle_insights_keys(key, state),
         Route::Settings { .. } => handle_settings_keys(key, state),
         _ => handle_list_keys(key),
     }
@@ -209,7 +209,31 @@ fn handle_list_keys(key: KeyEvent) -> Option<Message> {
     }
 }
 
+fn handle_insights_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let sidebar_focused = state.insights.as_ref().is_some_and(|s| s.sidebar_focused);
+
+    if sidebar_focused {
+        return match key.code {
+            KeyCode::Char('j') | KeyCode::Down => Some(Message::TabChanged(1)),
+            KeyCode::Char('k') | KeyCode::Up => Some(Message::TabChanged(usize::MAX)),
+            KeyCode::Enter | KeyCode::Tab => Some(Message::InsightsSidebarFocus),
+            _ => None,
+        };
+    }
+
+    // Content focused
+    match key.code {
+        KeyCode::Tab | KeyCode::Esc => Some(Message::InsightsSidebarFocus),
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::PageDown => Some(Message::ScrollDown),
+        KeyCode::PageUp => Some(Message::ScrollUp),
+        _ => None,
+    }
+}
+
 fn handle_security_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let sidebar_focused = state.security.as_ref().is_some_and(|s| s.sidebar_focused);
     let detail_open = state.security.as_ref().is_some_and(|s| s.detail_open);
 
     if detail_open {
@@ -218,15 +242,22 @@ fn handle_security_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             KeyCode::Char('j') | KeyCode::Down | KeyCode::PageDown => Some(Message::ScrollDown),
             KeyCode::Char('k') | KeyCode::Up | KeyCode::PageUp => Some(Message::ScrollUp),
             KeyCode::Char('o') => Some(Message::SecurityOpenInBrowser),
-            KeyCode::Tab => Some(Message::TabChanged(1)),
-            KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
             _ => None,
         };
     }
 
+    if sidebar_focused {
+        return match key.code {
+            KeyCode::Char('j') | KeyCode::Down => Some(Message::TabChanged(1)),
+            KeyCode::Char('k') | KeyCode::Up => Some(Message::TabChanged(usize::MAX)),
+            KeyCode::Enter | KeyCode::Tab => Some(Message::SecuritySidebarFocus),
+            _ => None,
+        };
+    }
+
+    // Content focused
     match key.code {
-        KeyCode::Tab => Some(Message::TabChanged(1)),
-        KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
+        KeyCode::Tab | KeyCode::Esc => Some(Message::SecuritySidebarFocus),
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
         KeyCode::Enter => Some(Message::SecurityToggleDetail),
@@ -271,6 +302,7 @@ fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     // Content focused
     let current_tab = state.settings.as_ref().map(|s| s.tab).unwrap_or(0);
     let on_general = current_tab == 0;
+    let on_branch_protection = current_tab == 1;
     let on_collaborators = current_tab == 2;
     let on_webhooks = current_tab == 3;
     let on_deploy_keys = current_tab == 4;
@@ -309,6 +341,11 @@ fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
         KeyCode::Char('a') if on_webhooks => Some(Message::SettingsToggleWebhook),
         // Deploy key tab: d to delete
         KeyCode::Char('d') if on_deploy_keys => Some(Message::SettingsDeleteDeployKey),
+        // Branch protection tab: d to delete, e to toggle enforce admins
+        KeyCode::Char('d') if on_branch_protection => Some(Message::SettingsDeleteBranchProtection),
+        KeyCode::Char('e') if on_branch_protection => {
+            Some(Message::SettingsToggleBranchEnforceAdmins)
+        }
         _ => None,
     }
 }

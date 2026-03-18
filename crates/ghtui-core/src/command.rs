@@ -112,10 +112,12 @@ pub enum Command {
     FetchWebhooks(RepoId),
     FetchDeployKeys(RepoId),
     UpdateRepo(RepoId, serde_json::Value),
-    RemoveCollaborator(RepoId, String), // repo, username
-    DeleteWebhook(RepoId, u64),         // repo, hook_id
-    ToggleWebhook(RepoId, u64, bool),   // repo, hook_id, active
-    DeleteDeployKey(RepoId, u64),       // repo, key_id
+    RemoveCollaborator(RepoId, String),     // repo, username
+    DeleteWebhook(RepoId, u64),             // repo, hook_id
+    ToggleWebhook(RepoId, u64, bool),       // repo, hook_id, active
+    DeleteDeployKey(RepoId, u64),           // repo, key_id
+    DeleteBranchProtection(RepoId, String), // repo, branch_name
+    UpdateBranchProtection(RepoId, String, serde_json::Value), // repo, branch, settings
 
     // Utility
     OpenInBrowser(String),

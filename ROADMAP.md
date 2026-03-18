@@ -228,8 +228,10 @@
 - [x] features 토글 (`I`:Issues, `P`:Projects, `W`:Wiki)
 - [x] visibility 토글 (`V`키 — public/private 전환, 경고 토스트)
 
-### 8-2 Branch Protection
+### 8-2 Branch Protection ✅
 - [x] 브랜치 보호 규칙 보기
+- [x] 브랜치 보호 규칙 삭제 (`d`키)
+- [x] enforce_admins 토글 (`e`키)
 
 ### 8-3 Collaborators ✅
 - [x] Collaborators 목록 + 권한 표시

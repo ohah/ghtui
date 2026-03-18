@@ -271,7 +271,11 @@ pub enum Message {
     ForksLoaded(Vec<insights::Fork>),
     DependencyGraphLoaded(Vec<insights::DependencyEntry>),
 
+    // Insights sidebar
+    InsightsSidebarFocus,
+
     // Security
+    SecuritySidebarFocus,
     DependabotAlertsLoaded(Vec<security::DependabotAlert>),
     CodeScanningAlertsLoaded(Vec<security::CodeScanningAlert>),
     SecretScanningAlertsLoaded(Vec<security::SecretScanningAlert>),
@@ -301,7 +305,9 @@ pub enum Message {
     SettingsDeleteWebhook,         // Delete selected webhook
     SettingsToggleWebhook,         // Toggle webhook active/inactive
     SettingsDeleteDeployKey,       // Delete selected deploy key
-    SettingsItemUpdated(usize),    // tab index: 2=collaborators, 3=webhooks, 4=deploy_keys
+    SettingsDeleteBranchProtection, // Delete selected branch protection rule
+    SettingsToggleBranchEnforceAdmins, // Toggle enforce_admins on selected rule
+    SettingsItemUpdated(usize), // tab index: 1=branch, 2=collaborators, 3=webhooks, 4=deploy_keys
 
     // Mouse
     ScrollUp,

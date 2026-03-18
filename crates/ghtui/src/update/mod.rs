@@ -3143,6 +3143,51 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::SettingsDeleteBranchProtection => {
+            let info = state.settings.as_ref().and_then(|s| {
+                s.branch_protections
+                    .get(s.selected)
+                    .map(|bp| bp.pattern.clone())
+            });
+            if let (Some(branch), Some(repo)) = (info, state.current_repo.clone()) {
+                state.push_toast(
+                    format!("Deleting protection for '{}'...", branch),
+                    ToastLevel::Warning,
+                );
+                return vec![Command::DeleteBranchProtection(repo, branch)];
+            }
+            vec![]
+        }
+        Message::SettingsToggleBranchEnforceAdmins => {
+            if let Some(ref settings) = state.settings {
+                if let Some(bp) = settings.branch_protections.get(settings.selected) {
+                    let current = bp
+                        .enforce_admins
+                        .as_ref()
+                        .map(|e| e.enabled)
+                        .unwrap_or(false);
+                    let pattern = bp.pattern.clone();
+                    let new_settings = serde_json::json!({
+                        "enforce_admins": !current,
+                        "required_status_checks": null,
+                        "restrictions": null,
+                        "required_pull_request_reviews": null,
+                    });
+                    state.push_toast(
+                        format!("Updating protection for '{}'...", pattern),
+                        ToastLevel::Info,
+                    );
+                    if let Some(ref repo) = state.current_repo {
+                        return vec![Command::UpdateBranchProtection(
+                            repo.clone(),
+                            pattern,
+                            new_settings,
+                        )];
+                    }
+                }
+            }
+            vec![]
+        }
         Message::SettingsItemUpdated(tab) => {
             state.push_toast("Settings updated".to_string(), ToastLevel::Success);
             if let Some(ref mut settings) = state.settings {
@@ -3151,6 +3196,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             if let Some(ref repo) = state.current_repo {
                 let repo = repo.clone();
                 return match tab {
+                    1 => {
+                        state.loading.insert("branch_protections".to_string());
+                        vec![Command::FetchBranchProtections(repo)]
+                    }
                     2 => {
                         state.loading.insert("collaborators".to_string());
                         vec![Command::FetchCollaborators(repo)]
@@ -3744,6 +3793,18 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::Quit => vec![Command::Quit],
+        Message::InsightsSidebarFocus => {
+            if let Some(ref mut ins) = state.insights {
+                ins.sidebar_focused = !ins.sidebar_focused;
+            }
+            vec![]
+        }
+        Message::SecuritySidebarFocus => {
+            if let Some(ref mut sec) = state.security {
+                sec.sidebar_focused = !sec.sidebar_focused;
+            }
+            vec![]
+        }
     }
 }
 

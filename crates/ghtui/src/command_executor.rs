@@ -544,6 +544,21 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 Err(e) => Message::Error(e.into()),
             }
         }
+        Command::DeleteBranchProtection(repo, branch) => {
+            match client.delete_branch_protection(&repo, &branch).await {
+                Ok(()) => Message::SettingsItemUpdated(1),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
+        Command::UpdateBranchProtection(repo, branch, settings) => {
+            match client
+                .update_branch_protection(&repo, &branch, &settings)
+                .await
+            {
+                Ok(()) => Message::SettingsItemUpdated(1),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
 
         // Utility
         Command::OpenInBrowser(url) => {
