@@ -106,11 +106,11 @@ pub enum Command {
     ResolveSecretScanningAlert(RepoId, u64, String),
 
     // Code
-    FetchTree(RepoId, String),                // repo, git_ref
-    FetchContents(RepoId, String, String),    // repo, path, git_ref
-    FetchFileContent(RepoId, String, String), // repo, path, git_ref
-    FetchFileBytes(RepoId, String, String),   // repo, path, git_ref (for binary/image files)
-    FetchReadme(RepoId, String),              // repo, git_ref
+    FetchTree(RepoId, String),                   // repo, git_ref
+    FetchContents(RepoId, String, String),       // repo, path, git_ref
+    FetchFileContent(RepoId, String, String),    // repo, path, git_ref
+    FetchFileBytes(RepoId, String, String),      // repo, path, git_ref (for binary/image files)
+    FetchReadme(RepoId, String, Option<String>), // repo, git_ref, optional known path
     FetchBranches(RepoId),
     FetchTags(RepoId),
     FetchCommits(RepoId, String, String, u32), // repo, git_ref, path, per_page

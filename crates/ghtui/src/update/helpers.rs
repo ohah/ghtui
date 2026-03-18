@@ -153,7 +153,10 @@ pub(crate) fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command
         }
     };
 
-    // Sync active_tab with route
+    // Sync current_repo and active_tab with route
+    if let Some(repo) = route.repo() {
+        state.current_repo = Some(repo.clone());
+    }
     if let Some(idx) = route.tab_index() {
         state.active_tab = idx;
     }

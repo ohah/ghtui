@@ -510,7 +510,7 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             match client.get_file_content(&repo, &path, &git_ref).await {
                 Ok(content) => {
                     let filename = path.rsplit('/').next().unwrap_or(&path).to_string();
-                    Message::CodeFileLoaded(filename, content)
+                    Message::CodeFileLoaded(path, filename, content)
                 }
                 Err(e) => Message::Error(e.into()),
             }
@@ -519,21 +519,28 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             match client.get_file_bytes(&repo, &path, &git_ref).await {
                 Ok(bytes) => {
                     let filename = path.rsplit('/').next().unwrap_or(&path).to_string();
-                    Message::CodeImageLoaded(filename, bytes)
+                    Message::CodeImageLoaded(path, filename, bytes)
                 }
                 Err(e) => Message::Error(e.into()),
             }
         }
-        Command::FetchReadme(repo, git_ref) => {
-            // Try README.md, then readme.md, then README
-            for name in &["README.md", "readme.md", "README"] {
-                match client.get_file_content(&repo, name, &git_ref).await {
-                    Ok(content) => return Message::CodeReadmeLoaded(content),
-                    Err(_) => continue,
+        Command::FetchReadme(repo, git_ref, known_path) => {
+            if let Some(path) = known_path {
+                // Known path from tree/listing — single API call
+                if let Ok(content) = client.get_file_content(&repo, &path, &git_ref).await {
+                    return Message::CodeReadmeLoaded(content);
+                }
+            } else {
+                // Fallback: try common README filenames
+                for name in &["README.md", "readme.md", "README", "README.txt"] {
+                    match client.get_file_content(&repo, name, &git_ref).await {
+                        Ok(content) => return Message::CodeReadmeLoaded(content),
+                        Err(_) => continue,
+                    }
                 }
             }
-            // No README found — not an error, just no content
-            Message::Tick
+            // No README found — clear loading state
+            Message::CodeReadmeLoaded(String::new())
         }
         Command::FetchBranches(repo) => match client.list_branches(&repo).await {
             Ok(branches) => Message::CodeBranchesLoaded(branches),

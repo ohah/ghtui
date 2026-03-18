@@ -4,12 +4,13 @@
 use ratatui::style::{Color, Style};
 use ratatui::text::Span;
 use std::cell::RefCell;
+use std::hash::{Hash, Hasher};
 
 /// A highlighted token: (foreground RGB, text)
 type HlToken = (u8, u8, u8, String);
 
-/// Cache key: (filename, content_length, line_count)
-type CacheKey = (String, usize, usize);
+/// Cache key: (filename, content_hash)
+type CacheKey = (String, u64);
 
 /// Cached highlight result
 type CacheEntry = (CacheKey, Vec<Vec<HlToken>>);
@@ -18,16 +19,22 @@ thread_local! {
     static HL_CACHE: RefCell<Option<CacheEntry>> = const { RefCell::new(None) };
 }
 
+fn hash_content(content: &str) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    content.hash(&mut hasher);
+    hasher.finish()
+}
+
 /// Highlight file content. Returns colored spans per line.
 /// Uses Tree-sitter for 29 languages, plain text for others.
 pub fn highlight_file<'a>(content: &str, filename: &str, is_dark: bool) -> Vec<Vec<Span<'a>>> {
-    let key = (filename.to_string(), content.len(), content.lines().count());
+    let key = (filename.to_string(), hash_content(content));
 
     // Check cache
     let cached = HL_CACHE.with(|c| {
         let borrow = c.borrow();
         if let Some((ref k, ref data)) = *borrow {
-            if k.0 == key.0 && k.1 == key.1 && k.2 == key.2 {
+            if k.0 == key.0 && k.1 == key.1 {
                 return Some(tokens_to_spans(data));
             }
         }
