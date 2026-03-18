@@ -555,13 +555,8 @@ fn render_advisories(frame: &mut Frame, state: &AppState, area: Rect) {
         .enumerate()
         .map(|(i, adv)| {
             let is_selected = i == security.selected;
-            let severity_color = match adv.severity.as_deref() {
-                Some("critical") | Some("high") => theme.danger,
-                Some("medium") => theme.warning,
-                Some("low") => theme.info,
-                _ => theme.fg_dim,
-            };
             let severity_text = adv.severity.as_deref().unwrap_or("unknown");
+            let sev_color = severity_color(severity_text, theme);
             let title_style = if is_selected {
                 theme.selected()
             } else {
@@ -572,9 +567,13 @@ fn render_advisories(frame: &mut Frame, state: &AppState, area: Rect) {
                 Span::styled(
                     format!(
                         " {} ",
-                        severity_text.chars().next().unwrap_or('?').to_uppercase()
+                        severity_text
+                            .chars()
+                            .next()
+                            .unwrap_or('?')
+                            .to_ascii_uppercase()
                     ),
-                    Style::default().fg(severity_color),
+                    Style::default().fg(sev_color),
                 ),
                 Span::styled(&adv.ghsa_id, Style::default().fg(theme.fg_muted)),
                 Span::styled(format!(" {} ", adv.summary), title_style),

@@ -101,12 +101,11 @@ impl GithubClient {
         let path = format!("/repos/{}/{}/dependency-graph/sbom", repo.owner, repo.name);
         match self.get(&path).await {
             Ok(body) => {
-                let val: serde_json::Value = serde_json::from_str(&body)?;
-                let packages = val
-                    .pointer("/sbom/packages")
-                    .and_then(|v| v.as_array())
-                    .cloned()
-                    .unwrap_or_default();
+                let mut val: serde_json::Value = serde_json::from_str(&body)?;
+                let packages = match val["sbom"]["packages"].take() {
+                    serde_json::Value::Array(arr) => arr,
+                    _ => Vec::new(),
+                };
                 let deps = packages
                     .iter()
                     .filter_map(|p| {
