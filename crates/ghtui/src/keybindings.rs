@@ -61,6 +61,7 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         // Global keys
         match key.code {
             KeyCode::Char('q') => return Some(Message::Quit),
+            KeyCode::Char('H') => return Some(Message::GoHome), // Home / Dashboard
             KeyCode::Char('?') => return Some(Message::ModalOpen(ModalKind::Help)),
             KeyCode::Char('t') => return Some(Message::ToggleTheme),
             KeyCode::Char('S') => return Some(Message::ModalOpen(ModalKind::AccountSwitcher)),

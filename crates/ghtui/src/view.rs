@@ -268,9 +268,9 @@ fn render_footer(frame: &mut Frame, state: &AppState, theme: &Theme, area: Rect)
         Route::Settings { .. } => "Tab:Section d:Desc b:Branch T:Topics I/P/W:Toggle",
         Route::Notifications => "Enter:Open m:Read M:ReadAll d:Done u:Unsub s/e:Filter g:Group",
         Route::Dashboard | Route::Code { .. } => {
-            "j/k:Nav Enter:Open BS:Back Tab:Focus C-p:Palette t:Theme ?:Help q:Quit"
+            "j/k:Nav Enter:Open BS:Back Tab:Focus H:Home C-p:Palette t:Theme ?:Help q:Quit"
         }
-        _ => "1-6:Tabs t:Theme ?:Help q:Quit",
+        _ => "H:Home 1-7:Tabs t:Theme ?:Help q:Quit",
     };
 
     let theme_mode = match theme.mode {
