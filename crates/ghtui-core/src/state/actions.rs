@@ -38,6 +38,8 @@ pub struct DispatchState {
     pub ref_items: Vec<(String, bool)>, // (name, is_branch)
     pub ref_selected: usize,
     pub ref_filter: String,
+    /// Cached filtered ref items (rebuilt when ref_filter or ref_items change)
+    pub ref_filtered_cache: Vec<(String, bool)>,
 }
 
 #[derive(Debug)]
@@ -51,17 +53,23 @@ pub struct DispatchInputField {
 }
 
 impl DispatchState {
-    /// Return ref items filtered by the current filter string.
-    pub fn filtered_ref_items(&self) -> Vec<(String, bool)> {
+    /// Return cached filtered ref items (read-only).
+    pub fn filtered_ref_items(&self) -> &[(String, bool)] {
+        &self.ref_filtered_cache
+    }
+
+    /// Rebuild the filtered cache. Call after changing ref_filter or ref_items.
+    pub fn rebuild_ref_filter_cache(&mut self) {
         if self.ref_filter.is_empty() {
-            self.ref_items.clone()
+            self.ref_filtered_cache = self.ref_items.clone();
         } else {
             let filter = self.ref_filter.to_lowercase();
-            self.ref_items
+            self.ref_filtered_cache = self
+                .ref_items
                 .iter()
                 .filter(|(name, _)| name.to_lowercase().contains(&filter))
                 .cloned()
-                .collect()
+                .collect();
         }
     }
 }

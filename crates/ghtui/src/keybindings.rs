@@ -824,15 +824,15 @@ fn handle_actions_list_keys(key: KeyEvent, state: &AppState) -> Option<Message> 
     if let Some(ref dispatch) = list.dispatch {
         // Ref picker is open — handle picker-specific keys
         if dispatch.ref_picker_open {
+            if nav_down(&key, &ks, kb) {
+                return Some(Message::ActionsDispatchRefPickerNext);
+            }
+            if nav_up(&key, &ks, kb) {
+                return Some(Message::ActionsDispatchRefPickerPrev);
+            }
             return match key.code {
                 KeyCode::Esc => Some(Message::ActionsDispatchRefPickerToggle),
                 KeyCode::Enter => Some(Message::ActionsDispatchRefPickerSelect),
-                KeyCode::Down | KeyCode::Char('j') => {
-                    Some(Message::ActionsDispatchRefPickerNext)
-                }
-                KeyCode::Up | KeyCode::Char('k') => {
-                    Some(Message::ActionsDispatchRefPickerPrev)
-                }
                 KeyCode::Char(c) => Some(Message::ActionsDispatchRefPickerFilter(c)),
                 KeyCode::Backspace => Some(Message::ActionsDispatchRefPickerBackspace),
                 _ => None,
