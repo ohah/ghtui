@@ -4099,6 +4099,67 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
 
+        // Keymap Settings
+        Message::KeymapSettingsOpen => {
+            state.keymap_settings =
+                Some(KeymapSettingsState::from_config(&state.config.keybindings));
+            vec![]
+        }
+        Message::KeymapSettingsClose => {
+            // Save before closing
+            if let Some(ref ks) = state.keymap_settings {
+                // Apply bindings back to config
+                for (i, (_cat, _name, key, _default)) in ks.bindings.iter().enumerate() {
+                    state.config.keybindings.set_binding(i, key.clone());
+                }
+                let _ = state.config.keybindings.save();
+            }
+            state.keymap_settings = None;
+            vec![]
+        }
+        Message::KeymapSettingsUp => {
+            if let Some(ref mut ks) = state.keymap_settings {
+                if ks.selected > 0 {
+                    ks.selected -= 1;
+                }
+            }
+            vec![]
+        }
+        Message::KeymapSettingsDown => {
+            if let Some(ref mut ks) = state.keymap_settings {
+                if ks.selected + 1 < ks.bindings.len() {
+                    ks.selected += 1;
+                }
+            }
+            vec![]
+        }
+        Message::KeymapSettingsEdit => {
+            if let Some(ref mut ks) = state.keymap_settings {
+                ks.capturing = !ks.capturing;
+            }
+            vec![]
+        }
+        Message::KeymapSettingsCapture(key_str) => {
+            if let Some(ref mut ks) = state.keymap_settings {
+                if ks.capturing && ks.selected < ks.bindings.len() {
+                    ks.bindings[ks.selected].2 = key_str;
+                    ks.capturing = false;
+                }
+            }
+            vec![]
+        }
+        Message::KeymapSettingsReset => {
+            state.config.keybindings.reset_to_defaults();
+            let _ = state.config.keybindings.save();
+            state.keymap_settings =
+                Some(KeymapSettingsState::from_config(&state.config.keybindings));
+            state.push_toast(
+                "Keybindings reset to defaults".to_string(),
+                ToastLevel::Info,
+            );
+            vec![]
+        }
+
         Message::Quit => vec![Command::Quit],
         Message::InsightsSidebarFocus => {
             if let Some(ref mut ins) = state.insights {

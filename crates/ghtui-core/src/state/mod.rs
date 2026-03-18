@@ -32,6 +32,37 @@ pub use search::*;
 pub use security::*;
 pub use settings::*;
 
+// --- Keymap Settings ---
+#[derive(Debug)]
+pub struct KeymapSettingsState {
+    pub selected: usize,
+    pub capturing: bool,
+    /// (category, name, current_key, default_key)
+    pub bindings: Vec<(String, String, String, String)>,
+}
+
+impl KeymapSettingsState {
+    pub fn from_config(config: &crate::config::KeybindingConfig) -> Self {
+        let bindings = config
+            .all_bindings()
+            .into_iter()
+            .map(|(cat, name, key, default)| {
+                (
+                    cat.to_string(),
+                    name.to_string(),
+                    key.to_string(),
+                    default.to_string(),
+                )
+            })
+            .collect();
+        Self {
+            selected: 0,
+            capturing: false,
+            bindings,
+        }
+    }
+}
+
 // --- Command Palette ---
 #[derive(Debug)]
 pub struct CommandPaletteState {
@@ -131,6 +162,11 @@ impl CommandPaletteState {
                 label: "Help".into(),
                 category: "Action".into(),
                 message: Message::ModalOpen(ModalKind::Help),
+            },
+            PaletteItem {
+                label: "Keybindings".into(),
+                category: "Action".into(),
+                message: Message::KeymapSettingsOpen,
             },
             PaletteItem {
                 label: "Quit".into(),
@@ -234,6 +270,9 @@ pub struct AppState {
 
     // Command palette
     pub command_palette: Option<CommandPaletteState>,
+
+    // Keymap settings
+    pub keymap_settings: Option<KeymapSettingsState>,
 }
 
 impl AppState {
@@ -278,6 +317,7 @@ impl AppState {
             accounts,
             account_selected: 0,
             command_palette: None,
+            keymap_settings: None,
         }
     }
 

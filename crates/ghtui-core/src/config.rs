@@ -25,6 +25,7 @@ pub struct AppConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeybindingConfig {
+    // Global
     #[serde(default = "default_quit")]
     pub quit: String,
     #[serde(default = "default_help")]
@@ -35,6 +36,60 @@ pub struct KeybindingConfig {
     pub search: String,
     #[serde(default = "default_palette")]
     pub palette: String,
+    #[serde(default = "default_home")]
+    pub home: String,
+    #[serde(default = "default_account_switch")]
+    pub account_switch: String,
+
+    // Navigation
+    #[serde(default = "default_nav_down")]
+    pub nav_down: String,
+    #[serde(default = "default_nav_up")]
+    pub nav_up: String,
+    #[serde(default = "default_nav_next_page")]
+    pub nav_next_page: String,
+    #[serde(default = "default_nav_prev_page")]
+    pub nav_prev_page: String,
+    #[serde(default = "default_nav_open")]
+    pub nav_open: String,
+    #[serde(default = "default_nav_back")]
+    pub nav_back: String,
+    #[serde(default = "default_nav_refresh")]
+    pub nav_refresh: String,
+
+    // Editor
+    #[serde(default = "default_edit_submit")]
+    pub edit_submit: String,
+    #[serde(default = "default_edit_cancel")]
+    pub edit_cancel: String,
+    #[serde(default = "default_edit_undo")]
+    pub edit_undo: String,
+    #[serde(default = "default_edit_redo")]
+    pub edit_redo: String,
+
+    // List
+    #[serde(default = "default_filter_toggle")]
+    pub filter_toggle: String,
+    #[serde(default = "default_sort_cycle")]
+    pub sort_cycle: String,
+    #[serde(default = "default_search_start")]
+    pub search_start: String,
+    #[serde(default = "default_filter_clear")]
+    pub filter_clear: String,
+    #[serde(default = "default_create")]
+    pub create: String,
+    #[serde(default = "default_delete")]
+    pub delete: String,
+    #[serde(default = "default_open_browser")]
+    pub open_browser: String,
+
+    // Code
+    #[serde(default = "default_code_branch")]
+    pub code_branch: String,
+    #[serde(default = "default_code_commits")]
+    pub code_commits: String,
+    #[serde(default = "default_code_edit")]
+    pub code_edit: String,
 }
 
 impl Default for KeybindingConfig {
@@ -45,7 +100,121 @@ impl Default for KeybindingConfig {
             theme_toggle: default_theme_toggle(),
             search: default_search(),
             palette: default_palette(),
+            home: default_home(),
+            account_switch: default_account_switch(),
+            nav_down: default_nav_down(),
+            nav_up: default_nav_up(),
+            nav_next_page: default_nav_next_page(),
+            nav_prev_page: default_nav_prev_page(),
+            nav_open: default_nav_open(),
+            nav_back: default_nav_back(),
+            nav_refresh: default_nav_refresh(),
+            edit_submit: default_edit_submit(),
+            edit_cancel: default_edit_cancel(),
+            edit_undo: default_edit_undo(),
+            edit_redo: default_edit_redo(),
+            filter_toggle: default_filter_toggle(),
+            sort_cycle: default_sort_cycle(),
+            search_start: default_search_start(),
+            filter_clear: default_filter_clear(),
+            create: default_create(),
+            delete: default_delete(),
+            open_browser: default_open_browser(),
+            code_branch: default_code_branch(),
+            code_commits: default_code_commits(),
+            code_edit: default_code_edit(),
         }
+    }
+}
+
+impl KeybindingConfig {
+    /// Get all bindings as (category, name, key, default_key) tuples for display
+    pub fn all_bindings(&self) -> Vec<(&str, &str, &str, &str)> {
+        vec![
+            ("Global", "Quit", &self.quit, "q"),
+            ("Global", "Help", &self.help, "?"),
+            ("Global", "Theme toggle", &self.theme_toggle, "t"),
+            ("Global", "Search", &self.search, "Ctrl+k"),
+            ("Global", "Command palette", &self.palette, "Ctrl+p"),
+            ("Global", "Home", &self.home, "H"),
+            ("Global", "Account switch", &self.account_switch, "S"),
+            ("Navigation", "Down", &self.nav_down, "j"),
+            ("Navigation", "Up", &self.nav_up, "k"),
+            ("Navigation", "Next page", &self.nav_next_page, "n"),
+            ("Navigation", "Prev page", &self.nav_prev_page, "p"),
+            ("Navigation", "Open", &self.nav_open, "Enter"),
+            ("Navigation", "Back", &self.nav_back, "Esc"),
+            ("Navigation", "Refresh", &self.nav_refresh, "r"),
+            ("Editor", "Submit", &self.edit_submit, "Ctrl+s"),
+            ("Editor", "Cancel", &self.edit_cancel, "Esc"),
+            ("Editor", "Undo", &self.edit_undo, "Ctrl+z"),
+            ("Editor", "Redo", &self.edit_redo, "Ctrl+y"),
+            ("List", "Filter toggle", &self.filter_toggle, "s"),
+            ("List", "Sort cycle", &self.sort_cycle, "o"),
+            ("List", "Search start", &self.search_start, "/"),
+            ("List", "Filter clear", &self.filter_clear, "F"),
+            ("List", "Create", &self.create, "c"),
+            ("List", "Delete", &self.delete, "d"),
+            ("List", "Open in browser", &self.open_browser, "o"),
+            ("Code", "Branch picker", &self.code_branch, "b"),
+            ("Code", "Commits", &self.code_commits, "c"),
+            ("Code", "Edit file", &self.code_edit, "e"),
+        ]
+    }
+
+    /// Set a binding by index (matching all_bindings order)
+    pub fn set_binding(&mut self, index: usize, value: String) {
+        match index {
+            0 => self.quit = value,
+            1 => self.help = value,
+            2 => self.theme_toggle = value,
+            3 => self.search = value,
+            4 => self.palette = value,
+            5 => self.home = value,
+            6 => self.account_switch = value,
+            7 => self.nav_down = value,
+            8 => self.nav_up = value,
+            9 => self.nav_next_page = value,
+            10 => self.nav_prev_page = value,
+            11 => self.nav_open = value,
+            12 => self.nav_back = value,
+            13 => self.nav_refresh = value,
+            14 => self.edit_submit = value,
+            15 => self.edit_cancel = value,
+            16 => self.edit_undo = value,
+            17 => self.edit_redo = value,
+            18 => self.filter_toggle = value,
+            19 => self.sort_cycle = value,
+            20 => self.search_start = value,
+            21 => self.filter_clear = value,
+            22 => self.create = value,
+            23 => self.delete = value,
+            24 => self.open_browser = value,
+            25 => self.code_branch = value,
+            26 => self.code_commits = value,
+            27 => self.code_edit = value,
+            _ => {}
+        }
+    }
+
+    /// Reset all bindings to defaults
+    pub fn reset_to_defaults(&mut self) {
+        *self = Self::default();
+    }
+
+    /// Save config to disk
+    pub fn save(&self) -> Result<(), std::io::Error> {
+        if let Some(path) = AppConfig::config_path() {
+            let mut config = AppConfig::load();
+            config.keybindings = self.clone();
+            let content = toml::to_string_pretty(&config)
+                .map_err(std::io::Error::other)?;
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::write(&path, content)?;
+        }
+        Ok(())
     }
 }
 
@@ -63,6 +232,75 @@ fn default_search() -> String {
 }
 fn default_palette() -> String {
     "Ctrl+p".to_string()
+}
+fn default_home() -> String {
+    "H".to_string()
+}
+fn default_account_switch() -> String {
+    "S".to_string()
+}
+fn default_nav_down() -> String {
+    "j".to_string()
+}
+fn default_nav_up() -> String {
+    "k".to_string()
+}
+fn default_nav_next_page() -> String {
+    "n".to_string()
+}
+fn default_nav_prev_page() -> String {
+    "p".to_string()
+}
+fn default_nav_open() -> String {
+    "Enter".to_string()
+}
+fn default_nav_back() -> String {
+    "Esc".to_string()
+}
+fn default_nav_refresh() -> String {
+    "r".to_string()
+}
+fn default_edit_submit() -> String {
+    "Ctrl+s".to_string()
+}
+fn default_edit_cancel() -> String {
+    "Esc".to_string()
+}
+fn default_edit_undo() -> String {
+    "Ctrl+z".to_string()
+}
+fn default_edit_redo() -> String {
+    "Ctrl+y".to_string()
+}
+fn default_filter_toggle() -> String {
+    "s".to_string()
+}
+fn default_sort_cycle() -> String {
+    "o".to_string()
+}
+fn default_search_start() -> String {
+    "/".to_string()
+}
+fn default_filter_clear() -> String {
+    "F".to_string()
+}
+fn default_create() -> String {
+    "c".to_string()
+}
+fn default_delete() -> String {
+    "d".to_string()
+}
+fn default_open_browser() -> String {
+    "o".to_string()
+}
+fn default_code_branch() -> String {
+    "b".to_string()
+}
+fn default_code_commits() -> String {
+    "c".to_string()
+}
+fn default_code_edit() -> String {
+    "e".to_string()
 }
 
 fn default_offline_cache() -> bool {
