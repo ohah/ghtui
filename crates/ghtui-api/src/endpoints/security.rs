@@ -86,4 +86,81 @@ impl GithubClient {
             Err(e) => Err(e),
         }
     }
+
+    /// Dismiss a Dependabot alert.
+    /// reason: "fix_started", "inaccurate", "no_bandwidth", "not_used", "tolerable_risk"
+    pub async fn dismiss_dependabot_alert(
+        &self,
+        repo: &RepoId,
+        number: u64,
+        reason: &str,
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/dependabot/alerts/{}",
+            repo.owner, repo.name, number
+        );
+        let body = serde_json::json!({
+            "state": "dismissed",
+            "dismissed_reason": reason
+        });
+        self.patch(&path, &body).await?;
+        Ok(())
+    }
+
+    /// Reopen a dismissed Dependabot alert.
+    pub async fn reopen_dependabot_alert(
+        &self,
+        repo: &RepoId,
+        number: u64,
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/dependabot/alerts/{}",
+            repo.owner, repo.name, number
+        );
+        let body = serde_json::json!({
+            "state": "open"
+        });
+        self.patch(&path, &body).await?;
+        Ok(())
+    }
+
+    /// Dismiss a code scanning alert.
+    /// reason: "false positive", "won't fix", "used in tests"
+    pub async fn dismiss_code_scanning_alert(
+        &self,
+        repo: &RepoId,
+        number: u64,
+        reason: &str,
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/code-scanning/alerts/{}",
+            repo.owner, repo.name, number
+        );
+        let body = serde_json::json!({
+            "state": "dismissed",
+            "dismissed_reason": reason
+        });
+        self.patch(&path, &body).await?;
+        Ok(())
+    }
+
+    /// Resolve a secret scanning alert.
+    /// resolution: "false_positive", "wont_fix", "revoked", "used_in_tests"
+    pub async fn resolve_secret_scanning_alert(
+        &self,
+        repo: &RepoId,
+        number: u64,
+        resolution: &str,
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/secret-scanning/alerts/{}",
+            repo.owner, repo.name, number
+        );
+        let body = serde_json::json!({
+            "state": "resolved",
+            "resolution": resolution
+        });
+        self.patch(&path, &body).await?;
+        Ok(())
+    }
 }

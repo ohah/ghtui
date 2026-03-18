@@ -9,6 +9,8 @@ pub struct SettingsState {
     pub deploy_keys: Vec<DeployKey>,
     pub scroll: usize,
     pub tab: usize, // 0=General, 1=Branch Protection, 2=Collaborators, 3=Webhooks, 4=Deploy Keys
+    pub selected: usize, // selected item within each tab (collaborators/webhooks/deploy_keys)
+    pub sidebar_focused: bool, // true = sidebar focused, false = content focused
     pub editing: Option<SettingsEditField>,
     pub edit_buffer: String,
 }
@@ -30,6 +32,8 @@ impl SettingsState {
             deploy_keys: Vec::new(),
             scroll: 0,
             tab: 0,
+            selected: 0,
+            sidebar_focused: true,
             editing: None,
             edit_buffer: String::new(),
         }

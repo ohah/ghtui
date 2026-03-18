@@ -121,4 +121,55 @@ impl GithubClient {
             Err(e) => Err(e),
         }
     }
+
+    // Collaborator management
+
+    pub async fn add_collaborator(
+        &self,
+        repo: &RepoId,
+        username: &str,
+        permission: &str,
+    ) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/collaborators/{}",
+            repo.owner, repo.name, username
+        );
+        let body = serde_json::json!({ "permission": permission });
+        self.put(&path, &body).await?;
+        Ok(())
+    }
+
+    pub async fn remove_collaborator(&self, repo: &RepoId, username: &str) -> Result<(), ApiError> {
+        let path = format!(
+            "/repos/{}/{}/collaborators/{}",
+            repo.owner, repo.name, username
+        );
+        self.delete(&path).await
+    }
+
+    // Webhook management
+
+    pub async fn delete_webhook(&self, repo: &RepoId, hook_id: u64) -> Result<(), ApiError> {
+        let path = format!("/repos/{}/{}/hooks/{}", repo.owner, repo.name, hook_id);
+        self.delete(&path).await
+    }
+
+    pub async fn toggle_webhook(
+        &self,
+        repo: &RepoId,
+        hook_id: u64,
+        active: bool,
+    ) -> Result<(), ApiError> {
+        let path = format!("/repos/{}/{}/hooks/{}", repo.owner, repo.name, hook_id);
+        let body = serde_json::json!({ "active": active });
+        self.patch(&path, &body).await?;
+        Ok(())
+    }
+
+    // Deploy key management
+
+    pub async fn delete_deploy_key(&self, repo: &RepoId, key_id: u64) -> Result<(), ApiError> {
+        let path = format!("/repos/{}/{}/keys/{}", repo.owner, repo.name, key_id);
+        self.delete(&path).await
+    }
 }

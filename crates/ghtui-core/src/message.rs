@@ -278,6 +278,9 @@ pub enum Message {
     SecurityAdvisoriesLoaded(Vec<security::RepoSecurityAdvisory>),
     SecurityToggleDetail,
     SecurityOpenInBrowser,
+    SecurityDismissAlert,
+    SecurityReopenAlert,
+    SecurityAlertUpdated,
 
     // Settings
     SettingsRepoLoaded(Box<settings::Repository>),
@@ -293,6 +296,12 @@ pub enum Message {
     SettingsEditCancel,
     SettingsToggleFeature(String), // feature name (has_issues, has_wiki, etc.)
     SettingsToggleVisibility,      // Toggle public/private (with confirmation)
+    SettingsSidebarFocus,          // Toggle sidebar/content focus
+    SettingsDeleteCollaborator,    // Remove selected collaborator
+    SettingsDeleteWebhook,         // Delete selected webhook
+    SettingsToggleWebhook,         // Toggle webhook active/inactive
+    SettingsDeleteDeployKey,       // Delete selected deploy key
+    SettingsItemUpdated,           // Generic refresh after settings mutation
 
     // Mouse
     ScrollUp,

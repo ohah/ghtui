@@ -100,6 +100,10 @@ pub enum Command {
     FetchCodeScanningAlerts(RepoId),
     FetchSecretScanningAlerts(RepoId),
     FetchSecurityAdvisories(RepoId),
+    DismissDependabotAlert(RepoId, u64, String),
+    ReopenDependabotAlert(RepoId, u64),
+    DismissCodeScanningAlert(RepoId, u64, String),
+    ResolveSecretScanningAlert(RepoId, u64, String),
 
     // Settings
     FetchRepoSettings(RepoId),
@@ -108,6 +112,10 @@ pub enum Command {
     FetchWebhooks(RepoId),
     FetchDeployKeys(RepoId),
     UpdateRepo(RepoId, serde_json::Value),
+    RemoveCollaborator(RepoId, String), // repo, username
+    DeleteWebhook(RepoId, u64),         // repo, hook_id
+    ToggleWebhook(RepoId, u64, bool),   // repo, hook_id, active
+    DeleteDeployKey(RepoId, u64),       // repo, key_id
 
     // Utility
     OpenInBrowser(String),

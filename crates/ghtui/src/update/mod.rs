@@ -2871,6 +2871,77 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::SecurityDismissAlert => {
+            if let (Some(sec), Some(repo)) = (&state.security, &state.current_repo) {
+                let repo = repo.clone();
+                match sec.tab {
+                    0 => {
+                        // Dependabot
+                        if let Some(alert) = sec.dependabot_alerts.get(sec.selected) {
+                            let number = alert.number;
+                            state.push_toast("Alert dismissed".to_string(), ToastLevel::Info);
+                            return vec![Command::DismissDependabotAlert(
+                                repo,
+                                number,
+                                "no_bandwidth".to_string(),
+                            )];
+                        }
+                    }
+                    1 => {
+                        // Code scanning
+                        if let Some(alert) = sec.code_scanning_alerts.get(sec.selected) {
+                            let number = alert.number;
+                            state.push_toast("Alert dismissed".to_string(), ToastLevel::Info);
+                            return vec![Command::DismissCodeScanningAlert(
+                                repo,
+                                number,
+                                "won't fix".to_string(),
+                            )];
+                        }
+                    }
+                    2 => {
+                        // Secret scanning
+                        if let Some(alert) = sec.secret_scanning_alerts.get(sec.selected) {
+                            let number = alert.number;
+                            state.push_toast("Alert dismissed".to_string(), ToastLevel::Info);
+                            return vec![Command::ResolveSecretScanningAlert(
+                                repo,
+                                number,
+                                "false_positive".to_string(),
+                            )];
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            vec![]
+        }
+        Message::SecurityReopenAlert => {
+            if let (Some(sec), Some(repo)) = (&state.security, &state.current_repo) {
+                if sec.tab == 0 {
+                    if let Some(alert) = sec.dependabot_alerts.get(sec.selected) {
+                        let number = alert.number;
+                        let repo = repo.clone();
+                        state.push_toast("Alert reopened".to_string(), ToastLevel::Info);
+                        return vec![Command::ReopenDependabotAlert(repo, number)];
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::SecurityAlertUpdated => {
+            // Refresh all security alerts
+            if let Some(ref repo) = state.current_repo {
+                let repo = repo.clone();
+                return vec![
+                    Command::FetchDependabotAlerts(repo.clone()),
+                    Command::FetchCodeScanningAlerts(repo.clone()),
+                    Command::FetchSecretScanningAlerts(repo.clone()),
+                    Command::FetchSecurityAdvisories(repo),
+                ];
+            }
+            vec![]
+        }
 
         // Settings
         Message::SettingsRepoLoaded(repo) => {
@@ -3003,6 +3074,82 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 if let Some(ref repo) = state.current_repo {
                     return vec![Command::UpdateRepo(repo.clone(), updates)];
                 }
+            }
+            vec![]
+        }
+        Message::SettingsSidebarFocus => {
+            if let Some(ref mut settings) = state.settings {
+                settings.sidebar_focused = !settings.sidebar_focused;
+                // Reset item selection when switching to content
+                if !settings.sidebar_focused {
+                    settings.selected = 0;
+                }
+            }
+            vec![]
+        }
+        Message::SettingsDeleteCollaborator => {
+            let info = state
+                .settings
+                .as_ref()
+                .and_then(|s| s.collaborators.get(s.selected).map(|c| c.login.clone()));
+            if let (Some(username), Some(repo)) = (info, state.current_repo.clone()) {
+                state.push_toast(
+                    format!("Removing collaborator @{}...", username),
+                    ToastLevel::Warning,
+                );
+                return vec![Command::RemoveCollaborator(repo, username)];
+            }
+            vec![]
+        }
+        Message::SettingsDeleteWebhook => {
+            let info = state
+                .settings
+                .as_ref()
+                .and_then(|s| s.webhooks.get(s.selected).map(|h| h.id));
+            if let (Some(hook_id), Some(repo)) = (info, state.current_repo.clone()) {
+                state.push_toast("Deleting webhook...".to_string(), ToastLevel::Warning);
+                return vec![Command::DeleteWebhook(repo, hook_id)];
+            }
+            vec![]
+        }
+        Message::SettingsToggleWebhook => {
+            let info = state
+                .settings
+                .as_ref()
+                .and_then(|s| s.webhooks.get(s.selected).map(|h| (h.id, !h.active)));
+            if let (Some((hook_id, new_active)), Some(repo)) = (info, state.current_repo.clone()) {
+                let label = if new_active { "Enabling" } else { "Disabling" };
+                state.push_toast(format!("{} webhook...", label), ToastLevel::Info);
+                return vec![Command::ToggleWebhook(repo, hook_id, new_active)];
+            }
+            vec![]
+        }
+        Message::SettingsDeleteDeployKey => {
+            let info = state
+                .settings
+                .as_ref()
+                .and_then(|s| s.deploy_keys.get(s.selected).map(|k| k.id));
+            if let (Some(key_id), Some(repo)) = (info, state.current_repo.clone()) {
+                state.push_toast("Deleting deploy key...".to_string(), ToastLevel::Warning);
+                return vec![Command::DeleteDeployKey(repo, key_id)];
+            }
+            vec![]
+        }
+        Message::SettingsItemUpdated => {
+            state.push_toast("Settings item updated".to_string(), ToastLevel::Success);
+            // Re-fetch collaborators, webhooks, deploy_keys
+            if let Some(ref repo) = state.current_repo {
+                let mut cmds = Vec::new();
+                if let Some(ref mut settings) = state.settings {
+                    settings.selected = 0;
+                }
+                state.loading.insert("collaborators".to_string());
+                state.loading.insert("webhooks".to_string());
+                state.loading.insert("deploy_keys".to_string());
+                cmds.push(Command::FetchCollaborators(repo.clone()));
+                cmds.push(Command::FetchWebhooks(repo.clone()));
+                cmds.push(Command::FetchDeployKeys(repo.clone()));
+                return cmds;
             }
             vec![]
         }
@@ -3953,10 +4100,36 @@ fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Command> {
         }
         Route::Settings { .. } => {
             if let Some(ref mut settings) = state.settings {
-                if delta == usize::MAX {
-                    settings.scroll = settings.scroll.saturating_sub(1);
-                } else if delta > 0 {
-                    settings.scroll += 1;
+                if settings.sidebar_focused {
+                    // Sidebar: scroll only (tab navigation is via TabChanged)
+                    if delta == usize::MAX {
+                        settings.scroll = settings.scroll.saturating_sub(1);
+                    } else if delta > 0 {
+                        settings.scroll += 1;
+                    }
+                } else {
+                    // Content focused: navigate items within current tab
+                    let max_items = match settings.tab {
+                        2 => settings.collaborators.len(),
+                        3 => settings.webhooks.len(),
+                        4 => settings.deploy_keys.len(),
+                        _ => 0, // General/BranchProtection: use scroll
+                    };
+                    if max_items > 0 {
+                        if delta == usize::MAX {
+                            settings.selected = settings.selected.saturating_sub(1);
+                        } else if delta > 0 {
+                            settings.selected =
+                                (settings.selected + 1).min(max_items.saturating_sub(1));
+                        }
+                    } else {
+                        // General/BranchProtection: scroll content
+                        if delta == usize::MAX {
+                            settings.scroll = settings.scroll.saturating_sub(1);
+                        } else if delta > 0 {
+                            settings.scroll += 1;
+                        }
+                    }
                 }
             }
         }

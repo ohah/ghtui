@@ -204,6 +204,8 @@
 - [x] Secret scanning 상세 (타입, state, resolution)
 - [x] 브라우저에서 열기 (`o`)
 - [x] Security advisories (Advisories 탭 — GHSA/CVE, severity, 상세 패널)
+- [x] Alert dismiss/resolve (`d`키 — Dependabot/Code Scanning/Secret Scanning)
+- [x] Dependabot alert reopen (`r`키)
 
 ## Phase 7 — Insights 탭 ✅ 완성
 
@@ -229,12 +231,19 @@
 ### 8-2 Branch Protection
 - [x] 브랜치 보호 규칙 보기
 
-### 8-3 Collaborators
+### 8-3 Collaborators ✅
 - [x] Collaborators 목록 + 권한 표시
+- [x] Collaborator 제거 (`d`키)
 
 ### 8-4 Webhooks & Deploy Keys ✅
 - [x] Webhooks 목록 (URL, events, active 상태)
+- [x] Webhook 삭제 (`d`키) + active 토글 (`a`키)
 - [x] Deploy keys 목록 (title, read-only/read-write, verified)
+- [x] Deploy key 삭제 (`d`키)
+
+### 8-5 Settings UI ✅
+- [x] 왼쪽 사이드바로 하위 메뉴 변경 (Tab/Enter 포커스 전환)
+- [x] 리스트 아이템 선택/네비게이션 (j/k)
 
 ## Phase 9 — Code 탭 (작업량 최대)
 
