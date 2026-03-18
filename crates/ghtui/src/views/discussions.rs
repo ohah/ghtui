@@ -59,11 +59,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
             let line1 = Line::from(line1_spans);
 
             // Line 2: #number + author + comment count + relative time
-            let time_str = chrono::DateTime::parse_from_rfc3339(&d.created_at)
-                .map(|dt| {
-                    super::components::time_ago(&dt.with_timezone(&chrono::Utc))
-                })
-                .unwrap_or_default();
+            let time_str = super::components::time_ago_rfc3339(&d.created_at);
 
             let line2 = Line::from(vec![
                 Span::styled(

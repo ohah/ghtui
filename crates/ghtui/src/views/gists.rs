@@ -53,14 +53,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
             ]);
 
             // Line 2: file count + created relative time
-            let time_str = chrono::DateTime::parse_from_rfc3339(&g.created_at)
-                .map(|dt| {
-                    format!(
-                        "created {}",
-                        super::components::time_ago(&dt.with_timezone(&chrono::Utc)),
-                    )
-                })
-                .unwrap_or_default();
+            let time_str = format!("created {}", super::components::time_ago_rfc3339(&g.created_at));
 
             let line2 = Line::from(vec![
                 Span::styled(

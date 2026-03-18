@@ -117,13 +117,11 @@ fn render_recent_repos(frame: &mut Frame, state: &AppState, area: Rect) {
                 String::new()
             };
 
-            let updated_str = chrono::DateTime::parse_from_rfc3339(&repo.updated_at)
-                .ok()
-                .map(|dt| {
-                    let utc = dt.with_timezone(&chrono::Utc);
-                    format!("  updated {}", super::components::time_ago(&utc))
-                })
-                .unwrap_or_default();
+            let updated_str = if repo.updated_at.is_empty() {
+                String::new()
+            } else {
+                format!("  updated {}", super::components::time_ago_rfc3339(&repo.updated_at))
+            };
 
             let suffix = format!("{}{}", stars_str, updated_str);
             let suffix_len = suffix.len();
@@ -134,10 +132,9 @@ fn render_recent_repos(frame: &mut Frame, state: &AppState, area: Rect) {
                 .saturating_sub(indent.len())
                 .saturating_sub(suffix_len)
                 .saturating_sub(1);
-            let truncated_desc = if desc.len() > max_desc_len && max_desc_len > 3 {
-                format!("{}...", &desc[..max_desc_len.saturating_sub(3)])
-            } else if desc.len() > max_desc_len {
-                desc[..max_desc_len].to_string()
+            let truncated_desc = if desc.chars().count() > max_desc_len && max_desc_len > 3 {
+                let s: String = desc.chars().take(max_desc_len.saturating_sub(3)).collect();
+                format!("{}...", s)
             } else {
                 desc.to_string()
             };
