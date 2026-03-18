@@ -43,5 +43,6 @@ tree-sitter-html.workspace = true
 tree-sitter-css.workspace = true
 tree-sitter-bash.workspace = true
 tree-sitter-yaml.workspace = true
+tree-sitter-md.workspace = true
 
 [dev-dependencies]
