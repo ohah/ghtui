@@ -10,8 +10,10 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     };
 
-    let width = 50u16.min(area.width.saturating_sub(4));
-    let height = 16u16.min(area.height.saturating_sub(4));
+    let width = 60u16.min(area.width.saturating_sub(4));
+    // query line + blank + items + border (2)
+    let content_height = 2 + palette.filtered.len().max(1) + 2;
+    let height = (content_height as u16).min(area.height.saturating_sub(4));
     let popup_area = super::components::centered_rect(width, height, area);
 
     frame.render_widget(Clear, popup_area);
