@@ -3282,15 +3282,12 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
 
                 match &state.route {
                     Route::PrDetail { .. } => {
-                        // Dynamic header height based on editing state
-                        let is_title_editing = state.pr_detail.as_ref().is_some_and(|d| {
-                            matches!(
-                                d.edit_target,
-                                Some(ghtui_core::state::pr::PrInlineEditTarget::PrTitle)
-                            )
-                        });
-                        let header_rows = if is_title_editing { 6 } else { 5 };
-                        // Sub-tab bar is right after header (1 row)
+                        // Header height from shared method (same as rendering)
+                        let header_rows = state
+                            .pr_detail
+                            .as_ref()
+                            .map(|d| d.header_height() as usize)
+                            .unwrap_or(5);
                         let tab_row = header_rows;
 
                         if content_row == tab_row {
