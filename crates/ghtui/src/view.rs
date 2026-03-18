@@ -258,6 +258,7 @@ fn render_footer(frame: &mut Frame, state: &AppState, theme: &Theme, area: Rect)
         Route::IssueDetail { .. } => "c:Comment Esc:Back",
         Route::Search { .. } => "/:Search Tab:Kind j/k:Nav Enter:Open Esc:Back",
         Route::Security { .. } => "Tab:Section j/k:Nav Enter:Detail o:Open Esc:Close",
+        Route::Settings { .. } => "Tab:Section d:Desc b:Branch T:Topics I/P/W:Toggle",
         Route::Notifications => "Enter:Open m:Read M:ReadAll d:Done u:Unsub s/e:Filter g:Group",
         _ => "1-6:Tabs t:Theme ?:Help q:Quit",
     };

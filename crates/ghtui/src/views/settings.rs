@@ -45,7 +45,13 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         .split(area);
 
     // Sub-tab bar
-    let tab_titles = vec!["General", "Branch Protection", "Collaborators"];
+    let tab_titles: Vec<String> = vec![
+        "General".to_string(),
+        "Branch Protection".to_string(),
+        format!("Collaborators ({})", settings.collaborators.len()),
+        format!("Webhooks ({})", settings.webhooks.len()),
+        format!("Deploy Keys ({})", settings.deploy_keys.len()),
+    ];
     let tabs = Tabs::new(tab_titles)
         .select(settings.tab)
         .style(Style::default().fg(theme.fg_muted))
@@ -66,6 +72,8 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         0 => render_general(frame, state, chunks[1]),
         1 => render_branch_protections(frame, state, chunks[1]),
         2 => render_collaborators(frame, state, chunks[1]),
+        3 => render_webhooks(frame, state, chunks[1]),
+        4 => render_deploy_keys(frame, state, chunks[1]),
         _ => {}
     }
 }
@@ -83,14 +91,38 @@ fn render_general(frame: &mut Frame, state: &AppState, area: Rect) {
 
     let mut lines: Vec<Line<'static>> = Vec::new();
 
+    // Editing indicator
+    if let Some(ref field) = settings.editing {
+        let field_name = match field {
+            ghtui_core::state::settings::SettingsEditField::Description => "Description",
+            ghtui_core::state::settings::SettingsEditField::DefaultBranch => "Default branch",
+            ghtui_core::state::settings::SettingsEditField::Topics => "Topics",
+        };
+        lines.push(Line::from(vec![
+            Span::styled(
+                format!("  Editing: {} ", field_name),
+                Style::default().fg(theme.accent),
+            ),
+            Span::styled(settings.edit_buffer.clone(), theme.text()),
+            Span::styled("█", Style::default().fg(theme.accent)),
+            Span::styled(
+                "  (Enter:Save Esc:Cancel)",
+                Style::default().fg(theme.fg_dim),
+            ),
+        ]));
+        lines.push(Line::raw(""));
+    }
+
     lines.push(Line::raw(""));
     lines.push(kv("Name", &repo.full_name, label_style, value_style));
-    lines.push(kv(
-        "Description",
-        repo.description.as_deref().unwrap_or("(none)"),
-        label_style,
-        value_style,
-    ));
+    lines.push(Line::from(vec![
+        Span::styled(format!("    {:<18}", "Description"), label_style),
+        Span::styled(
+            repo.description.as_deref().unwrap_or("(none)").to_string(),
+            value_style,
+        ),
+        Span::styled(" [d:edit]", Style::default().fg(theme.fg_dim)),
+    ]));
     lines.push(kv(
         "Visibility",
         repo.visibility
@@ -414,4 +446,146 @@ fn flag(label: &str, enabled: bool, theme: &ghtui_core::theme::Theme) -> Line<'s
         ),
         Span::styled(icon, Style::default().fg(color)),
     ])
+}
+
+fn render_webhooks(frame: &mut Frame, state: &AppState, area: Rect) {
+    let theme = &state.theme;
+    let settings = state.settings.as_ref().unwrap();
+
+    if state.is_loading("webhooks") {
+        render_loading_spinner(frame, theme, area, "Webhooks");
+        return;
+    }
+
+    if settings.webhooks.is_empty() {
+        let paragraph = Paragraph::new("  No webhooks configured")
+            .style(theme.text_dim())
+            .block(
+                Block::default()
+                    .title(" Webhooks ")
+                    .borders(Borders::ALL)
+                    .border_style(theme.border_style()),
+            );
+        frame.render_widget(paragraph, area);
+        return;
+    }
+
+    let items: Vec<ListItem> = settings
+        .webhooks
+        .iter()
+        .map(|hook| {
+            let status_icon = if hook.active {
+                Span::styled(" ● ", Style::default().fg(theme.success))
+            } else {
+                Span::styled(" ○ ", Style::default().fg(theme.fg_muted))
+            };
+            let url = hook.config.url.as_deref().unwrap_or("(no url)");
+            let events = if hook.events.len() > 3 {
+                format!(
+                    "{} + {} more",
+                    hook.events[..3].join(", "),
+                    hook.events.len() - 3
+                )
+            } else {
+                hook.events.join(", ")
+            };
+
+            ListItem::new(Line::from(vec![
+                status_icon,
+                Span::styled(url.to_string(), theme.text()),
+                Span::styled(format!("  ({})", events), Style::default().fg(theme.fg_dim)),
+            ]))
+        })
+        .collect();
+
+    let list = List::new(items).block(
+        Block::default()
+            .title(format!(" Webhooks ({}) ", settings.webhooks.len()))
+            .borders(Borders::ALL)
+            .border_style(theme.border_style()),
+    );
+    frame.render_widget(list, area);
+}
+
+fn render_deploy_keys(frame: &mut Frame, state: &AppState, area: Rect) {
+    let theme = &state.theme;
+    let settings = state.settings.as_ref().unwrap();
+
+    if state.is_loading("deploy_keys") {
+        render_loading_spinner(frame, theme, area, "Deploy Keys");
+        return;
+    }
+
+    if settings.deploy_keys.is_empty() {
+        let paragraph = Paragraph::new("  No deploy keys configured")
+            .style(theme.text_dim())
+            .block(
+                Block::default()
+                    .title(" Deploy Keys ")
+                    .borders(Borders::ALL)
+                    .border_style(theme.border_style()),
+            );
+        frame.render_widget(paragraph, area);
+        return;
+    }
+
+    let items: Vec<ListItem> = settings
+        .deploy_keys
+        .iter()
+        .map(|key| {
+            let read_only = if key.read_only {
+                Span::styled(" read-only", Style::default().fg(theme.fg_muted))
+            } else {
+                Span::styled(" read-write", Style::default().fg(theme.warning))
+            };
+            let verified = if key.verified {
+                Span::styled(" ✓", Style::default().fg(theme.success))
+            } else {
+                Span::styled("", Style::default())
+            };
+
+            ListItem::new(Line::from(vec![
+                Span::styled("  🔑 ", Style::default().fg(theme.accent)),
+                Span::styled(key.title.clone(), theme.text()),
+                read_only,
+                verified,
+                Span::styled(
+                    format!("  {}", key.created_at),
+                    Style::default().fg(theme.fg_dim),
+                ),
+            ]))
+        })
+        .collect();
+
+    let list = List::new(items).block(
+        Block::default()
+            .title(format!(" Deploy Keys ({}) ", settings.deploy_keys.len()))
+            .borders(Borders::ALL)
+            .border_style(theme.border_style()),
+    );
+    frame.render_widget(list, area);
+}
+
+fn render_loading_spinner(
+    frame: &mut Frame,
+    theme: &ghtui_core::theme::Theme,
+    area: Rect,
+    title: &str,
+) {
+    let spinner = ghtui_widgets::Spinner::new(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as usize
+            / 100,
+    );
+    let paragraph = Paragraph::new(Line::from(spinner.span()))
+        .style(theme.text())
+        .block(
+            Block::default()
+                .title(format!(" {} ", title))
+                .borders(Borders::ALL)
+                .border_style(theme.border_style()),
+        );
+    frame.render_widget(paragraph, area);
 }

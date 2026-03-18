@@ -1,5 +1,5 @@
 use ghtui_core::types::common::RepoId;
-use ghtui_core::types::settings::{BranchProtection, Collaborator, Repository};
+use ghtui_core::types::settings::{BranchProtection, Collaborator, DeployKey, Repository, Webhook};
 
 use crate::client::GithubClient;
 use crate::error::ApiError;
@@ -84,5 +84,41 @@ impl GithubClient {
         let body = self.get(&path).await?;
         let collaborators: Vec<Collaborator> = serde_json::from_str(&body)?;
         Ok(collaborators)
+    }
+
+    /// Update repository settings (PATCH /repos/{owner}/{repo})
+    pub async fn update_repo(
+        &self,
+        repo: &RepoId,
+        updates: &serde_json::Value,
+    ) -> Result<Repository, ApiError> {
+        let path = format!("/repos/{}/{}", repo.owner, repo.name);
+        let body = self.patch(&path, updates).await?;
+        let repository: Repository = serde_json::from_str(&body)?;
+        Ok(repository)
+    }
+
+    pub async fn list_webhooks(&self, repo: &RepoId) -> Result<Vec<Webhook>, ApiError> {
+        let path = format!("/repos/{}/{}/hooks?per_page=30", repo.owner, repo.name);
+        match self.get(&path).await {
+            Ok(body) => {
+                let hooks: Vec<Webhook> = serde_json::from_str(&body)?;
+                Ok(hooks)
+            }
+            Err(ApiError::GitHub { status: 404, .. }) => Ok(Vec::new()),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn list_deploy_keys(&self, repo: &RepoId) -> Result<Vec<DeployKey>, ApiError> {
+        let path = format!("/repos/{}/{}/keys?per_page=30", repo.owner, repo.name);
+        match self.get(&path).await {
+            Ok(body) => {
+                let keys: Vec<DeployKey> = serde_json::from_str(&body)?;
+                Ok(keys)
+            }
+            Err(ApiError::GitHub { status: 404, .. }) => Ok(Vec::new()),
+            Err(e) => Err(e),
+        }
     }
 }

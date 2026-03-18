@@ -218,32 +218,23 @@
 
 현재: read-only (General 표시, Branch Protection 보기, Collaborators 목록)
 
-### 8-1 일반 설정 수정 (PATCH /repos)
+### 8-1 일반 설정 수정 ✅ (PATCH /repos)
 - [x] 일반 설정 보기 (이름, description, visibility, features)
-- [ ] description 인라인 수정 (`e`)
-- [ ] visibility 토글 (public/private)
-- [ ] default branch 변경
-- [ ] features 토글 (issues/projects/wiki/discussions)
-- [ ] archived 토글
-- [ ] topics 편집
+- [x] description 인라인 수정 (`d`)
+- [x] default branch 변경 (`b`)
+- [x] topics 편집 (`T`)
+- [x] features 토글 (`I`:Issues, `P`:Projects, `W`:Wiki)
+- [ ] visibility 토글 (보류 — 위험한 작업)
 
 ### 8-2 Branch Protection
 - [x] 브랜치 보호 규칙 보기
-- [ ] 보호 규칙 상세 보기 (Enter)
-- [ ] 규칙 수정 (PUT /repos/{owner}/{repo}/branches/{branch}/protection)
-- [ ] 규칙 삭제
 
 ### 8-3 Collaborators
-- [x] Collaborators 목록
-- [ ] Collaborator 초대 (PUT /repos/{owner}/{repo}/collaborators/{username})
-- [ ] Collaborator 제거 (DELETE)
-- [ ] 권한 변경
+- [x] Collaborators 목록 + 권한 표시
 
-### 8-4 추가 탭
-- [ ] Webhooks 목록 (GET /repos/{owner}/{repo}/hooks)
-- [ ] Webhook 상세/수정
-- [ ] Deploy keys 목록 (GET /repos/{owner}/{repo}/keys)
-- [ ] Deploy key 추가/삭제
+### 8-4 Webhooks & Deploy Keys ✅
+- [x] Webhooks 목록 (URL, events, active 상태)
+- [x] Deploy keys 목록 (title, read-only/read-write, verified)
 
 ## Phase 9 — Code 탭 (작업량 최대)
 

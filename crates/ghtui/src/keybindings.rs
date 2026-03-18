@@ -128,8 +128,8 @@ fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
         Route::Search { .. } => handle_search_keys(key, state),
         Route::Notifications => handle_notification_keys(key),
         Route::Security { .. } => handle_security_keys(key, state),
-        Route::Insights { .. } => handle_settings_keys(key),
-        Route::Settings { .. } => handle_settings_keys(key),
+        Route::Insights { .. } => handle_settings_keys(key, state),
+        Route::Settings { .. } => handle_settings_keys(key, state),
         _ => handle_list_keys(key),
     }
 }
@@ -233,12 +233,49 @@ fn handle_security_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     }
 }
 
-fn handle_settings_keys(key: KeyEvent) -> Option<Message> {
+fn handle_settings_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let is_editing = state.settings.as_ref().is_some_and(|s| s.is_editing());
+
+    if is_editing {
+        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        return match key.code {
+            KeyCode::Esc => Some(Message::SettingsEditCancel),
+            KeyCode::Char('s') if ctrl => Some(Message::SettingsEditSubmit),
+            KeyCode::Enter => Some(Message::SettingsEditSubmit),
+            KeyCode::Char(c) => Some(Message::SettingsEditChar(c)),
+            KeyCode::Backspace => Some(Message::SettingsEditBackspace),
+            _ => None,
+        };
+    }
+
+    // Check if on General tab for edit keys
+    let on_general = state.settings.as_ref().is_some_and(|s| s.tab == 0);
+
     match key.code {
         KeyCode::Tab => Some(Message::TabChanged(1)),
         KeyCode::BackTab => Some(Message::TabChanged(usize::MAX)),
         KeyCode::Char('j') | KeyCode::Down => Some(Message::ListSelect(1)),
         KeyCode::Char('k') | KeyCode::Up => Some(Message::ListSelect(usize::MAX)),
+        KeyCode::PageDown => Some(Message::ScrollDown),
+        KeyCode::PageUp => Some(Message::ScrollUp),
+        // Edit keys (only on General tab)
+        KeyCode::Char('d') if on_general => {
+            Some(Message::SettingsStartEdit("description".to_string()))
+        }
+        KeyCode::Char('b') if on_general => {
+            Some(Message::SettingsStartEdit("default_branch".to_string()))
+        }
+        KeyCode::Char('T') if on_general => Some(Message::SettingsStartEdit("topics".to_string())),
+        // Feature toggles (on General tab)
+        KeyCode::Char('I') if on_general => {
+            Some(Message::SettingsToggleFeature("has_issues".to_string()))
+        }
+        KeyCode::Char('P') if on_general => {
+            Some(Message::SettingsToggleFeature("has_projects".to_string()))
+        }
+        KeyCode::Char('W') if on_general => {
+            Some(Message::SettingsToggleFeature("has_wiki".to_string()))
+        }
         _ => None,
     }
 }
