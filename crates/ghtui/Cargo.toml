@@ -4,6 +4,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "A comprehensive GitHub TUI built with Rust and ratatui"
+keywords = ["github", "tui", "terminal", "cli", "git"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 ghtui-api.workspace = true

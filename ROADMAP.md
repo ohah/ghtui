@@ -268,12 +268,12 @@
 
 ## Phase 11 — 배포 & 에코시스템
 
-- [ ] `cargo install ghtui`
-- [ ] Homebrew formula
-- [ ] GitHub Releases (macOS/Linux/Windows)
+- [x] `cargo install ghtui` (패키지 메타데이터 추가)
+- [ ] Homebrew formula (릴리스 후 추가)
+- [x] GitHub Releases (macOS/Linux/Windows — release.yml 워크플로우)
 - [x] CI/CD (GitHub Actions: test, lint, release)
-- [ ] crates.io 게시
-- [ ] CHANGELOG.md 자동 생성
+- [ ] crates.io 게시 (publish 설정 완료, 수동 게시 필요)
+- [x] CHANGELOG.md 자동 생성 (release.yml의 generate_release_notes)
 
 ## Phase 12 — 고급 기능
 
