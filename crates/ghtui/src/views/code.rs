@@ -391,17 +391,13 @@ fn render_commit_detail(
 
     // Files
     for file in &detail.files {
-        let status_style = match file.status.as_str() {
-            "added" => Style::default().fg(theme.accent),
-            "removed" => Style::default().fg(theme.danger),
+        use ghtui_core::types::code::FileChangeStatus;
+        let status_style = match &file.status {
+            FileChangeStatus::Added => Style::default().fg(theme.accent),
+            FileChangeStatus::Removed => Style::default().fg(theme.danger),
             _ => Style::default().fg(theme.warning),
         };
-        let status_char = match file.status.as_str() {
-            "added" => "A",
-            "removed" => "D",
-            "renamed" => "R",
-            _ => "M",
-        };
+        let status_char = file.status.label();
 
         lines.push(Line::from(vec![
             Span::styled(format!("  {} ", status_char), status_style),
@@ -414,7 +410,7 @@ fn render_commit_detail(
     }
 
     let paragraph = Paragraph::new(lines)
-        .scroll((scroll as u16, 0))
+        .scroll((scroll.min(u16::MAX as usize) as u16, 0))
         .style(Style::default().bg(theme.bg))
         .block(
             Block::default()
@@ -524,7 +520,7 @@ fn render_file_content(
     let title = format!(" {} ({} lines) ", filename, total_lines);
 
     let paragraph = Paragraph::new(lines)
-        .scroll((scroll as u16, 0))
+        .scroll((scroll.min(u16::MAX as usize) as u16, 0))
         .style(Style::default().bg(theme.bg))
         .block(
             Block::default()

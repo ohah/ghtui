@@ -32,10 +32,41 @@ pub struct CommitDetail {
     pub files: Vec<CommitFile>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum FileChangeStatus {
+    Added,
+    Modified,
+    Removed,
+    Renamed,
+    Other(String),
+}
+
+impl FileChangeStatus {
+    pub fn parse(s: &str) -> Self {
+        match s {
+            "added" => Self::Added,
+            "modified" => Self::Modified,
+            "removed" => Self::Removed,
+            "renamed" => Self::Renamed,
+            other => Self::Other(other.to_string()),
+        }
+    }
+
+    pub fn label(&self) -> &str {
+        match self {
+            Self::Added => "A",
+            Self::Modified => "M",
+            Self::Removed => "D",
+            Self::Renamed => "R",
+            Self::Other(_) => "?",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct CommitFile {
     pub filename: String,
-    pub status: String, // "added", "modified", "removed"
+    pub status: FileChangeStatus,
     pub additions: u64,
     pub deletions: u64,
 }
