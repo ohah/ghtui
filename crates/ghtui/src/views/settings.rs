@@ -1,30 +1,16 @@
+use super::components;
 use ghtui_core::AppState;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Wrap};
 
 pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     let theme = &state.theme;
 
     if state.is_loading("settings") {
-        let spinner = ghtui_widgets::Spinner::new(
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as usize
-                / 100,
-        );
-        let paragraph = Paragraph::new(Line::from(spinner.span()))
-            .style(theme.text())
-            .block(
-                Block::default()
-                    .title(" Settings ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
-        frame.render_widget(paragraph, area);
+        components::render_loading(frame, theme, area, "Settings");
         return;
     }
 
@@ -54,44 +40,15 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         format!("Deploy Keys ({})", settings.deploy_keys.len()),
     ];
 
-    let sidebar_items: Vec<ListItem> = sidebar_titles
-        .iter()
-        .enumerate()
-        .map(|(i, title)| {
-            let style = if i == settings.tab {
-                if settings.sidebar_focused {
-                    Style::default()
-                        .fg(theme.tab_active_fg)
-                        .add_modifier(Modifier::BOLD)
-                        .bg(theme.selection_bg)
-                } else {
-                    Style::default()
-                        .fg(theme.tab_active_fg)
-                        .add_modifier(Modifier::BOLD)
-                }
-            } else {
-                Style::default().fg(theme.fg_muted)
-            };
-            ListItem::new(Line::from(Span::styled(format!("  {} ", title), style)))
-        })
-        .collect();
-
-    let sidebar_border_style = if settings.sidebar_focused {
-        Style::default().fg(theme.accent)
-    } else {
-        theme.border_style()
-    };
-
-    let sidebar = List::new(sidebar_items).block(
-        Block::default()
-            .title(" Settings ")
-            .borders(Borders::ALL)
-            .border_style(sidebar_border_style),
+    components::render_sidebar(
+        frame,
+        theme,
+        "Settings",
+        &sidebar_titles,
+        settings.tab,
+        settings.sidebar_focused,
+        chunks[0],
     );
-
-    let mut sidebar_state = ListState::default();
-    sidebar_state.select(Some(settings.tab));
-    frame.render_stateful_widget(sidebar, chunks[0], &mut sidebar_state);
 
     // Content panel
     let content_area = chunks[1];
@@ -281,22 +238,7 @@ fn render_branch_protections(frame: &mut Frame, state: &AppState, area: Rect) {
     let settings = state.settings.as_ref().unwrap();
 
     if state.is_loading("branch_protections") {
-        let spinner = ghtui_widgets::Spinner::new(
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as usize
-                / 100,
-        );
-        let paragraph = Paragraph::new(Line::from(spinner.span()))
-            .style(theme.text())
-            .block(
-                Block::default()
-                    .title(" Branch Protection Rules ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
-        frame.render_widget(paragraph, area);
+        components::render_loading(frame, theme, area, "Branch Protection Rules");
         return;
     }
 
@@ -390,22 +332,7 @@ fn render_collaborators(frame: &mut Frame, state: &AppState, area: Rect) {
     let settings = state.settings.as_ref().unwrap();
 
     if state.is_loading("collaborators") {
-        let spinner = ghtui_widgets::Spinner::new(
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as usize
-                / 100,
-        );
-        let paragraph = Paragraph::new(Line::from(spinner.span()))
-            .style(theme.text())
-            .block(
-                Block::default()
-                    .title(" Collaborators ")
-                    .borders(Borders::ALL)
-                    .border_style(theme.border_style()),
-            );
-        frame.render_widget(paragraph, area);
+        components::render_loading(frame, theme, area, "Collaborators");
         return;
     }
 
@@ -523,7 +450,7 @@ fn render_webhooks(frame: &mut Frame, state: &AppState, area: Rect) {
     let settings = state.settings.as_ref().unwrap();
 
     if state.is_loading("webhooks") {
-        render_loading_spinner(frame, theme, area, "Webhooks");
+        components::render_loading(frame, theme, area, "Webhooks");
         return;
     }
 
@@ -605,7 +532,7 @@ fn render_deploy_keys(frame: &mut Frame, state: &AppState, area: Rect) {
     let settings = state.settings.as_ref().unwrap();
 
     if state.is_loading("deploy_keys") {
-        render_loading_spinner(frame, theme, area, "Deploy Keys");
+        components::render_loading(frame, theme, area, "Deploy Keys");
         return;
     }
 
@@ -679,28 +606,4 @@ fn render_deploy_keys(frame: &mut Frame, state: &AppState, area: Rect) {
             .border_style(border_style),
     );
     frame.render_widget(list, area);
-}
-
-fn render_loading_spinner(
-    frame: &mut Frame,
-    theme: &ghtui_core::theme::Theme,
-    area: Rect,
-    title: &str,
-) {
-    let spinner = ghtui_widgets::Spinner::new(
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as usize
-            / 100,
-    );
-    let paragraph = Paragraph::new(Line::from(spinner.span()))
-        .style(theme.text())
-        .block(
-            Block::default()
-                .title(format!(" {} ", title))
-                .borders(Borders::ALL)
-                .border_style(theme.border_style()),
-        );
-    frame.render_widget(paragraph, area);
 }
