@@ -260,11 +260,11 @@
 
 ## Phase 10 — UX 개선
 
-- [ ] Command palette (Ctrl-P, fuzzy search)
+- [x] Command palette (Ctrl+P — fuzzy search, 네비게이션/액션 빠른 실행)
 - [ ] 커스텀 키바인딩 설정 (config.toml)
 - [x] 마우스 지원 (클릭, 스크롤)
-- [ ] 반응형 레이아웃 (좁은 터미널)
-- [ ] 이미지 미리보기 (sixel/kitty protocol)
+- [x] 반응형 레이아웃 (터미널 width<80 시 사이드바 자동 숨김)
+- [ ] 이미지 미리보기 (sixel/kitty protocol — 터미널 호환성 이슈로 보류)
 
 ## Phase 11 — 배포 & 에코시스템
 

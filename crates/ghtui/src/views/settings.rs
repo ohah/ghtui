@@ -25,33 +25,38 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     };
 
-    // Horizontal split: sidebar (30) | content (rest)
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(30), Constraint::Min(0)])
-        .split(area);
+    let show_sidebar = area.width >= 80;
 
-    // Sidebar
-    let sidebar_titles = [
-        "General".to_string(),
-        "Branch Protection".to_string(),
-        format!("Collaborators ({})", settings.collaborators.len()),
-        format!("Webhooks ({})", settings.webhooks.len()),
-        format!("Deploy Keys ({})", settings.deploy_keys.len()),
-    ];
+    let content_area = if show_sidebar {
+        // Horizontal split: sidebar (30) | content (rest)
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Length(30), Constraint::Min(0)])
+            .split(area);
 
-    components::render_sidebar(
-        frame,
-        theme,
-        "Settings",
-        &sidebar_titles,
-        settings.tab,
-        settings.sidebar_focused,
-        chunks[0],
-    );
+        // Sidebar
+        let sidebar_titles = [
+            "General".to_string(),
+            "Branch Protection".to_string(),
+            format!("Collaborators ({})", settings.collaborators.len()),
+            format!("Webhooks ({})", settings.webhooks.len()),
+            format!("Deploy Keys ({})", settings.deploy_keys.len()),
+        ];
 
-    // Content panel
-    let content_area = chunks[1];
+        components::render_sidebar(
+            frame,
+            theme,
+            "Settings",
+            &sidebar_titles,
+            settings.tab,
+            settings.sidebar_focused,
+            chunks[0],
+        );
+
+        chunks[1]
+    } else {
+        area
+    };
 
     match settings.tab {
         0 => render_general(frame, state, content_area),

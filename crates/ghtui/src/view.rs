@@ -119,6 +119,11 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
             _ => {}
         }
     }
+
+    // Command palette overlay (on top of everything)
+    if state.command_palette.is_some() {
+        views::command_palette::render(frame, state, size);
+    }
 }
 
 fn render_repo_header(frame: &mut Frame, state: &AppState, theme: &Theme, area: Rect) {
@@ -260,7 +265,7 @@ fn render_footer(frame: &mut Frame, state: &AppState, theme: &Theme, area: Rect)
         Route::Settings { .. } => "Tab:Section d:Desc b:Branch T:Topics I/P/W:Toggle",
         Route::Notifications => "Enter:Open m:Read M:ReadAll d:Done u:Unsub s/e:Filter g:Group",
         Route::Dashboard | Route::Code { .. } => {
-            "j/k:Nav Enter:Open BS:Back Tab:Focus t:Theme ?:Help q:Quit"
+            "j/k:Nav Enter:Open BS:Back Tab:Focus C-p:Palette t:Theme ?:Help q:Quit"
         }
         _ => "1-6:Tabs t:Theme ?:Help q:Quit",
     };

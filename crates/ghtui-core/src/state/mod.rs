@@ -11,7 +11,7 @@ pub mod settings;
 use std::collections::{HashSet, VecDeque};
 
 use crate::config::{AppConfig, GhAccount};
-use crate::message::ModalKind;
+use crate::message::{Message, ModalKind};
 use crate::router::Route;
 use crate::theme::Theme;
 use crate::types::common::RepoId;
@@ -25,6 +25,121 @@ pub use pr::*;
 pub use search::*;
 pub use security::*;
 pub use settings::*;
+
+// --- Command Palette ---
+#[derive(Debug)]
+pub struct CommandPaletteState {
+    pub query: String,
+    pub items: Vec<PaletteItem>,
+    pub filtered: Vec<usize>, // indices into items that match query
+    pub selected: usize,      // index into filtered
+}
+
+#[derive(Debug)]
+pub struct PaletteItem {
+    pub label: String,
+    pub category: String,
+    pub message: Message,
+}
+
+impl Default for CommandPaletteState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl CommandPaletteState {
+    pub fn new() -> Self {
+        let items = vec![
+            PaletteItem {
+                label: "Code".into(),
+                category: "Navigate".into(),
+                message: Message::GlobalTabSelect(0),
+            },
+            PaletteItem {
+                label: "Issues".into(),
+                category: "Navigate".into(),
+                message: Message::GlobalTabSelect(1),
+            },
+            PaletteItem {
+                label: "Pull Requests".into(),
+                category: "Navigate".into(),
+                message: Message::GlobalTabSelect(2),
+            },
+            PaletteItem {
+                label: "Actions".into(),
+                category: "Navigate".into(),
+                message: Message::GlobalTabSelect(3),
+            },
+            PaletteItem {
+                label: "Security".into(),
+                category: "Navigate".into(),
+                message: Message::GlobalTabSelect(4),
+            },
+            PaletteItem {
+                label: "Insights".into(),
+                category: "Navigate".into(),
+                message: Message::GlobalTabSelect(5),
+            },
+            PaletteItem {
+                label: "Settings".into(),
+                category: "Navigate".into(),
+                message: Message::GlobalTabSelect(6),
+            },
+            PaletteItem {
+                label: "Notifications".into(),
+                category: "Navigate".into(),
+                message: Message::Navigate(Route::Notifications),
+            },
+            PaletteItem {
+                label: "Search".into(),
+                category: "Navigate".into(),
+                message: Message::SearchOpen,
+            },
+            PaletteItem {
+                label: "Toggle theme".into(),
+                category: "Action".into(),
+                message: Message::ToggleTheme,
+            },
+            PaletteItem {
+                label: "Help".into(),
+                category: "Action".into(),
+                message: Message::ModalOpen(ModalKind::Help),
+            },
+            PaletteItem {
+                label: "Quit".into(),
+                category: "Action".into(),
+                message: Message::Quit,
+            },
+        ];
+        let filtered: Vec<usize> = (0..items.len()).collect();
+        Self {
+            query: String::new(),
+            items,
+            filtered,
+            selected: 0,
+        }
+    }
+
+    pub fn filter(&mut self) {
+        let q = self.query.to_lowercase();
+        self.filtered = self
+            .items
+            .iter()
+            .enumerate()
+            .filter(|(_, item)| {
+                if q.is_empty() {
+                    return true;
+                }
+                item.label.to_lowercase().contains(&q) || item.category.to_lowercase().contains(&q)
+            })
+            .map(|(i, _)| i)
+            .collect();
+        if self.selected >= self.filtered.len() {
+            self.selected = 0;
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum InputMode {
@@ -83,6 +198,9 @@ pub struct AppState {
     pub current_account: Option<GhAccount>,
     pub accounts: Vec<GhAccount>,
     pub account_selected: usize,
+
+    // Command palette
+    pub command_palette: Option<CommandPaletteState>,
 }
 
 impl AppState {
@@ -121,6 +239,7 @@ impl AppState {
             current_account,
             accounts,
             account_selected: 0,
+            command_palette: None,
         }
     }
 

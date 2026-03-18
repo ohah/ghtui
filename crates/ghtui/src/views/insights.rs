@@ -25,40 +25,48 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     };
 
-    // Horizontal split: sidebar (30) | content (rest)
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(30), Constraint::Min(0)])
-        .split(area);
+    let show_sidebar = area.width >= 80;
 
-    // Sidebar
-    let sidebar_titles = [
-        format!("Contributors ({})", insights.contributors.len()),
-        "Commit Activity".to_string(),
-        "Traffic".to_string(),
-        "Code Frequency".to_string(),
-        format!("Forks ({})", insights.forks.len()),
-        format!("Dependencies ({})", insights.dependencies.len()),
-    ];
+    let content_area = if show_sidebar {
+        // Horizontal split: sidebar (30) | content (rest)
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Length(30), Constraint::Min(0)])
+            .split(area);
 
-    components::render_sidebar(
-        frame,
-        theme,
-        "Insights",
-        &sidebar_titles,
-        insights.tab,
-        insights.sidebar_focused,
-        chunks[0],
-    );
+        // Sidebar
+        let sidebar_titles = [
+            format!("Contributors ({})", insights.contributors.len()),
+            "Commit Activity".to_string(),
+            "Traffic".to_string(),
+            "Code Frequency".to_string(),
+            format!("Forks ({})", insights.forks.len()),
+            format!("Dependencies ({})", insights.dependencies.len()),
+        ];
+
+        components::render_sidebar(
+            frame,
+            theme,
+            "Insights",
+            &sidebar_titles,
+            insights.tab,
+            insights.sidebar_focused,
+            chunks[0],
+        );
+
+        chunks[1]
+    } else {
+        area
+    };
 
     // Content
     match insights.tab {
-        0 => render_contributors(frame, state, chunks[1]),
-        1 => render_commit_activity(frame, state, chunks[1]),
-        2 => render_traffic(frame, state, chunks[1]),
-        3 => render_code_frequency(frame, state, chunks[1]),
-        4 => render_forks(frame, state, chunks[1]),
-        5 => render_dependencies(frame, state, chunks[1]),
+        0 => render_contributors(frame, state, content_area),
+        1 => render_commit_activity(frame, state, content_area),
+        2 => render_traffic(frame, state, content_area),
+        3 => render_code_frequency(frame, state, content_area),
+        4 => render_forks(frame, state, content_area),
+        5 => render_dependencies(frame, state, content_area),
         _ => {}
     }
 }
