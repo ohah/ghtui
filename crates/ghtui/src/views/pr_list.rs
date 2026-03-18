@@ -29,12 +29,14 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     }
 
     let Some(ref list_state) = state.pr_list else {
-        let paragraph = Paragraph::new("No data").style(theme.text_dim()).block(
-            Block::default()
-                .title(" Pull Requests ")
-                .borders(Borders::ALL)
-                .border_style(theme.border_style()),
-        );
+        let paragraph = Paragraph::new("  No data — check API rate limit or network connection")
+            .style(theme.text_dim())
+            .block(
+                Block::default()
+                    .title(" Pull Requests ")
+                    .borders(Borders::ALL)
+                    .border_style(theme.border_style()),
+            );
         frame.render_widget(paragraph, area);
         return;
     };
