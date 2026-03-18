@@ -1,3 +1,4 @@
+use crate::editor::TextEditor;
 use crate::types::code::{CommitDetail, CommitEntry, FileEntry};
 
 #[derive(Debug)]
@@ -9,6 +10,7 @@ pub struct CodeViewState {
     pub git_ref: String,
     pub file_content: Option<String>,
     pub file_name: Option<String>,
+    pub file_path: Option<String>, // full path for API calls (e.g. "src/main.rs")
     pub scroll: usize,
     pub readme_content: Option<String>,
     pub sidebar_focused: bool,
@@ -26,6 +28,10 @@ pub struct CodeViewState {
     pub show_commits: bool,
     pub commit_selected: usize,
     pub commit_scroll: usize,
+
+    // File editing
+    pub editing: bool,
+    pub editor: TextEditor,
 }
 
 impl CodeViewState {
@@ -38,6 +44,7 @@ impl CodeViewState {
             git_ref,
             file_content: None,
             file_name: None,
+            file_path: None,
             scroll: 0,
             readme_content: None,
             sidebar_focused: true,
@@ -53,6 +60,9 @@ impl CodeViewState {
             show_commits: false,
             commit_selected: 0,
             commit_scroll: 0,
+
+            editing: false,
+            editor: TextEditor::new(),
         }
     }
 

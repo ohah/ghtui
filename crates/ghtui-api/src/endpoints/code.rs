@@ -161,6 +161,31 @@ impl GithubClient {
             .collect())
     }
 
+    /// Update (or create) a file via the GitHub Contents API.
+    /// `sha` is the blob SHA of the file being replaced (empty string for new files).
+    pub async fn update_file_content(
+        &self,
+        repo: &RepoId,
+        path: &str,
+        content: &str,
+        message: &str,
+        sha: &str,
+        branch: &str,
+    ) -> Result<(), ApiError> {
+        let api_path = format!("/repos/{}/{}/contents/{}", repo.owner, repo.name, path);
+        let encoded = base64::engine::general_purpose::STANDARD.encode(content.as_bytes());
+        let mut body = serde_json::json!({
+            "message": message,
+            "content": encoded,
+            "branch": branch,
+        });
+        if !sha.is_empty() {
+            body["sha"] = serde_json::Value::String(sha.to_string());
+        }
+        self.put(&api_path, &body).await?;
+        Ok(())
+    }
+
     pub async fn get_commit(&self, repo: &RepoId, sha: &str) -> Result<CommitDetail, ApiError> {
         let api_path = format!("/repos/{}/{}/commits/{}", repo.owner, repo.name, sha);
         let body = self.get(&api_path).await?;

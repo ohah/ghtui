@@ -3899,6 +3899,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                                 )];
                             }
                             ghtui_core::types::code::FileEntryType::File => {
+                                code.file_path = Some(entry.path.clone());
                                 state.loading.insert("code_file".to_string());
                                 return vec![Command::FetchFileContent(
                                     repo.clone(),
@@ -3918,6 +3919,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 if code.file_content.is_some() {
                     code.file_content = None;
                     code.file_name = None;
+                    code.file_path = None;
                     code.scroll = 0;
                     code.sidebar_focused = true;
                     return vec![];
@@ -3980,6 +3982,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     code.git_ref = ref_name;
                     code.file_content = None;
                     code.file_name = None;
+                    code.file_path = None;
                     code.readme_content = None;
                     code.entries.clear();
                     code.path_stack.clear();
@@ -4055,6 +4058,186 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 code.commit_scroll = 0;
             }
             vec![]
+        }
+
+        // Code file editing
+        Message::CodeStartEdit => {
+            if let Some(ref mut code) = state.code {
+                if let Some(ref content) = code.file_content {
+                    code.editor = ghtui_core::editor::TextEditor::from_string(content);
+                    // Set viewport height based on terminal size (minus borders/status)
+                    let vh = state.terminal_size.1.saturating_sub(4) as usize;
+                    code.editor.set_viewport_height(vh.max(5));
+                    code.editing = true;
+                }
+            }
+            vec![]
+        }
+        Message::CodeEditChar(c) => {
+            if let Some(ref mut code) = state.code {
+                code.editor.insert_char(c);
+            }
+            vec![]
+        }
+        Message::CodeEditNewline => {
+            if let Some(ref mut code) = state.code {
+                code.editor.insert_newline();
+            }
+            vec![]
+        }
+        Message::CodeEditBackspace => {
+            if let Some(ref mut code) = state.code {
+                code.editor.backspace();
+            }
+            vec![]
+        }
+        Message::CodeEditDelete => {
+            if let Some(ref mut code) = state.code {
+                code.editor.delete();
+            }
+            vec![]
+        }
+        Message::CodeEditTab => {
+            if let Some(ref mut code) = state.code {
+                code.editor.insert_tab();
+            }
+            vec![]
+        }
+        Message::CodeEditCursorLeft => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_left();
+            }
+            vec![]
+        }
+        Message::CodeEditCursorRight => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_right();
+            }
+            vec![]
+        }
+        Message::CodeEditCursorUp => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_up();
+            }
+            vec![]
+        }
+        Message::CodeEditCursorDown => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_down();
+            }
+            vec![]
+        }
+        Message::CodeEditWordLeft => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_word_left();
+            }
+            vec![]
+        }
+        Message::CodeEditWordRight => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_word_right();
+            }
+            vec![]
+        }
+        Message::CodeEditHome => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_home();
+            }
+            vec![]
+        }
+        Message::CodeEditEnd => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_end();
+            }
+            vec![]
+        }
+        Message::CodeEditPageUp => {
+            if let Some(ref mut code) = state.code {
+                code.editor.page_up();
+            }
+            vec![]
+        }
+        Message::CodeEditPageDown => {
+            if let Some(ref mut code) = state.code {
+                code.editor.page_down();
+            }
+            vec![]
+        }
+        Message::CodeEditUndo => {
+            if let Some(ref mut code) = state.code {
+                code.editor.undo();
+            }
+            vec![]
+        }
+        Message::CodeEditRedo => {
+            if let Some(ref mut code) = state.code {
+                code.editor.redo();
+            }
+            vec![]
+        }
+        Message::CodeEditSubmit => {
+            if let Some(ref code) = state.code {
+                if let Some(ref repo) = state.current_repo {
+                    let content = code.editor.content();
+                    let filename = code.file_name.clone().unwrap_or_default();
+                    let file_path = code.file_path.clone().unwrap_or_default();
+                    let message = format!("Update {}", filename);
+                    let branch = code.git_ref.clone();
+
+                    // Find the file SHA from entries
+                    let sha = code
+                        .entries
+                        .iter()
+                        .find(|e| Some(&e.path) == code.file_path.as_ref())
+                        .map(|e| e.sha.clone())
+                        .unwrap_or_default();
+
+                    state.loading.insert("code_file_update".to_string());
+                    return vec![Command::UpdateFileContent(
+                        repo.clone(),
+                        file_path,
+                        content,
+                        message,
+                        sha,
+                        branch,
+                    )];
+                }
+            }
+            vec![]
+        }
+        Message::CodeEditCancel => {
+            if let Some(ref mut code) = state.code {
+                code.editing = false;
+                code.editor = ghtui_core::editor::TextEditor::new();
+            }
+            vec![]
+        }
+        Message::CodeFileUpdated => {
+            state.loading.remove("code_file_update");
+            let mut cmds = vec![];
+            if let Some(ref mut code) = state.code {
+                code.editing = false;
+                code.editor = ghtui_core::editor::TextEditor::new();
+                let filename = code.file_name.clone().unwrap_or_default();
+                let file_path = code.file_path.clone();
+                let git_ref = code.git_ref.clone();
+                let current_path = code.current_path.clone();
+
+                state.push_toast(
+                    format!("Committed: Update {}", filename),
+                    ToastLevel::Success,
+                );
+
+                // Re-fetch file content to get new SHA and updated content
+                if let (Some(fp), Some(repo)) = (file_path, &state.current_repo) {
+                    state.loading.insert("code_file".to_string());
+                    cmds.push(Command::FetchFileContent(repo.clone(), fp, git_ref.clone()));
+                    // Also re-fetch the directory listing to update SHA
+                    state.loading.insert("code_contents".to_string());
+                    cmds.push(Command::FetchContents(repo.clone(), current_path, git_ref));
+                }
+            }
+            cmds
         }
     }
 }
