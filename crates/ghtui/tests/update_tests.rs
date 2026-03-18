@@ -3,6 +3,7 @@ use ghtui_core::config::{AppConfig, GhAccount};
 use ghtui_core::message::ModalKind;
 use ghtui_core::router::Route;
 use ghtui_core::state::*;
+use ghtui_core::types::code::TreeNode;
 use ghtui_core::types::common::RepoId;
 use ghtui_core::types::*;
 
@@ -124,16 +125,16 @@ fn test_state_toast_on_success() {
 }
 
 #[test]
-fn test_state_error_clears_loading() {
+fn test_state_error_preserves_loading() {
     let mut state = make_state();
     state.loading.insert("pr_list".to_string());
     state.loading.insert("pr_detail".to_string());
 
-    // Simulating error handling
-    state.loading.clear();
+    // Error handler should NOT clear loading — concurrent requests still
+    // in flight will clean up their own keys via individual *Loaded handlers.
     state.push_toast("API Error".to_string(), ToastLevel::Error);
 
-    assert!(state.loading.is_empty());
+    assert_eq!(state.loading.len(), 2);
     assert_eq!(state.toasts.len(), 1);
     assert_eq!(state.toasts[0].level, ToastLevel::Error);
 }
@@ -414,4 +415,231 @@ fn test_account_switch_closes_modal() {
 
     assert!(state.modal.is_none());
     assert_eq!(state.input_mode, InputMode::Normal);
+}
+
+// -- Code view tests --
+
+fn make_code_state() -> AppState {
+    let mut state = make_state();
+    let repo = state.current_repo.clone().unwrap();
+    state.navigate(Route::Code {
+        repo,
+        path: String::new(),
+        git_ref: "main".to_string(),
+    });
+    state.code = Some(CodeViewState::new("main".to_string()));
+    state
+}
+
+#[test]
+fn test_code_file_loaded_race_guard_mismatch() {
+    let mut state = make_code_state();
+    let code = state.code.as_mut().unwrap();
+    code.file_path = Some("src/a.rs".to_string());
+
+    // Simulate CodeFileLoaded arriving for a *different* file (stale response)
+    // The race guard checks: code.file_path == Some(path)
+    let loaded_path = "src/b.rs";
+    if code.file_path.as_deref() == Some(loaded_path) {
+        code.file_content = Some("content of b".to_string());
+        code.file_name = Some("b.rs".to_string());
+    }
+
+    // file_content should NOT be set because paths don't match
+    assert!(state.code.as_ref().unwrap().file_content.is_none());
+}
+
+#[test]
+fn test_code_file_loaded_race_guard_match() {
+    let mut state = make_code_state();
+    let code = state.code.as_mut().unwrap();
+    code.file_path = Some("src/a.rs".to_string());
+
+    // Simulate CodeFileLoaded arriving for the correct file
+    let loaded_path = "src/a.rs";
+    let loaded_content = "fn main() {}".to_string();
+    let loaded_filename = "a.rs".to_string();
+    if code.file_path.as_deref() == Some(loaded_path) {
+        code.file_content = Some(loaded_content.clone());
+        code.file_name = Some(loaded_filename.clone());
+        code.scroll = 0;
+    }
+
+    let code = state.code.as_ref().unwrap();
+    assert_eq!(code.file_content.as_deref(), Some("fn main() {}"));
+    assert_eq!(code.file_name.as_deref(), Some("a.rs"));
+    assert_eq!(code.scroll, 0);
+}
+
+#[test]
+fn test_code_select_ref_resets_state() {
+    let mut state = make_code_state();
+    let code = state.code.as_mut().unwrap();
+
+    // Set up some existing state that should be cleared on ref switch
+    code.file_content = Some("old content".to_string());
+    code.file_name = Some("old.rs".to_string());
+    code.file_path = Some("src/old.rs".to_string());
+    code.tree_loaded = true;
+    code.sidebar_focused = false;
+
+    // Simulate CodeSelectRef: reset to fresh state with new ref
+    let branches = std::mem::take(&mut code.branches);
+    let tags = std::mem::take(&mut code.tags);
+    let new_ref = "develop".to_string();
+    *code = CodeViewState::new(new_ref.clone());
+    code.branches = branches;
+    code.tags = tags;
+
+    let code = state.code.as_ref().unwrap();
+    assert!(
+        code.file_content.is_none(),
+        "file_content should be cleared"
+    );
+    assert!(code.file_name.is_none(), "file_name should be cleared");
+    assert!(
+        code.sidebar_focused,
+        "sidebar_focused should reset to true (default)"
+    );
+    assert!(!code.tree_loaded, "tree_loaded should reset to false");
+    assert_eq!(code.git_ref, "develop");
+}
+
+#[test]
+fn test_code_navigate_into_clears_previous_file() {
+    let mut state = make_code_state();
+    let code = state.code.as_mut().unwrap();
+
+    // Set up existing file content
+    code.file_content = Some("old content".to_string());
+    code.file_name = Some("old.rs".to_string());
+    code.image_data = Some(vec![0x89, 0x50, 0x4e, 0x47]);
+
+    // Set up tree with a file node
+    code.tree_loaded = true;
+    code.tree = vec![TreeNode {
+        name: "new.rs".to_string(),
+        path: "src/new.rs".to_string(),
+        is_dir: false,
+        depth: 0,
+        expanded: false,
+        size: Some(100),
+    }];
+    code.rebuild_visible_tree();
+    code.selected = 0;
+
+    // Simulate CodeNavigateInto for a file node:
+    // The handler clears previous file immediately before fetching
+    if let Some(node) = code.tree_selected_node().cloned() {
+        if !node.is_dir {
+            code.file_content = None;
+            code.file_name = None;
+            code.image_data = None;
+            code.scroll = 0;
+            code.file_path = Some(node.path.clone());
+        }
+    }
+
+    let code = state.code.as_ref().unwrap();
+    assert!(
+        code.file_content.is_none(),
+        "file_content should be cleared before fetch"
+    );
+    assert!(
+        code.file_name.is_none(),
+        "file_name should be cleared before fetch"
+    );
+    assert!(
+        code.image_data.is_none(),
+        "image_data should be cleared before fetch"
+    );
+    assert_eq!(
+        code.file_path.as_deref(),
+        Some("src/new.rs"),
+        "file_path should be set to new node path"
+    );
+    assert_eq!(code.scroll, 0, "scroll should be reset");
+}
+
+// -- Error handler tests --
+
+#[test]
+fn test_error_does_not_clear_all_loading() {
+    let mut state = make_state();
+
+    // Simulate multiple concurrent API calls
+    state.loading.insert("pr_list".to_string());
+    state.loading.insert("code_tree".to_string());
+    state.loading.insert("security_alerts".to_string());
+
+    // Simulate Message::Error handling (after the fix):
+    // Error should NOT call state.loading.clear().
+    // It only pushes a toast and resets code editing state.
+    state.push_toast("API Error: 403 Forbidden".to_string(), ToastLevel::Error);
+
+    // Loading keys for other in-flight requests should still be present
+    assert!(
+        state.is_loading("pr_list"),
+        "pr_list loading should not be cleared by error"
+    );
+    assert!(
+        state.is_loading("code_tree"),
+        "code_tree loading should not be cleared by error"
+    );
+    assert!(
+        state.is_loading("security_alerts"),
+        "security_alerts loading should not be cleared by error"
+    );
+    assert_eq!(state.toasts.len(), 1);
+    assert_eq!(state.toasts[0].level, ToastLevel::Error);
+}
+
+// -- Route::repo() tests --
+
+#[test]
+fn test_route_repo_returns_correct_repo() {
+    let repo = RepoId::new("owner", "repo");
+
+    // Routes with repo should return Some
+    let code_route = Route::Code {
+        repo: repo.clone(),
+        path: String::new(),
+        git_ref: "main".to_string(),
+    };
+    assert_eq!(code_route.repo(), Some(&repo));
+
+    let pr_list = Route::PrList {
+        repo: repo.clone(),
+        filters: PrFilters::default(),
+    };
+    assert_eq!(pr_list.repo(), Some(&repo));
+
+    let issue_detail = Route::IssueDetail {
+        repo: repo.clone(),
+        number: 42,
+    };
+    assert_eq!(issue_detail.repo(), Some(&repo));
+
+    let actions = Route::ActionsList {
+        repo: repo.clone(),
+        filters: ActionsFilters::default(),
+    };
+    assert_eq!(actions.repo(), Some(&repo));
+
+    let settings = Route::Settings { repo: repo.clone() };
+    assert_eq!(settings.repo(), Some(&repo));
+
+    // Routes without repo should return None
+    assert_eq!(Route::Dashboard.repo(), None);
+    assert_eq!(Route::Notifications.repo(), None);
+    assert_eq!(
+        Route::Search {
+            query: "test".to_string(),
+            kind: SearchKind::Repos,
+        }
+        .repo(),
+        None
+    );
+    assert_eq!(Route::Gists.repo(), None);
+    assert_eq!(Route::Organizations.repo(), None);
 }

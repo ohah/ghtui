@@ -15,8 +15,12 @@ type CacheKey = (String, u64);
 /// Cached highlight result
 type CacheEntry = (CacheKey, Vec<Vec<HlToken>>);
 
+/// Maximum number of entries in the LRU highlight cache.
+/// Vec-based LRU: most recently used entry is at index 0.
+const HL_CACHE_MAX: usize = 8;
+
 thread_local! {
-    static HL_CACHE: RefCell<Option<CacheEntry>> = const { RefCell::new(None) };
+    static HL_CACHE: RefCell<Vec<CacheEntry>> = const { RefCell::new(Vec::new()) };
 }
 
 fn hash_content(content: &str) -> u64 {
@@ -30,15 +34,22 @@ fn hash_content(content: &str) -> u64 {
 pub fn highlight_file<'a>(content: &str, filename: &str, is_dark: bool) -> Vec<Vec<Span<'a>>> {
     let key = (filename.to_string(), hash_content(content));
 
-    // Check cache
+    // Check LRU cache: search for matching key, move to front if found
     let cached = HL_CACHE.with(|c| {
-        let borrow = c.borrow();
-        if let Some((ref k, ref data)) = *borrow {
-            if k.0 == key.0 && k.1 == key.1 {
-                return Some(tokens_to_spans(data));
+        let mut entries = c.borrow_mut();
+        if let Some(idx) = entries
+            .iter()
+            .position(|(k, _)| k.0 == key.0 && k.1 == key.1)
+        {
+            // Move to front (most recently used)
+            if idx > 0 {
+                let entry = entries.remove(idx);
+                entries.insert(0, entry);
             }
+            Some(tokens_to_spans(&entries[0].1))
+        } else {
+            None
         }
-        None
     });
 
     if let Some(result) = cached {
@@ -56,9 +67,11 @@ pub fn highlight_file<'a>(content: &str, filename: &str, is_dark: bool) -> Vec<V
         plain_tokens(content, is_dark)
     };
 
-    // Store in cache
+    // Store in LRU cache: push to front, truncate to max size
     HL_CACHE.with(|c| {
-        *c.borrow_mut() = Some((key, tokens.clone()));
+        let mut entries = c.borrow_mut();
+        entries.insert(0, (key, tokens.clone()));
+        entries.truncate(HL_CACHE_MAX);
     });
 
     tokens_to_spans(&tokens)
