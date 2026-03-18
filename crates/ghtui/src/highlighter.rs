@@ -1,12 +1,9 @@
-//! Tree-sitter based syntax highlighting with syntect fallback.
-//!
-//! Uses Tree-sitter AST for 15 major languages, falls back to syntect
-//! TextMate grammars for 200+ other languages.
+//! Tree-sitter based syntax highlighting for 29 languages.
+//! Unsupported file types render as plain text.
 
 use ratatui::style::{Color, Style};
 use ratatui::text::Span;
 use std::cell::RefCell;
-use std::sync::LazyLock;
 
 /// A highlighted token: (foreground RGB, text)
 type HlToken = (u8, u8, u8, String);
@@ -22,7 +19,7 @@ thread_local! {
 }
 
 /// Highlight file content. Returns colored spans per line.
-/// Uses Tree-sitter for supported languages, syntect for others.
+/// Uses Tree-sitter for 29 languages, plain text for others.
 pub fn highlight_file<'a>(content: &str, filename: &str, is_dark: bool) -> Vec<Vec<Span<'a>>> {
     let key = (filename.to_string(), content.len(), content.lines().count());
 
@@ -41,12 +38,15 @@ pub fn highlight_file<'a>(content: &str, filename: &str, is_dark: bool) -> Vec<V
         return result;
     }
 
-    // Try Tree-sitter first
+    // Try Tree-sitter first (by extension, then by filename)
     let ext = filename.rsplit('.').next().unwrap_or("");
-    let tokens = if let Some(lang) = get_tree_sitter_language(ext) {
+    let basename = filename.rsplit('/').next().unwrap_or(filename);
+    let lang = get_tree_sitter_language(ext).or_else(|| get_tree_sitter_language_by_name(basename));
+    let tokens = if let Some(lang) = lang {
         highlight_with_tree_sitter(content, lang, is_dark)
     } else {
-        highlight_with_syntect(content, filename, is_dark)
+        // No Tree-sitter grammar — render as plain text
+        plain_tokens(content, is_dark)
     };
 
     // Store in cache
@@ -91,6 +91,24 @@ fn get_tree_sitter_language(ext: &str) -> Option<tree_sitter::Language> {
         "sh" | "bash" | "zsh" => Some(tree_sitter_bash::LANGUAGE.into()),
         "yml" | "yaml" => Some(tree_sitter_yaml::LANGUAGE.into()),
         "md" | "markdown" | "mdx" => Some(tree_sitter_md::LANGUAGE.into()),
+        "swift" => Some(tree_sitter_swift::LANGUAGE.into()),
+        "cs" | "csx" => Some(tree_sitter_c_sharp::LANGUAGE.into()),
+        "php" | "phtml" => Some(tree_sitter_php::LANGUAGE_PHP.into()),
+        "scala" | "sc" => Some(tree_sitter_scala::LANGUAGE.into()),
+        "lua" => Some(tree_sitter_lua::LANGUAGE.into()),
+        "zig" => Some(tree_sitter_zig::LANGUAGE.into()),
+        "ex" | "exs" => Some(tree_sitter_elixir::LANGUAGE.into()),
+        "hcl" | "tf" | "tfvars" => Some(tree_sitter_hcl::LANGUAGE.into()),
+        "proto" => Some(tree_sitter_proto::LANGUAGE.into()),
+        _ => None,
+    }
+}
+
+/// Match by full filename (for files without extensions like Dockerfile, Makefile).
+fn get_tree_sitter_language_by_name(name: &str) -> Option<tree_sitter::Language> {
+    let lower = name.to_lowercase();
+    match lower.as_str() {
+        "makefile" | "gnumakefile" => Some(tree_sitter_bash::LANGUAGE.into()), // close enough
         _ => None,
     }
 }
@@ -403,67 +421,4 @@ fn plain_tokens(content: &str, is_dark: bool) -> Vec<Vec<HlToken>> {
         .lines()
         .map(|line| vec![(r, g, b, line.to_string())])
         .collect()
-}
-
-// === syntect fallback ===
-
-fn highlight_with_syntect(content: &str, filename: &str, is_dark: bool) -> Vec<Vec<HlToken>> {
-    use syntect::easy::HighlightLines;
-    use syntect::highlighting::ThemeSet;
-    use syntect::parsing::SyntaxSet;
-
-    static SYNTAX_SET: LazyLock<SyntaxSet> = LazyLock::new(SyntaxSet::load_defaults_newlines);
-    static THEME_SET: LazyLock<ThemeSet> = LazyLock::new(ThemeSet::load_defaults);
-
-    let ss = &*SYNTAX_SET;
-    let ts = &*THEME_SET;
-
-    let theme_name = if is_dark {
-        "base16-ocean.dark"
-    } else {
-        "base16-ocean.light"
-    };
-    let Some(syn_theme) = ts.themes.get(theme_name) else {
-        return plain_tokens(content, is_dark);
-    };
-
-    let ext = filename.rsplit('.').next().unwrap_or("");
-    let syntax = ss
-        .find_syntax_by_extension(ext)
-        .unwrap_or_else(|| ss.find_syntax_plain_text());
-
-    let mut highlighter = HighlightLines::new(syntax, syn_theme);
-    let mut result: Vec<Vec<HlToken>> = Vec::new();
-
-    for line in content.lines() {
-        let line_nl = format!("{}\n", line);
-        match highlighter.highlight_line(&line_nl, ss) {
-            Ok(ranges) => {
-                let tokens: Vec<HlToken> = ranges
-                    .iter()
-                    .map(|(style, text)| {
-                        let clean = text.trim_end_matches('\n').to_string();
-                        (
-                            style.foreground.r,
-                            style.foreground.g,
-                            style.foreground.b,
-                            clean,
-                        )
-                    })
-                    .filter(|(_, _, _, text)| !text.is_empty())
-                    .collect();
-                result.push(tokens);
-            }
-            Err(_) => {
-                let (r, g, b) = if is_dark {
-                    (230, 237, 243)
-                } else {
-                    (31, 35, 40)
-                };
-                result.push(vec![(r, g, b, line.to_string())]);
-            }
-        }
-    }
-
-    result
 }
