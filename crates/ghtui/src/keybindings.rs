@@ -6,15 +6,80 @@ use ghtui_core::state::issue::InlineEditTarget;
 use ghtui_core::state::pr::PrInlineEditTarget;
 use ghtui_core::{AppState, Message};
 
+/// Convert a KeyEvent to a human-readable string like "Ctrl+s", "Shift+Tab", "a", "Enter"
+pub fn key_event_to_string(key: &KeyEvent) -> String {
+    let mut parts = Vec::new();
+    if key.modifiers.contains(KeyModifiers::CONTROL) {
+        parts.push("Ctrl");
+    }
+    if key.modifiers.contains(KeyModifiers::ALT) {
+        parts.push("Alt");
+    }
+    if key.modifiers.contains(KeyModifiers::SHIFT)
+        && !matches!(key.code, KeyCode::Char(_) | KeyCode::BackTab)
+    {
+        parts.push("Shift");
+    }
+
+    let key_name = match key.code {
+        KeyCode::Char(c) => c.to_string(),
+        KeyCode::Enter => "Enter".to_string(),
+        KeyCode::Esc => "Esc".to_string(),
+        KeyCode::Backspace => "Backspace".to_string(),
+        KeyCode::Tab => "Tab".to_string(),
+        KeyCode::BackTab => "Shift+Tab".to_string(),
+        KeyCode::Delete => "Delete".to_string(),
+        KeyCode::Insert => "Insert".to_string(),
+        KeyCode::Home => "Home".to_string(),
+        KeyCode::End => "End".to_string(),
+        KeyCode::PageUp => "PageUp".to_string(),
+        KeyCode::PageDown => "PageDown".to_string(),
+        KeyCode::Up => "Up".to_string(),
+        KeyCode::Down => "Down".to_string(),
+        KeyCode::Left => "Left".to_string(),
+        KeyCode::Right => "Right".to_string(),
+        KeyCode::F(n) => format!("F{}", n),
+        _ => format!("{:?}", key.code),
+    };
+
+    parts.push(&key_name);
+    parts.join("+")
+}
+
 pub fn handle_key(key: KeyEvent, state: &AppState) -> Option<Message> {
     // Global: Ctrl-C always quits
     if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
         return Some(Message::Quit);
     }
 
+    // Keymap settings intercept: when capturing, grab the next keypress
+    if let Some(ref ks) = state.keymap_settings {
+        if ks.capturing {
+            // Esc cancels capture mode without assigning
+            if key.code == KeyCode::Esc && key.modifiers.is_empty() {
+                return Some(Message::KeymapSettingsEdit); // toggle capturing off
+            }
+            let key_str = key_event_to_string(&key);
+            return Some(Message::KeymapSettingsCapture(key_str));
+        }
+        // When keymap settings is open (but not capturing), handle its own keys
+        return handle_keymap_settings_keys(key);
+    }
+
     match state.input_mode {
         InputMode::Insert => handle_insert_mode(key),
         InputMode::Normal => handle_normal_mode(key, state),
+    }
+}
+
+fn handle_keymap_settings_keys(key: KeyEvent) -> Option<Message> {
+    match key.code {
+        KeyCode::Esc | KeyCode::Char('q') => Some(Message::KeymapSettingsClose),
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::KeymapSettingsDown),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::KeymapSettingsUp),
+        KeyCode::Enter => Some(Message::KeymapSettingsEdit),
+        KeyCode::Char('R') => Some(Message::KeymapSettingsReset),
+        _ => None,
     }
 }
 

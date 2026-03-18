@@ -126,6 +126,11 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
         }
     }
 
+    // Keymap settings overlay
+    if state.keymap_settings.is_some() {
+        views::keymap_settings::render(frame, state, size);
+    }
+
     // Command palette overlay (on top of everything)
     if state.command_palette.is_some() {
         views::command_palette::render(frame, state, size);

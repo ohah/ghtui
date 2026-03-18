@@ -415,6 +415,15 @@ pub enum Message {
     // Multi-repo dashboard
     RecentReposLoaded(Vec<crate::types::settings::Repository>),
 
+    // Keymap Settings
+    KeymapSettingsOpen,
+    KeymapSettingsClose,
+    KeymapSettingsUp,
+    KeymapSettingsDown,
+    KeymapSettingsEdit,
+    KeymapSettingsCapture(String),
+    KeymapSettingsReset,
+
     // System
     Error(GhtuiError),
     Quit,

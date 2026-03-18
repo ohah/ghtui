@@ -12,6 +12,7 @@ pub mod input_modal;
 pub mod insights;
 pub mod issue_detail;
 pub mod issue_list;
+pub mod keymap_settings;
 pub mod notifications;
 pub mod organizations;
 pub mod placeholder;
