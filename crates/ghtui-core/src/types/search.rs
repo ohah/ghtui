@@ -26,6 +26,9 @@ pub enum SearchResultItem {
         title: String,
         state: String,
         is_pr: bool,
+        labels: Vec<super::common::Label>,
+        created_at: Option<chrono::DateTime<chrono::Utc>>,
+        user: String,
     },
     Code {
         repo: String,

@@ -422,6 +422,9 @@ pub enum Message {
     OrgsLoaded(Vec<crate::types::OrgInfo>),
     OrgMembersLoaded(Vec<crate::types::OrgMember>),
 
+    // Repo counts (open issues/PRs)
+    RepoCountsLoaded(u32, u32), // (open_issues, open_prs)
+
     // Multi-repo dashboard
     RecentReposLoaded(Vec<crate::types::settings::Repository>),
 

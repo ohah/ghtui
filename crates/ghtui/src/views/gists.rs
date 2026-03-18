@@ -31,6 +31,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         .iter()
         .enumerate()
         .map(|(i, g)| {
+            // Line 1: visibility badge + description
             let visibility = if g.public { "Public" } else { "Secret" };
             let vis_color = if g.public {
                 theme.success
@@ -38,24 +39,45 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 theme.warning
             };
             let desc = g.description.as_deref().unwrap_or("(no description)");
-            let line = Line::from(vec![
-                Span::styled(format!("[{}] ", visibility), Style::default().fg(vis_color)),
+            let desc_style = if i == gists_state.selected {
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme.fg)
+            };
+
+            let line1 = Line::from(vec![
+                Span::styled(format!("  [{}] ", visibility), Style::default().fg(vis_color)),
+                Span::styled(desc.to_string(), desc_style),
+            ]);
+
+            // Line 2: file count + created relative time
+            let time_str = chrono::DateTime::parse_from_rfc3339(&g.created_at)
+                .map(|dt| {
+                    format!(
+                        "created {}",
+                        super::components::time_ago(&dt.with_timezone(&chrono::Utc)),
+                    )
+                })
+                .unwrap_or_default();
+
+            let line2 = Line::from(vec![
                 Span::styled(
-                    desc.to_string(),
-                    if i == gists_state.selected {
-                        Style::default()
-                            .fg(theme.accent)
-                            .add_modifier(Modifier::BOLD)
-                    } else {
-                        Style::default().fg(theme.fg)
-                    },
+                    format!(
+                        "  {} file{}",
+                        g.files_count,
+                        if g.files_count == 1 { "" } else { "s" }
+                    ),
+                    Style::default().fg(theme.fg_muted),
                 ),
                 Span::styled(
-                    format!("  {} files", g.files_count),
+                    format!("  {}", time_str),
                     Style::default().fg(theme.fg_muted),
                 ),
             ]);
-            ListItem::new(line)
+
+            ListItem::new(vec![line1, line2])
         })
         .collect();
 

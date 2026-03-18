@@ -171,79 +171,115 @@ fn render_result_item<'a>(
         theme.text()
     };
 
-    let line = match item {
+    let lines = match item {
         SearchResultItem::Repo {
             full_name,
             description,
             stars,
             language,
         } => {
-            let mut spans = vec![
+            // Line 1: repo name + stars + language
+            let mut line1_spans = vec![
                 Span::styled("  ", Style::default()),
                 Span::styled(full_name.as_str(), title_style),
-                Span::styled(format!(" ★{}", stars), Style::default().fg(theme.warning)),
+                Span::styled(format!("  ★ {}", stars), Style::default().fg(theme.warning)),
             ];
             if let Some(lang) = language {
-                spans.push(Span::styled(
-                    format!(" [{}]", lang),
+                line1_spans.push(Span::styled(
+                    format!("  {}", lang),
                     Style::default().fg(theme.accent),
                 ));
             }
-            if let Some(desc) = description {
-                let short = if desc.chars().count() > 60 {
-                    let truncated: String = desc.chars().take(57).collect();
-                    format!(" — {}...", truncated)
+            // Line 2: description
+            let line2 = if let Some(desc) = description {
+                let short = if desc.chars().count() > 80 {
+                    let truncated: String = desc.chars().take(77).collect();
+                    format!("    {}...", truncated)
                 } else {
-                    format!(" — {}", desc)
+                    format!("    {}", desc)
                 };
-                spans.push(Span::styled(short, Style::default().fg(theme.fg_dim)));
-            }
-            Line::from(spans)
+                Line::from(Span::styled(short, Style::default().fg(theme.fg_dim)))
+            } else {
+                Line::from(Span::styled(
+                    "    No description",
+                    Style::default().fg(theme.fg_muted),
+                ))
+            };
+            vec![Line::from(line1_spans), line2]
         }
         SearchResultItem::Issue {
             repo,
             number,
             title,
             state,
-            is_pr,
+            is_pr: _,
+            labels,
+            created_at,
+            user,
         } => {
-            let type_icon = if *is_pr { "PR" } else { "IS" };
             let state_color = if state == "open" {
                 theme.success
             } else {
                 theme.danger
             };
-            Line::from(vec![
+            let state_icon = "● ";
+            // Line 1: state icon + title + labels
+            let mut line1_spans = vec![
                 Span::styled(
-                    format!("  {} ", type_icon),
-                    Style::default().fg(theme.success),
+                    format!("  {}", state_icon),
+                    Style::default().fg(state_color),
                 ),
                 Span::styled(title.as_str(), title_style),
-                Span::styled(format!(" #{}", number), Style::default().fg(theme.fg_muted)),
-                Span::styled(format!(" {}", state), Style::default().fg(state_color)),
-                Span::styled(format!(" {}", repo), Style::default().fg(theme.fg_dim)),
-            ])
+            ];
+            for label in labels {
+                line1_spans.push(Span::raw(" "));
+                line1_spans.push(super::components::label_span(&label.name, &label.color));
+            }
+            // Line 2: #number + repo + time ago + author
+            let mut line2_spans = vec![
+                Span::styled(format!("    #{}", number), Style::default().fg(theme.fg_muted)),
+                Span::styled(format!("  {}", repo), Style::default().fg(theme.fg_dim)),
+            ];
+            if let Some(dt) = created_at {
+                line2_spans.push(Span::styled(
+                    format!("  opened {}", super::components::time_ago(dt)),
+                    Style::default().fg(theme.fg_dim),
+                ));
+            }
+            if !user.is_empty() {
+                line2_spans.push(Span::styled(
+                    format!(" by {}", user),
+                    Style::default().fg(theme.fg_dim),
+                ));
+            }
+            vec![Line::from(line1_spans), Line::from(line2_spans)]
         }
         SearchResultItem::Code {
             repo,
             path,
             fragment,
         } => {
-            let short_fragment = if fragment.chars().count() > 80 {
-                let truncated: String = fragment.chars().take(77).collect();
-                format!("{}...", truncated)
-            } else {
-                fragment.clone()
-            };
-            Line::from(vec![
+            // Line 1: file path + repo
+            let line1 = Line::from(vec![
                 Span::styled("  ", Style::default()),
                 Span::styled(path.as_str(), title_style),
-                Span::styled(format!(" ({})", repo), Style::default().fg(theme.fg_dim)),
-                Span::raw("  "),
-                Span::styled(short_fragment, Style::default().fg(theme.fg_muted)),
-            ])
+                Span::styled(format!("  {}", repo), Style::default().fg(theme.fg_dim)),
+            ]);
+            // Line 2: code fragment preview
+            let clean_fragment = fragment.replace('\n', " ");
+            let short_fragment = if clean_fragment.chars().count() > 100 {
+                let truncated: String = clean_fragment.chars().take(97).collect();
+                format!("    {}...", truncated)
+            } else {
+                format!("    {}", clean_fragment)
+            };
+            let line2 = Line::from(Span::styled(
+                short_fragment,
+                Style::default().fg(theme.fg_muted),
+            ));
+            vec![line1, line2]
         }
     };
 
-    ListItem::new(line)
+    ListItem::new(lines)
 }

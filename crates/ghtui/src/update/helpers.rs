@@ -13,7 +13,7 @@ pub(crate) fn is_image_file(filename: &str) -> bool {
 }
 
 pub(crate) fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command> {
-    let cmds = match &route {
+    let mut cmds = match &route {
         Route::PrList { repo, filters } => {
             state.loading.insert("pr_list".to_string());
             vec![Command::FetchPrList(repo.clone(), filters.clone(), 1)]
@@ -155,7 +155,14 @@ pub(crate) fn handle_navigate(state: &mut AppState, route: Route) -> Vec<Command
 
     // Sync current_repo and active_tab with route
     if let Some(repo) = route.repo() {
+        let repo_changed = state.current_repo.as_ref() != Some(repo);
         state.current_repo = Some(repo.clone());
+        // Fetch open issue/PR counts when repo changes
+        if repo_changed {
+            state.open_issue_count = None;
+            state.open_pr_count = None;
+            cmds.push(Command::FetchRepoCounts(repo.clone()));
+        }
     }
     if let Some(idx) = route.tab_index() {
         state.active_tab = idx;

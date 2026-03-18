@@ -251,6 +251,10 @@ pub struct AppState {
     pub recent_repos: Vec<crate::types::settings::Repository>,
     pub dashboard_selected: usize,
 
+    // Repo tab counts (open issues/PRs)
+    pub open_issue_count: Option<u32>,
+    pub open_pr_count: Option<u32>,
+
     // Cross-cutting
     pub current_repo: Option<RepoId>,
     pub loading: HashSet<String>,
@@ -303,6 +307,8 @@ impl AppState {
             org: None,
             recent_repos: Vec::new(),
             dashboard_selected: 0,
+            open_issue_count: None,
+            open_pr_count: None,
             current_repo: repo,
             loading: HashSet::new(),
             toasts: VecDeque::new(),

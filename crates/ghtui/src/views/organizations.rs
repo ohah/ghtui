@@ -34,24 +34,39 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
         .split(area);
 
-    // Left: org list
+    // Left: org list (2-line layout)
     let org_items: Vec<ListItem> = org_state
         .orgs
         .iter()
         .enumerate()
         .map(|(i, org)| {
+            // Line 1: org name
             let name = org.name.as_deref().unwrap_or(&org.login);
-            let line = Line::from(vec![Span::styled(
-                format!("  {} ", name),
-                if i == org_state.selected_org {
-                    Style::default()
-                        .fg(theme.accent)
-                        .add_modifier(Modifier::BOLD)
+            let name_style = if i == org_state.selected_org {
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme.fg)
+            };
+            let line1 = Line::from(vec![Span::styled(format!("  {} ", name), name_style)]);
+
+            // Line 2: description or member count hint
+            let subtitle = if let Some(ref desc) = org.description {
+                if desc.is_empty() {
+                    member_count_hint(org.members_count)
                 } else {
-                    Style::default().fg(theme.fg)
-                },
+                    desc.clone()
+                }
+            } else {
+                member_count_hint(org.members_count)
+            };
+            let line2 = Line::from(vec![Span::styled(
+                format!("  {}", subtitle),
+                Style::default().fg(theme.fg_muted),
             )]);
-            ListItem::new(line)
+
+            ListItem::new(vec![line1, line2])
         })
         .collect();
 
@@ -101,5 +116,16 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
                 )),
         );
         frame.render_widget(member_list, chunks[1]);
+    }
+}
+
+fn member_count_hint(count: Option<u64>) -> String {
+    match count {
+        Some(n) => format!(
+            "{} member{}",
+            n,
+            if n == 1 { "" } else { "s" }
+        ),
+        None => String::new(),
     }
 }

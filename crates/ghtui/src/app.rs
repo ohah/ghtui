@@ -41,9 +41,12 @@ impl App {
         let mut events = EventHandler::new(self.state.config.tick_rate_ms);
         let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Message>();
 
-        // Fetch recent repos on startup for dashboard
+        // Fetch recent repos on startup for dashboard (and repo counts if repo is set)
         {
-            let initial_cmds = vec![Command::FetchRecentRepos];
+            let mut initial_cmds = vec![Command::FetchRecentRepos];
+            if let Some(ref repo) = self.state.current_repo {
+                initial_cmds.push(Command::FetchRepoCounts(repo.clone()));
+            }
             self.state.loading.insert("recent_repos".to_string());
             for cmd in initial_cmds {
                 let client = self.client.clone();

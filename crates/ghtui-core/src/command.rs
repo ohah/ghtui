@@ -146,6 +146,9 @@ pub enum Command {
     FetchOrgs,
     FetchOrgMembers(String), // org login
 
+    // Repo counts (open issues/PRs for tab badge)
+    FetchRepoCounts(RepoId),
+
     // Multi-repo dashboard
     FetchRecentRepos,
 

@@ -69,6 +69,9 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 fn render_recent_repos(frame: &mut Frame, state: &AppState, area: Rect) {
     let theme = &state.theme;
 
+    // Calculate available width inside the block borders
+    let inner_width = area.width.saturating_sub(2) as usize;
+
     let items: Vec<ListItem> = state
         .recent_repos
         .iter()
@@ -80,48 +83,85 @@ fn render_recent_repos(frame: &mut Frame, state: &AppState, area: Rect) {
             } else {
                 theme.success
             };
-            let desc = repo.description.as_deref().unwrap_or("");
             let lang = repo.language.as_deref().unwrap_or("");
+
+            // Line 1: repo_name + visibility badge + language
+            let name_style = if i == state.dashboard_selected {
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme.fg)
+            };
+
+            let mut line1_spans = vec![
+                Span::styled(format!("  {} ", repo.full_name), name_style),
+                Span::styled(format!("[{}]", visibility), Style::default().fg(vis_color)),
+            ];
+            if !lang.is_empty() {
+                line1_spans.push(Span::styled(
+                    format!("  {}", lang),
+                    Style::default().fg(theme.fg_muted),
+                ));
+            }
+            let line1 = Line::from(line1_spans);
+
+            // Line 2: (indented) description + stars + updated_at
+            let indent = "      ";
             let stars = repo.stargazers_count;
 
-            let line = Line::from(vec![
-                Span::styled(
-                    format!("  {} ", repo.full_name),
-                    if i == state.dashboard_selected {
-                        Style::default()
-                            .fg(theme.accent)
-                            .add_modifier(Modifier::BOLD)
-                    } else {
-                        Style::default().fg(theme.fg)
-                    },
-                ),
-                Span::styled(format!("[{}] ", visibility), Style::default().fg(vis_color)),
-                Span::styled(
-                    if !lang.is_empty() {
-                        format!("{} ", lang)
-                    } else {
-                        String::new()
-                    },
-                    Style::default().fg(theme.fg_muted),
-                ),
-                Span::styled(
-                    if stars > 0 {
-                        format!("* {} ", stars)
-                    } else {
-                        String::new()
-                    },
+            // Build suffix: stars + updated_at
+            let stars_str = if stars > 0 {
+                format!("  * {}", stars)
+            } else {
+                String::new()
+            };
+
+            let updated_str = chrono::DateTime::parse_from_rfc3339(&repo.updated_at)
+                .ok()
+                .map(|dt| {
+                    let utc = dt.with_timezone(&chrono::Utc);
+                    format!("  updated {}", super::components::time_ago(&utc))
+                })
+                .unwrap_or_default();
+
+            let suffix = format!("{}{}", stars_str, updated_str);
+            let suffix_len = suffix.len();
+
+            let desc = repo.description.as_deref().unwrap_or("");
+            // Truncate description to fit: inner_width - indent - suffix - padding
+            let max_desc_len = inner_width
+                .saturating_sub(indent.len())
+                .saturating_sub(suffix_len)
+                .saturating_sub(1);
+            let truncated_desc = if desc.len() > max_desc_len && max_desc_len > 3 {
+                format!("{}...", &desc[..max_desc_len.saturating_sub(3)])
+            } else if desc.len() > max_desc_len {
+                desc[..max_desc_len].to_string()
+            } else {
+                desc.to_string()
+            };
+
+            let mut line2_spans = vec![Span::styled(indent, Style::default())];
+            if !truncated_desc.is_empty() {
+                line2_spans
+                    .push(Span::styled(truncated_desc, Style::default().fg(theme.fg_dim)));
+            }
+            if stars > 0 {
+                line2_spans.push(Span::styled(
+                    stars_str.clone(),
                     Style::default().fg(theme.warning),
-                ),
-                Span::styled(
-                    if !desc.is_empty() {
-                        format!("- {}", desc)
-                    } else {
-                        String::new()
-                    },
-                    Style::default().fg(theme.fg_dim),
-                ),
-            ]);
-            ListItem::new(line)
+                ));
+            }
+            if !updated_str.is_empty() {
+                line2_spans.push(Span::styled(
+                    updated_str.clone(),
+                    Style::default().fg(theme.fg_muted),
+                ));
+            }
+            let line2 = Line::from(line2_spans);
+
+            ListItem::new(vec![line1, line2])
         })
         .collect();
 

@@ -53,6 +53,21 @@ impl GithubClient {
                     title: v["title"].as_str().unwrap_or("").to_string(),
                     state: v["state"].as_str().unwrap_or("").to_string(),
                     is_pr: v.get("pull_request").is_some(),
+                    labels: v["labels"]
+                        .as_array()
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|l| serde_json::from_value(l.clone()).ok())
+                                .collect()
+                        })
+                        .unwrap_or_default(),
+                    created_at: v["created_at"]
+                        .as_str()
+                        .and_then(|s| s.parse().ok()),
+                    user: v["user"]["login"]
+                        .as_str()
+                        .unwrap_or("")
+                        .to_string(),
                 })
                 .collect(),
             (SearchKind::Code, Some(arr)) => arr

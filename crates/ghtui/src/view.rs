@@ -177,16 +177,12 @@ fn render_global_tabs(frame: &mut Frame, state: &AppState, theme: &Theme, area: 
 
     // Build dynamic labels with counts
     let issue_count = state
-        .issue_list
-        .as_ref()
-        .and_then(|l| l.pagination.total)
-        .map(|n| format!(" ({})", n))
+        .open_issue_count
+        .map(|n| format!(" {}", n))
         .unwrap_or_default();
     let pr_count = state
-        .pr_list
-        .as_ref()
-        .and_then(|l| l.pagination.total)
-        .map(|n| format!(" ({})", n))
+        .open_pr_count
+        .map(|n| format!(" {}", n))
         .unwrap_or_default();
     let dynamic_labels: Vec<String> = TAB_LABELS
         .iter()

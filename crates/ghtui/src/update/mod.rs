@@ -5079,6 +5079,13 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
 
+        // Repo counts
+        Message::RepoCountsLoaded(issues, prs) => {
+            state.open_issue_count = Some(issues);
+            state.open_pr_count = Some(prs);
+            vec![]
+        }
+
         // Multi-repo dashboard
         Message::RecentReposLoaded(repos) => {
             state.loading.remove("recent_repos");
