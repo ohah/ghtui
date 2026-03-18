@@ -170,7 +170,30 @@ fn render_global_tabs(frame: &mut Frame, state: &AppState, theme: &Theme, area: 
     let mut tab_positions: Vec<(u16, u16)> = Vec::new(); // (label_start_x, label_width)
     let mut x: u16 = 0;
 
-    for (i, label) in TAB_LABELS.iter().enumerate() {
+    // Build dynamic labels with counts
+    let issue_count = state
+        .issue_list
+        .as_ref()
+        .and_then(|l| l.pagination.total)
+        .map(|n| format!(" ({})", n))
+        .unwrap_or_default();
+    let pr_count = state
+        .pr_list
+        .as_ref()
+        .and_then(|l| l.pagination.total)
+        .map(|n| format!(" ({})", n))
+        .unwrap_or_default();
+    let dynamic_labels: Vec<String> = TAB_LABELS
+        .iter()
+        .enumerate()
+        .map(|(i, label)| match i {
+            1 => format!("{}{}", label, issue_count), // Issues
+            2 => format!("{}{}", label, pr_count),    // Pull requests
+            _ => label.to_string(),
+        })
+        .collect();
+
+    for (i, label) in dynamic_labels.iter().enumerate() {
         let is_active = i == state.active_tab;
 
         // Key: " N "
