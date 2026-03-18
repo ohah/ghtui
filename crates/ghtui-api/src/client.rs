@@ -18,6 +18,8 @@ pub struct GithubClient {
     pub(crate) cache: Arc<Mutex<LruCache<String, CachedResponse>>>,
     pub(crate) rate_limit: Arc<Mutex<RateLimitState>>,
     pub(crate) disk_cache: Option<DiskCache>,
+    /// True when the last response was served from disk cache (stale data).
+    pub serving_cached: Arc<std::sync::atomic::AtomicBool>,
 }
 
 #[derive(Debug, Clone)]
@@ -74,6 +76,7 @@ impl GithubClient {
             cache,
             rate_limit: Arc::new(Mutex::new(RateLimitState::default())),
             disk_cache,
+            serving_cached: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         })
     }
 
@@ -188,6 +191,10 @@ impl GithubClient {
                     dc.set(&cache_key, &body);
                 }
 
+                // Clear stale flag — fresh data
+                self.serving_cached
+                    .store(false, std::sync::atomic::Ordering::Relaxed);
+
                 Ok(body)
             }
             Err(e) => {
@@ -205,9 +212,20 @@ impl GithubClient {
         }
     }
 
-    /// Read from disk cache if available.
+    /// Read from disk cache if available. Sets serving_cached flag.
     fn disk_cache_get(&self, url: &str) -> Option<String> {
-        self.disk_cache.as_ref()?.get(url)
+        let result = self.disk_cache.as_ref()?.get(url);
+        if result.is_some() {
+            self.serving_cached
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+        }
+        result
+    }
+
+    /// Check and reset the stale-data flag.
+    pub fn take_serving_cached(&self) -> bool {
+        self.serving_cached
+            .swap(false, std::sync::atomic::Ordering::Relaxed)
     }
 
     pub(crate) async fn get_raw(&self, url: &str) -> Result<String, ApiError> {

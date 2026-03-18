@@ -71,9 +71,12 @@ async fn main() -> Result<()> {
         GithubClient::new(token)?
     };
 
-    // Cleanup stale disk cache entries on startup
+    // Cleanup stale disk cache entries in background (non-blocking startup)
     if config.offline_cache {
-        client.cleanup_disk_cache();
+        let cleanup_client = client.clone();
+        tokio::spawn(async move {
+            tokio::task::spawn_blocking(move || cleanup_client.cleanup_disk_cache());
+        });
     }
 
     // Run app
