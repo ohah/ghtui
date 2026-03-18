@@ -17,6 +17,8 @@ pub struct EditorTheme {
     pub border: Color,
     pub status_bg: Color,
     pub status_fg: Color,
+    pub selection_bg: Color,
+    pub selection_fg: Color,
 }
 
 impl Default for EditorTheme {
@@ -31,6 +33,8 @@ impl Default for EditorTheme {
             border: Color::Rgb(88, 166, 255),
             status_bg: Color::Rgb(22, 27, 34),
             status_fg: Color::Rgb(125, 133, 144),
+            selection_bg: Color::Rgb(56, 89, 138), // #38598a — GitHub-like selection blue
+            selection_fg: Color::Rgb(230, 237, 243),
         }
     }
 }
@@ -114,7 +118,80 @@ impl Widget for EditorView<'_> {
                 ));
             }
 
-            if is_cursor_line {
+            let sel_range = self.editor.selection_byte_range_for_line(i);
+            let has_selection = sel_range.is_some();
+
+            if has_selection {
+                // Line has selection — render with highlight
+                let (sel_start, sel_end) = sel_range.unwrap();
+                let sel_style = Style::default()
+                    .fg(self.theme.selection_fg)
+                    .bg(self.theme.selection_bg);
+                let normal_style = Style::default().fg(self.theme.text);
+
+                if is_cursor_line {
+                    let byte_col = self.editor.cursor_byte_col();
+                    // We need to render: before_sel | selected | after_sel, with cursor overlay
+                    // Split into segments: [0..sel_start] [sel_start..sel_end] [sel_end..]
+                    // The cursor block goes at byte_col position
+                    let before_sel = &line[..sel_start];
+                    let selected = &line[sel_start..sel_end];
+                    let after_sel = &line[sel_end..];
+
+                    if byte_col <= sel_start {
+                        // Cursor is before or at selection start
+                        let before_cursor = &line[..byte_col];
+                        let between = &line[byte_col..sel_start];
+                        spans.push(Span::styled(before_cursor.to_string(), normal_style));
+                        spans.push(Span::styled(
+                            "\u{2588}",
+                            Style::default()
+                                .fg(self.theme.cursor)
+                                .add_modifier(Modifier::SLOW_BLINK),
+                        ));
+                        spans.push(Span::styled(between.to_string(), normal_style));
+                        spans.push(Span::styled(selected.to_string(), sel_style));
+                        spans.push(Span::styled(after_sel.to_string(), normal_style));
+                    } else if byte_col >= sel_end {
+                        // Cursor is at or after selection end
+                        spans.push(Span::styled(before_sel.to_string(), normal_style));
+                        spans.push(Span::styled(selected.to_string(), sel_style));
+                        let between = &line[sel_end..byte_col];
+                        let after_cursor = &line[byte_col..];
+                        spans.push(Span::styled(between.to_string(), normal_style));
+                        spans.push(Span::styled(
+                            "\u{2588}",
+                            Style::default()
+                                .fg(self.theme.cursor)
+                                .add_modifier(Modifier::SLOW_BLINK),
+                        ));
+                        spans.push(Span::styled(after_cursor.to_string(), normal_style));
+                    } else {
+                        // Cursor is inside selection
+                        spans.push(Span::styled(before_sel.to_string(), normal_style));
+                        let sel_before_cursor = &line[sel_start..byte_col];
+                        let sel_after_cursor = &line[byte_col..sel_end];
+                        spans.push(Span::styled(sel_before_cursor.to_string(), sel_style));
+                        spans.push(Span::styled(
+                            "\u{2588}",
+                            Style::default()
+                                .fg(self.theme.cursor)
+                                .bg(self.theme.selection_bg)
+                                .add_modifier(Modifier::SLOW_BLINK),
+                        ));
+                        spans.push(Span::styled(sel_after_cursor.to_string(), sel_style));
+                        spans.push(Span::styled(after_sel.to_string(), normal_style));
+                    }
+                } else {
+                    // Non-cursor line with selection
+                    let before_sel = &line[..sel_start];
+                    let selected = &line[sel_start..sel_end];
+                    let after_sel = &line[sel_end..];
+                    spans.push(Span::styled(before_sel.to_string(), normal_style));
+                    spans.push(Span::styled(selected.to_string(), sel_style));
+                    spans.push(Span::styled(after_sel.to_string(), normal_style));
+                }
+            } else if is_cursor_line {
                 let byte_col = self.editor.cursor_byte_col();
                 let before = &line[..byte_col];
                 let after = &line[byte_col..];
@@ -123,7 +200,7 @@ impl Widget for EditorView<'_> {
                     Style::default().fg(self.theme.text),
                 ));
                 spans.push(Span::styled(
-                    "█",
+                    "\u{2588}",
                     Style::default()
                         .fg(self.theme.cursor)
                         .add_modifier(Modifier::SLOW_BLINK),
@@ -210,7 +287,75 @@ impl Widget for InlineEditorView<'_> {
 
         for (i, line) in self.editor.lines.iter().enumerate() {
             let is_cursor_line = i == self.editor.cursor_row;
-            if is_cursor_line {
+            let sel_range = self.editor.selection_byte_range_for_line(i);
+            let has_selection = sel_range.is_some();
+            let sel_style = Style::default()
+                .fg(self.theme.selection_fg)
+                .bg(self.theme.selection_bg);
+            let normal_style = Style::default().fg(self.theme.text);
+
+            if has_selection {
+                let (sel_start, sel_end) = sel_range.unwrap();
+                let mut spans: Vec<Span<'static>> = Vec::new();
+                spans.push(Span::styled("  ".to_string(), normal_style));
+
+                if is_cursor_line {
+                    let byte_col = self.editor.cursor_byte_col();
+                    let before_sel = &line[..sel_start];
+                    let selected = &line[sel_start..sel_end];
+                    let after_sel = &line[sel_end..];
+
+                    if byte_col <= sel_start {
+                        let before_cursor = &line[..byte_col];
+                        let between = &line[byte_col..sel_start];
+                        spans.push(Span::styled(before_cursor.to_string(), normal_style));
+                        spans.push(Span::styled(
+                            "\u{2588}",
+                            Style::default()
+                                .fg(self.theme.cursor)
+                                .add_modifier(Modifier::SLOW_BLINK),
+                        ));
+                        spans.push(Span::styled(between.to_string(), normal_style));
+                        spans.push(Span::styled(selected.to_string(), sel_style));
+                        spans.push(Span::styled(after_sel.to_string(), normal_style));
+                    } else if byte_col >= sel_end {
+                        spans.push(Span::styled(before_sel.to_string(), normal_style));
+                        spans.push(Span::styled(selected.to_string(), sel_style));
+                        let between = &line[sel_end..byte_col];
+                        let after_cursor = &line[byte_col..];
+                        spans.push(Span::styled(between.to_string(), normal_style));
+                        spans.push(Span::styled(
+                            "\u{2588}",
+                            Style::default()
+                                .fg(self.theme.cursor)
+                                .add_modifier(Modifier::SLOW_BLINK),
+                        ));
+                        spans.push(Span::styled(after_cursor.to_string(), normal_style));
+                    } else {
+                        spans.push(Span::styled(before_sel.to_string(), normal_style));
+                        let sel_before_cursor = &line[sel_start..byte_col];
+                        let sel_after_cursor = &line[byte_col..sel_end];
+                        spans.push(Span::styled(sel_before_cursor.to_string(), sel_style));
+                        spans.push(Span::styled(
+                            "\u{2588}",
+                            Style::default()
+                                .fg(self.theme.cursor)
+                                .bg(self.theme.selection_bg)
+                                .add_modifier(Modifier::SLOW_BLINK),
+                        ));
+                        spans.push(Span::styled(sel_after_cursor.to_string(), sel_style));
+                        spans.push(Span::styled(after_sel.to_string(), normal_style));
+                    }
+                } else {
+                    let before_sel = &line[..sel_start];
+                    let selected = &line[sel_start..sel_end];
+                    let after_sel = &line[sel_end..];
+                    spans.push(Span::styled(before_sel.to_string(), normal_style));
+                    spans.push(Span::styled(selected.to_string(), sel_style));
+                    spans.push(Span::styled(after_sel.to_string(), normal_style));
+                }
+                lines.push(Line::from(spans));
+            } else if is_cursor_line {
                 let byte_col = self.editor.cursor_byte_col();
                 let before = &line[..byte_col];
                 let after = &line[byte_col..];
@@ -220,7 +365,7 @@ impl Widget for InlineEditorView<'_> {
                         Style::default().fg(self.theme.text),
                     ),
                     Span::styled(
-                        "█",
+                        "\u{2588}",
                         Style::default()
                             .fg(self.theme.cursor)
                             .add_modifier(Modifier::SLOW_BLINK),

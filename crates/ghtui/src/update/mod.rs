@@ -4367,6 +4367,86 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             vec![]
         }
+        Message::CodeEditSelectLeft => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_left_selecting();
+            }
+            vec![]
+        }
+        Message::CodeEditSelectRight => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_right_selecting();
+            }
+            vec![]
+        }
+        Message::CodeEditSelectUp => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_up_selecting();
+            }
+            vec![]
+        }
+        Message::CodeEditSelectDown => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_down_selecting();
+            }
+            vec![]
+        }
+        Message::CodeEditSelectAll => {
+            if let Some(ref mut code) = state.code {
+                code.editor.select_all();
+            }
+            vec![]
+        }
+        Message::CodeEditCut => {
+            if let Some(ref mut code) = state.code {
+                if let Some(text) = code.editor.selected_text() {
+                    code.editor.delete_selection();
+                    return vec![Command::SetClipboard(text)];
+                }
+            }
+            vec![]
+        }
+        Message::CodeEditCopy => {
+            if let Some(ref code) = state.code {
+                if let Some(text) = code.editor.selected_text() {
+                    return vec![Command::SetClipboard(text)];
+                }
+            }
+            vec![]
+        }
+        Message::CodeEditPaste(text) => {
+            if let Some(ref mut code) = state.code {
+                if !text.is_empty() {
+                    code.editor.delete_selection();
+                    code.editor.insert_str(&text);
+                }
+            }
+            vec![]
+        }
+        Message::CodeEditMoveLineStart => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_home();
+            }
+            vec![]
+        }
+        Message::CodeEditMoveLineEnd => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_end();
+            }
+            vec![]
+        }
+        Message::CodeEditMoveDocTop => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_to_top();
+            }
+            vec![]
+        }
+        Message::CodeEditMoveDocBottom => {
+            if let Some(ref mut code) = state.code {
+                code.editor.move_to_bottom();
+            }
+            vec![]
+        }
 
         // Discussions
         Message::DiscussionsLoaded(discussions) => {

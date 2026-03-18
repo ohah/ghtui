@@ -324,18 +324,47 @@ fn handle_code_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
     // File editing mode — fullscreen editor
     if is_editing {
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        let super_key = key.modifiers.contains(KeyModifiers::SUPER);
+        let shift = key.modifiers.contains(KeyModifiers::SHIFT);
+        let alt = key.modifiers.contains(KeyModifiers::ALT);
+        let cmd = ctrl || super_key; // Cmd on macOS, Ctrl on Linux/Windows
+
         return match key.code {
             KeyCode::Esc => Some(Message::CodeEditCancel),
-            KeyCode::Char('s') if ctrl => Some(Message::CodeEditSubmit),
-            KeyCode::Char('z') if ctrl => Some(Message::CodeEditUndo),
-            KeyCode::Char('y') if ctrl => Some(Message::CodeEditRedo),
+            // Cmd shortcuts
+            KeyCode::Char('s') if cmd => Some(Message::CodeEditSubmit),
+            KeyCode::Char('z') if cmd => Some(Message::CodeEditUndo),
+            KeyCode::Char('y') if cmd => Some(Message::CodeEditRedo),
+            KeyCode::Char('a') if cmd => Some(Message::CodeEditSelectAll),
+            KeyCode::Char('x') if cmd => Some(Message::CodeEditCut),
+            KeyCode::Char('c') if cmd => Some(Message::CodeEditCopy),
+            KeyCode::Char('v') if cmd => {
+                // Read clipboard and send as paste message
+                let text = arboard::Clipboard::new()
+                    .ok()
+                    .and_then(|mut cb| cb.get_text().ok())
+                    .unwrap_or_default();
+                Some(Message::CodeEditPaste(text))
+            }
+            // Shift+Arrow for selection
+            KeyCode::Left if shift => Some(Message::CodeEditSelectLeft),
+            KeyCode::Right if shift => Some(Message::CodeEditSelectRight),
+            KeyCode::Up if shift => Some(Message::CodeEditSelectUp),
+            KeyCode::Down if shift => Some(Message::CodeEditSelectDown),
+            // Cmd+Arrow for line/doc navigation
+            KeyCode::Left if cmd => Some(Message::CodeEditMoveLineStart),
+            KeyCode::Right if cmd => Some(Message::CodeEditMoveLineEnd),
+            KeyCode::Up if cmd => Some(Message::CodeEditMoveDocTop),
+            KeyCode::Down if cmd => Some(Message::CodeEditMoveDocBottom),
+            // Alt/Option+Arrow for word movement
+            KeyCode::Left if alt => Some(Message::CodeEditWordLeft),
+            KeyCode::Right if alt => Some(Message::CodeEditWordRight),
+            // Regular keys
             KeyCode::Char(c) => Some(Message::CodeEditChar(c)),
             KeyCode::Enter => Some(Message::CodeEditNewline),
             KeyCode::Backspace => Some(Message::CodeEditBackspace),
             KeyCode::Delete => Some(Message::CodeEditDelete),
             KeyCode::Tab => Some(Message::CodeEditTab),
-            KeyCode::Left if ctrl => Some(Message::CodeEditWordLeft),
-            KeyCode::Right if ctrl => Some(Message::CodeEditWordRight),
             KeyCode::Left => Some(Message::CodeEditCursorLeft),
             KeyCode::Right => Some(Message::CodeEditCursorRight),
             KeyCode::Up => Some(Message::CodeEditCursorUp),
