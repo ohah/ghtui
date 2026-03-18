@@ -1,8 +1,9 @@
 use base64::Engine;
 use ghtui_core::types::code::{
-    CommitDetail, CommitEntry, CommitFile, FileChangeStatus, FileEntry, FileEntryType,
+    CommitDetail, CommitEntry, CommitFile, FileChangeStatus, FileEntry, FileEntryType, TreeNode,
 };
 use ghtui_core::types::common::RepoId;
+use std::collections::BTreeSet;
 
 use crate::client::GithubClient;
 use crate::error::ApiError;
@@ -69,6 +70,183 @@ impl GithubClient {
         });
 
         Ok(entries)
+    }
+
+    /// Fetch the full recursive tree for a repo at a given git ref.
+    /// Uses GET /repos/{owner}/{name}/git/trees/{sha}?recursive=1
+    /// First resolves the ref to a commit SHA, then fetches the tree SHA.
+    pub async fn get_tree_recursive(
+        &self,
+        repo: &RepoId,
+        git_ref: &str,
+    ) -> Result<Vec<TreeNode>, ApiError> {
+        // 1. Resolve git_ref to a commit → get tree SHA
+        let ref_path = format!(
+            "/repos/{}/{}/git/ref/heads/{}",
+            repo.owner, repo.name, git_ref
+        );
+        // Try heads first, then tags
+        let commit_sha = match self.get(&ref_path).await {
+            Ok(body) => {
+                let val: serde_json::Value = serde_json::from_str(&body)?;
+                val["object"]["sha"].as_str().unwrap_or("").to_string()
+            }
+            Err(_) => {
+                // Try as tag
+                let tag_path = format!(
+                    "/repos/{}/{}/git/ref/tags/{}",
+                    repo.owner, repo.name, git_ref
+                );
+                match self.get(&tag_path).await {
+                    Ok(body) => {
+                        let val: serde_json::Value = serde_json::from_str(&body)?;
+                        val["object"]["sha"].as_str().unwrap_or("").to_string()
+                    }
+                    Err(_) => {
+                        // Try using the ref directly as a SHA or branch name via commits API
+                        let commit_path =
+                            format!("/repos/{}/{}/commits/{}", repo.owner, repo.name, git_ref);
+                        let body = self.get(&commit_path).await?;
+                        let val: serde_json::Value = serde_json::from_str(&body)?;
+                        val["sha"].as_str().unwrap_or("").to_string()
+                    }
+                }
+            }
+        };
+
+        if commit_sha.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // 2. Get the commit to find the tree SHA
+        let commit_path = format!(
+            "/repos/{}/{}/git/commits/{}",
+            repo.owner, repo.name, commit_sha
+        );
+        let body = self.get(&commit_path).await?;
+        let commit_val: serde_json::Value = serde_json::from_str(&body)?;
+        let tree_sha = commit_val["tree"]["sha"].as_str().unwrap_or("").to_string();
+
+        if tree_sha.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // 3. Fetch recursive tree
+        let tree_path = format!(
+            "/repos/{}/{}/git/trees/{}?recursive=1",
+            repo.owner, repo.name, tree_sha
+        );
+        let body = self.get(&tree_path).await?;
+        let tree_val: serde_json::Value = serde_json::from_str(&body)?;
+
+        let Some(items) = tree_val["tree"].as_array() else {
+            return Ok(Vec::new());
+        };
+
+        // Collect all directory paths (from "tree" type entries AND implied by file paths)
+        let mut dir_paths: BTreeSet<String> = BTreeSet::new();
+
+        // First pass: collect explicit dirs and all entries
+        struct RawEntry {
+            path: String,
+            is_dir: bool,
+            size: Option<u64>,
+        }
+
+        let mut raw_entries: Vec<RawEntry> = Vec::new();
+        for item in items {
+            let path = item["path"].as_str().unwrap_or("").to_string();
+            let type_str = item["type"].as_str().unwrap_or("");
+            let is_dir = type_str == "tree";
+            let size = if is_dir { None } else { item["size"].as_u64() };
+
+            if is_dir {
+                dir_paths.insert(path.clone());
+            }
+            // Also register parent dirs implied by this path
+            let parts: Vec<&str> = path.split('/').collect();
+            for i in 1..parts.len() {
+                let parent = parts[..i].join("/");
+                dir_paths.insert(parent);
+            }
+
+            raw_entries.push(RawEntry { path, is_dir, size });
+        }
+
+        // Build tree nodes: dirs from dir_paths, files from raw_entries where !is_dir
+        let mut nodes: Vec<TreeNode> = Vec::new();
+
+        // Add directories
+        for dir_path in &dir_paths {
+            let parts: Vec<&str> = dir_path.split('/').collect();
+            let name = parts.last().unwrap_or(&"").to_string();
+            let depth = parts.len() - 1;
+            nodes.push(TreeNode {
+                name,
+                path: dir_path.clone(),
+                is_dir: true,
+                depth,
+                expanded: false,
+                size: None,
+            });
+        }
+
+        // Add files
+        for entry in &raw_entries {
+            if entry.is_dir {
+                continue;
+            }
+            let parts: Vec<&str> = entry.path.split('/').collect();
+            let name = parts.last().unwrap_or(&"").to_string();
+            let depth = parts.len() - 1;
+            nodes.push(TreeNode {
+                name,
+                path: entry.path.clone(),
+                is_dir: false,
+                depth,
+                expanded: false,
+                size: entry.size,
+            });
+        }
+
+        // Sort: by path components, dirs first at each level
+        nodes.sort_by(|a, b| {
+            let a_parts: Vec<&str> = a.path.split('/').collect();
+            let b_parts: Vec<&str> = b.path.split('/').collect();
+            let min_len = a_parts.len().min(b_parts.len());
+
+            for i in 0..min_len {
+                if i == a_parts.len() - 1 && i == b_parts.len() - 1 {
+                    // Both are at their last component — compare dir vs file
+                    let a_is_dir = a.is_dir;
+                    let b_is_dir = b.is_dir;
+                    if a_is_dir != b_is_dir {
+                        return if a_is_dir {
+                            std::cmp::Ordering::Less
+                        } else {
+                            std::cmp::Ordering::Greater
+                        };
+                    }
+                    return a_parts[i].to_lowercase().cmp(&b_parts[i].to_lowercase());
+                }
+                if a_parts[i] != b_parts[i] {
+                    // At this level, one might be a "file" and the other a "dir" (has children)
+                    let a_has_more = i < a_parts.len() - 1;
+                    let b_has_more = i < b_parts.len() - 1;
+                    if a_has_more != b_has_more {
+                        return if a_has_more {
+                            std::cmp::Ordering::Less
+                        } else {
+                            std::cmp::Ordering::Greater
+                        };
+                    }
+                    return a_parts[i].to_lowercase().cmp(&b_parts[i].to_lowercase());
+                }
+            }
+            a_parts.len().cmp(&b_parts.len())
+        });
+
+        Ok(nodes)
     }
 
     pub async fn get_file_content(

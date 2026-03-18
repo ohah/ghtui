@@ -1,6 +1,6 @@
 use super::components;
 use ghtui_core::AppState;
-use ghtui_core::types::code::{CommitDetail, FileEntryType};
+use ghtui_core::types::code::CommitDetail;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
@@ -86,37 +86,102 @@ fn render_file_tree(
         format!(" [{}]", code.git_ref)
     };
 
-    let title = if code.current_path.is_empty() {
-        format!(" /{} ", ref_label)
-    } else {
-        format!(" /{}{} ", code.current_path, ref_label)
-    };
+    let title = format!(" /{} ", ref_label);
 
-    let loading = state.is_loading("code_contents");
+    let loading = state.is_loading("code_contents") || state.is_loading("code_tree");
 
     let list_items: Vec<ListItem> = if loading {
         vec![ListItem::new(Line::from(Span::styled(
             "  Loading...",
             Style::default().fg(theme.fg_dim),
         )))]
+    } else if code.tree_loaded {
+        // Tree view mode
+        if code.tree_visible.is_empty() {
+            vec![ListItem::new(Line::from(Span::styled(
+                "  (empty repository)",
+                Style::default().fg(theme.fg_dim),
+            )))]
+        } else {
+            code.tree_visible
+                .iter()
+                .enumerate()
+                .map(|(vi, &ti)| {
+                    let node = &code.tree[ti];
+                    let indent = "  ".repeat(node.depth);
+
+                    let (arrow, icon) = if node.is_dir {
+                        if code.expanded_dirs.contains(&node.path) {
+                            ("\u{25BE} ", "\u{1F4C1} ")
+                        } else {
+                            ("\u{25B8} ", "\u{1F4C1} ")
+                        }
+                    } else {
+                        ("  ", "\u{1F4C4} ")
+                    };
+
+                    let size_str = if !node.is_dir {
+                        node.size.map(format_size).unwrap_or_default()
+                    } else {
+                        String::new()
+                    };
+
+                    let is_selected = vi == code.selected;
+                    let style = if is_selected {
+                        if code.sidebar_focused {
+                            Style::default()
+                                .fg(theme.tab_active_fg)
+                                .add_modifier(Modifier::BOLD)
+                                .bg(theme.selection_bg)
+                        } else {
+                            Style::default()
+                                .fg(theme.tab_active_fg)
+                                .add_modifier(Modifier::BOLD)
+                        }
+                    } else if node.is_dir {
+                        Style::default().fg(theme.accent)
+                    } else {
+                        Style::default().fg(theme.fg)
+                    };
+
+                    let spans = vec![
+                        Span::styled(format!(" {}{}{}", indent, arrow, icon), style),
+                        Span::styled(node.name.clone(), style),
+                        Span::styled(
+                            if size_str.is_empty() {
+                                String::new()
+                            } else {
+                                format!(" ({})", size_str)
+                            },
+                            Style::default().fg(theme.fg_dim),
+                        ),
+                    ];
+
+                    ListItem::new(Line::from(spans))
+                })
+                .collect()
+        }
     } else if code.entries.is_empty() {
         vec![ListItem::new(Line::from(Span::styled(
             "  (empty directory)",
             Style::default().fg(theme.fg_dim),
         )))]
     } else {
+        // Flat list fallback
         code.entries
             .iter()
             .enumerate()
             .map(|(i, entry)| {
-                let icon = match entry.entry_type {
-                    FileEntryType::Dir => "\u{1F4C1} ",
-                    FileEntryType::File => "\u{1F4C4} ",
+                let icon = if entry.entry_type == ghtui_core::types::code::FileEntryType::Dir {
+                    "\u{1F4C1} "
+                } else {
+                    "\u{1F4C4} "
                 };
 
-                let size_str = match (&entry.entry_type, entry.size) {
-                    (FileEntryType::File, Some(s)) => format_size(s),
-                    _ => String::new(),
+                let size_str = if entry.entry_type == ghtui_core::types::code::FileEntryType::File {
+                    entry.size.map(format_size).unwrap_or_default()
+                } else {
+                    String::new()
                 };
 
                 let is_selected = i == code.selected;
@@ -131,11 +196,10 @@ fn render_file_tree(
                             .fg(theme.tab_active_fg)
                             .add_modifier(Modifier::BOLD)
                     }
+                } else if entry.entry_type == ghtui_core::types::code::FileEntryType::Dir {
+                    Style::default().fg(theme.accent)
                 } else {
-                    match entry.entry_type {
-                        FileEntryType::Dir => Style::default().fg(theme.accent),
-                        FileEntryType::File => Style::default().fg(theme.fg),
-                    }
+                    Style::default().fg(theme.fg)
                 };
 
                 let spans = vec![
@@ -162,6 +226,12 @@ fn render_file_tree(
         theme.border_style()
     };
 
+    let item_count = if code.tree_loaded {
+        code.tree_visible.len()
+    } else {
+        code.entries.len()
+    };
+
     let list = List::new(list_items).block(
         Block::default()
             .title(Span::styled(title, Style::default().fg(theme.fg)))
@@ -170,7 +240,7 @@ fn render_file_tree(
     );
 
     let mut list_state = ListState::default();
-    if !code.entries.is_empty() {
+    if item_count > 0 {
         list_state.select(Some(code.selected));
     }
     frame.render_stateful_widget(list, area, &mut list_state);

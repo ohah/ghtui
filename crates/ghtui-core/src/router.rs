@@ -77,6 +77,13 @@ pub enum Route {
         query: String,
         kind: SearchKind,
     },
+
+    // Phase 12 views
+    Discussions {
+        repo: RepoId,
+    },
+    Gists,
+    Organizations,
 }
 
 /// Global tab indices
@@ -115,6 +122,9 @@ impl Route {
             Route::Settings { repo } => format!("{} - Settings", repo),
             Route::Notifications => "Notifications".to_string(),
             Route::Search { query, kind } => format!("Search {:?}: {}", kind, query),
+            Route::Discussions { repo } => format!("{} - Discussions", repo),
+            Route::Gists => "Gists".to_string(),
+            Route::Organizations => "Organizations".to_string(),
         }
     }
 
@@ -130,7 +140,11 @@ impl Route {
             Route::Security { .. } => Some(TAB_SECURITY),
             Route::Insights { .. } => Some(TAB_INSIGHTS),
             Route::Settings { .. } => Some(TAB_SETTINGS),
-            Route::Notifications | Route::Search { .. } => None,
+            Route::Notifications
+            | Route::Search { .. }
+            | Route::Discussions { .. }
+            | Route::Gists
+            | Route::Organizations => None,
         }
     }
 }

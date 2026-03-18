@@ -1,5 +1,6 @@
 use crate::editor::TextEditor;
-use crate::types::code::{CommitDetail, CommitEntry, FileEntry};
+use crate::types::code::{CommitDetail, CommitEntry, FileEntry, TreeNode};
+use std::collections::HashSet;
 
 #[derive(Debug)]
 pub struct CodeViewState {
@@ -32,6 +33,12 @@ pub struct CodeViewState {
     // File editing
     pub editing: bool,
     pub editor: TextEditor,
+
+    // Tree view
+    pub tree: Vec<TreeNode>,
+    pub expanded_dirs: HashSet<String>,
+    pub tree_visible: Vec<usize>,
+    pub tree_loaded: bool,
 }
 
 impl CodeViewState {
@@ -63,6 +70,11 @@ impl CodeViewState {
 
             editing: false,
             editor: TextEditor::new(),
+
+            tree: Vec::new(),
+            expanded_dirs: HashSet::new(),
+            tree_visible: Vec::new(),
+            tree_loaded: false,
         }
     }
 
@@ -70,6 +82,10 @@ impl CodeViewState {
         if self.show_commits {
             if !self.commits.is_empty() {
                 self.commit_selected = (self.commit_selected + 1).min(self.commits.len() - 1);
+            }
+        } else if self.tree_loaded {
+            if !self.tree_visible.is_empty() {
+                self.selected = (self.selected + 1).min(self.tree_visible.len() - 1);
             }
         } else if !self.entries.is_empty() {
             self.selected = (self.selected + 1).min(self.entries.len() - 1);
@@ -82,6 +98,62 @@ impl CodeViewState {
         } else {
             self.selected = self.selected.saturating_sub(1);
         }
+    }
+
+    /// Rebuild the list of visible tree indices based on expanded_dirs.
+    /// A node is visible if all its ancestor directories are expanded.
+    pub fn rebuild_visible_tree(&mut self) {
+        self.tree_visible.clear();
+        for (i, node) in self.tree.iter().enumerate() {
+            if node.depth == 0 {
+                // Root-level nodes are always visible
+                self.tree_visible.push(i);
+            } else {
+                // Check if all ancestors are expanded
+                let parts: Vec<&str> = node.path.split('/').collect();
+                let mut all_expanded = true;
+                for depth in 1..parts.len() {
+                    let ancestor = parts[..depth].join("/");
+                    if !self.expanded_dirs.contains(&ancestor) {
+                        all_expanded = false;
+                        break;
+                    }
+                }
+                if all_expanded {
+                    self.tree_visible.push(i);
+                }
+            }
+        }
+        // Clamp selection
+        if !self.tree_visible.is_empty() {
+            self.selected = self.selected.min(self.tree_visible.len() - 1);
+        } else {
+            self.selected = 0;
+        }
+    }
+
+    /// Toggle the expand/collapse state of the currently selected directory.
+    pub fn toggle_expand(&mut self) {
+        if let Some(&idx) = self.tree_visible.get(self.selected) {
+            if let Some(node) = self.tree.get(idx) {
+                if node.is_dir {
+                    let path = node.path.clone();
+                    if self.expanded_dirs.contains(&path) {
+                        self.expanded_dirs.remove(&path);
+                    } else {
+                        self.expanded_dirs.insert(path);
+                    }
+                    self.rebuild_visible_tree();
+                }
+            }
+        }
+    }
+
+    /// Get the currently selected visible tree node.
+    pub fn tree_selected_node(&self) -> Option<&TreeNode> {
+        self.tree_visible
+            .get(self.selected)
+            .and_then(|&idx| self.tree.get(idx))
     }
 
     pub fn build_ref_picker_items(&mut self) {

@@ -250,7 +250,7 @@
 ## Phase 9 — Code 탭 (작업량 최대)
 
 - [x] GitHub Contents API 연동
-- [x] 파일 트리 브라우저 (사이드바, Enter:열기, Backspace:뒤로)
+- [x] 파일 트리 브라우저 (트리뷰 ▸/▾ 접기/펼치기, Git Trees API recursive)
 - [x] 파일 내용 뷰어 (라인 번호, 스크롤)
 - [x] 간단한 파일 편집 (`e`키 → 전체화면 에디터, Ctrl+S 커밋)
 - [x] 브랜치/태그 전환 (`b`키 — 브랜치/태그 피커 모달)
@@ -261,7 +261,7 @@
 ## Phase 10 — UX 개선
 
 - [x] Command palette (Ctrl+P — fuzzy search, 네비게이션/액션 빠른 실행)
-- [ ] 커스텀 키바인딩 설정 (config.toml)
+- [x] 커스텀 키바인딩 설정 (config.toml — quit/help/theme/search/palette)
 - [x] 마우스 지원 (클릭, 스크롤)
 - [x] 반응형 레이아웃 (터미널 width<80 시 사이드바 자동 숨김)
 - [ ] 이미지 미리보기 (sixel/kitty protocol — 터미널 호환성 이슈로 보류)
@@ -269,21 +269,21 @@
 ## Phase 11 — 배포 & 에코시스템
 
 - [x] `cargo install ghtui` (패키지 메타데이터 추가)
-- [ ] Homebrew formula (릴리스 후 추가)
+- [x] Homebrew formula (Formula/ghtui.rb 템플릿)
 - [x] GitHub Releases (macOS/Linux/Windows — release.yml 워크플로우)
 - [x] CI/CD (GitHub Actions: test, lint, release)
-- [ ] crates.io 게시 (publish 설정 완료, 수동 게시 필요)
+- [x] crates.io 준비 (내부 크레이트 publish=false, 메타데이터 완비)
 - [x] CHANGELOG.md 자동 생성 (release.yml의 generate_release_notes)
 
 ## Phase 12 — 고급 기능
 
 - [x] 멀티 계정 지원 (gh CLI hosts.yml)
 - [x] GraphQL API 지원 (pinIssue, transferIssue 등)
-- [ ] GitHub Enterprise Server 지원
-- [ ] 멀티 레포 대시보드
-- [ ] Discussions 탭
-- [ ] Gists 뷰
-- [ ] Organization 탐색 (팀, 멤버)
+- [x] GitHub Enterprise Server 지원 (config.toml enterprise_url 설정)
+- [x] 멀티 레포 대시보드 (시작 화면에 최근 레포 목록, Enter로 이동)
+- [x] Discussions 탭 (`8`키 — GraphQL API, 카테고리/답변 표시)
+- [x] Gists 뷰 (Command palette → Gists, 공개/비밀 뱃지)
+- [x] Organization 탐색 (Command palette → Organizations, 멤버 목록)
 - [ ] 오프라인 모드 (캐시 기반)
 - [ ] 플러그인 시스템
 

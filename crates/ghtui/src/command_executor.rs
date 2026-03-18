@@ -494,6 +494,12 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
         }
 
         // Code
+        Command::FetchTree(repo, git_ref) => {
+            match client.get_tree_recursive(&repo, &git_ref).await {
+                Ok(nodes) => Message::CodeTreeLoaded(nodes),
+                Err(e) => Message::Error(e.into()),
+            }
+        }
         Command::FetchContents(repo, path, git_ref) => {
             match client.list_contents(&repo, &path, &git_ref).await {
                 Ok(entries) => Message::CodeContentsLoaded(entries),
@@ -616,6 +622,34 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 Err(e) => Message::Error(e.into()),
             }
         }
+
+        // Discussions
+        Command::FetchDiscussions(repo) => match client.list_discussions(&repo).await {
+            Ok(discussions) => Message::DiscussionsLoaded(discussions),
+            Err(e) => Message::Error(e.into()),
+        },
+
+        // Gists
+        Command::FetchGists => match client.list_gists().await {
+            Ok(gists) => Message::GistsLoaded(gists),
+            Err(e) => Message::Error(e.into()),
+        },
+
+        // Organizations
+        Command::FetchOrgs => match client.list_user_orgs().await {
+            Ok(orgs) => Message::OrgsLoaded(orgs),
+            Err(e) => Message::Error(e.into()),
+        },
+        Command::FetchOrgMembers(org) => match client.list_org_members(&org).await {
+            Ok(members) => Message::OrgMembersLoaded(members),
+            Err(e) => Message::Error(e.into()),
+        },
+
+        // Multi-repo dashboard
+        Command::FetchRecentRepos => match client.list_recent_repos().await {
+            Ok(repos) => Message::RecentReposLoaded(repos),
+            Err(e) => Message::Error(e.into()),
+        },
 
         // Utility
         Command::OpenInBrowser(url) => {

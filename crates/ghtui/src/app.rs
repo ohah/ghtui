@@ -38,9 +38,18 @@ impl App {
         let mut events = EventHandler::new(self.state.config.tick_rate_ms);
         let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Message>();
 
-        // Initial navigation if we have a repo
-        if self.state.current_repo.is_some() {
-            // Start at dashboard
+        // Fetch recent repos on startup for dashboard
+        {
+            let initial_cmds = vec![Command::FetchRecentRepos];
+            self.state.loading.insert("recent_repos".to_string());
+            for cmd in initial_cmds {
+                let client = self.client.clone();
+                let tx = msg_tx.clone();
+                tokio::spawn(async move {
+                    let result = command_executor::execute(&client, cmd).await;
+                    let _ = tx.send(result);
+                });
+            }
         }
 
         loop {

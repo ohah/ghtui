@@ -106,9 +106,10 @@ pub enum Command {
     ResolveSecretScanningAlert(RepoId, u64, String),
 
     // Code
-    FetchContents(RepoId, String, String), // repo, path, git_ref
+    FetchTree(RepoId, String),                // repo, git_ref
+    FetchContents(RepoId, String, String),    // repo, path, git_ref
     FetchFileContent(RepoId, String, String), // repo, path, git_ref
-    FetchReadme(RepoId, String),           // repo, git_ref
+    FetchReadme(RepoId, String),              // repo, git_ref
     FetchBranches(RepoId),
     FetchTags(RepoId),
     FetchCommits(RepoId, String, String, u32), // repo, git_ref, path, per_page
@@ -128,6 +129,19 @@ pub enum Command {
     DeleteDeployKey(RepoId, u64),           // repo, key_id
     DeleteBranchProtection(RepoId, String), // repo, branch_name
     ToggleBranchEnforceAdmins(RepoId, String, bool), // repo, branch, enable
+
+    // Discussions
+    FetchDiscussions(RepoId),
+
+    // Gists
+    FetchGists,
+
+    // Organizations
+    FetchOrgs,
+    FetchOrgMembers(String), // org login
+
+    // Multi-repo dashboard
+    FetchRecentRepos,
 
     // Utility
     OpenInBrowser(String),

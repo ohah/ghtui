@@ -15,6 +15,52 @@ pub struct AppConfig {
     pub default_repo: Option<String>,
     #[serde(default)]
     pub theme: ThemeMode,
+    #[serde(default)]
+    pub keybindings: KeybindingConfig,
+    #[serde(default)]
+    pub enterprise_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KeybindingConfig {
+    #[serde(default = "default_quit")]
+    pub quit: String,
+    #[serde(default = "default_help")]
+    pub help: String,
+    #[serde(default = "default_theme_toggle")]
+    pub theme_toggle: String,
+    #[serde(default = "default_search")]
+    pub search: String,
+    #[serde(default = "default_palette")]
+    pub palette: String,
+}
+
+impl Default for KeybindingConfig {
+    fn default() -> Self {
+        Self {
+            quit: default_quit(),
+            help: default_help(),
+            theme_toggle: default_theme_toggle(),
+            search: default_search(),
+            palette: default_palette(),
+        }
+    }
+}
+
+fn default_quit() -> String {
+    "q".to_string()
+}
+fn default_help() -> String {
+    "?".to_string()
+}
+fn default_theme_toggle() -> String {
+    "t".to_string()
+}
+fn default_search() -> String {
+    "Ctrl+k".to_string()
+}
+fn default_palette() -> String {
+    "Ctrl+p".to_string()
 }
 
 fn default_per_page() -> u32 {
@@ -33,6 +79,8 @@ impl Default for AppConfig {
             token: None,
             default_repo: None,
             theme: ThemeMode::Dark,
+            keybindings: KeybindingConfig::default(),
+            enterprise_url: None,
         }
     }
 }
