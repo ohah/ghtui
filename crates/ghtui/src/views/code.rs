@@ -32,7 +32,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     if code.editing {
         let title = format!(" Edit: {} ", code.file_name.as_deref().unwrap_or("file"));
         let widget = ghtui_widgets::EditorView::new(&code.editor, &title)
-            .status_hint("Ctrl+S: Commit  Esc: Cancel");
+            .status_hint("Ctrl+S:Commit  Ctrl+Z:Undo  Ctrl+Y:Redo  Ctrl+C/V/X:Copy/Paste/Cut  Shift+Arrow:Select  Esc:Cancel");
         frame.render_widget(widget, area);
         return;
     }

@@ -433,7 +433,7 @@ fn render_fullscreen_editor(
     title: &str,
 ) {
     let widget = ghtui_widgets::EditorView::new(&detail_state.editor, title)
-        .status_hint("Ctrl+S: Submit  Esc: Cancel  (markdown)");
+        .status_hint("Ctrl+S:Submit  Ctrl+Z:Undo  Ctrl+Y:Redo  Esc:Cancel  (markdown)");
     frame.render_widget(widget, area);
 }
 
