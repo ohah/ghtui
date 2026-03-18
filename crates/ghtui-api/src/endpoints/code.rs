@@ -1,5 +1,5 @@
 use base64::Engine;
-use ghtui_core::types::code::{FileEntry, FileEntryType};
+use ghtui_core::types::code::{CommitDetail, CommitEntry, CommitFile, FileEntry, FileEntryType};
 use ghtui_core::types::common::RepoId;
 
 use crate::client::GithubClient;
@@ -93,5 +93,114 @@ impl GithubClient {
             .decode(&content)
             .map_err(|e| ApiError::Other(format!("Base64 decode error: {}", e)))?;
         String::from_utf8(decoded).map_err(|e| ApiError::Other(format!("UTF-8 error: {}", e)))
+    }
+
+    pub async fn list_branches(&self, repo: &RepoId) -> Result<Vec<String>, ApiError> {
+        let api_path = format!("/repos/{}/{}/branches?per_page=100", repo.owner, repo.name);
+        let body = self.get(&api_path).await?;
+        let items: Vec<serde_json::Value> = serde_json::from_str(&body)?;
+        Ok(items
+            .iter()
+            .filter_map(|item| item["name"].as_str().map(|s| s.to_string()))
+            .collect())
+    }
+
+    pub async fn list_tags(&self, repo: &RepoId) -> Result<Vec<String>, ApiError> {
+        let api_path = format!("/repos/{}/{}/tags?per_page=100", repo.owner, repo.name);
+        let body = self.get(&api_path).await?;
+        let items: Vec<serde_json::Value> = serde_json::from_str(&body)?;
+        Ok(items
+            .iter()
+            .filter_map(|item| item["name"].as_str().map(|s| s.to_string()))
+            .collect())
+    }
+
+    pub async fn list_commits(
+        &self,
+        repo: &RepoId,
+        git_ref: &str,
+        path: &str,
+        per_page: u32,
+    ) -> Result<Vec<CommitEntry>, ApiError> {
+        let mut api_path = format!(
+            "/repos/{}/{}/commits?sha={}&per_page={}",
+            repo.owner, repo.name, git_ref, per_page
+        );
+        if !path.is_empty() {
+            api_path.push_str(&format!("&path={}", path));
+        }
+        let body = self.get(&api_path).await?;
+        let items: Vec<serde_json::Value> = serde_json::from_str(&body)?;
+        Ok(items
+            .iter()
+            .filter_map(|item| {
+                let sha = item["sha"].as_str()?.to_string();
+                let commit = &item["commit"];
+                let message = commit["message"]
+                    .as_str()
+                    .unwrap_or("")
+                    .lines()
+                    .next()
+                    .unwrap_or("")
+                    .to_string();
+                let author = item["author"]["login"]
+                    .as_str()
+                    .or_else(|| commit["author"]["name"].as_str())
+                    .unwrap_or("unknown")
+                    .to_string();
+                let date = commit["author"]["date"].as_str().unwrap_or("").to_string();
+                Some(CommitEntry {
+                    sha,
+                    message,
+                    author,
+                    date,
+                })
+            })
+            .collect())
+    }
+
+    pub async fn get_commit(&self, repo: &RepoId, sha: &str) -> Result<CommitDetail, ApiError> {
+        let api_path = format!("/repos/{}/{}/commits/{}", repo.owner, repo.name, sha);
+        let body = self.get(&api_path).await?;
+        let item: serde_json::Value = serde_json::from_str(&body)?;
+
+        let commit = &item["commit"];
+        let full_sha = item["sha"].as_str().unwrap_or(sha).to_string();
+        let message = commit["message"].as_str().unwrap_or("").to_string();
+        let author = item["author"]["login"]
+            .as_str()
+            .or_else(|| commit["author"]["name"].as_str())
+            .unwrap_or("unknown")
+            .to_string();
+        let date = commit["author"]["date"].as_str().unwrap_or("").to_string();
+        let stats = &item["stats"];
+        let additions = stats["additions"].as_u64().unwrap_or(0);
+        let deletions = stats["deletions"].as_u64().unwrap_or(0);
+
+        let files = item["files"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|f| {
+                        Some(CommitFile {
+                            filename: f["filename"].as_str()?.to_string(),
+                            status: f["status"].as_str().unwrap_or("modified").to_string(),
+                            additions: f["additions"].as_u64().unwrap_or(0),
+                            deletions: f["deletions"].as_u64().unwrap_or(0),
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        Ok(CommitDetail {
+            sha: full_sha,
+            message,
+            author,
+            date,
+            additions,
+            deletions,
+            files,
+        })
     }
 }

@@ -3259,7 +3259,9 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::ScrollUp => {
             if matches!(state.route, Route::Code { .. }) {
                 if let Some(ref mut code) = state.code {
-                    if !code.sidebar_focused {
+                    if code.commit_detail.is_some() {
+                        code.commit_scroll = code.commit_scroll.saturating_sub(3);
+                    } else if !code.sidebar_focused {
                         code.scroll = code.scroll.saturating_sub(3);
                     } else {
                         code.select_prev();
@@ -3304,7 +3306,9 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::ScrollDown => {
             if matches!(state.route, Route::Code { .. }) {
                 if let Some(ref mut code) = state.code {
-                    if !code.sidebar_focused {
+                    if code.commit_detail.is_some() {
+                        code.commit_scroll += 3;
+                    } else if !code.sidebar_focused {
                         code.scroll += 3;
                     } else {
                         code.select_next();
@@ -3937,6 +3941,118 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::CodeSidebarFocus => {
             if let Some(ref mut code) = state.code {
                 code.sidebar_focused = !code.sidebar_focused;
+            }
+            vec![]
+        }
+        Message::CodeBranchesLoaded(branches) => {
+            state.loading.remove("code_branches");
+            if let Some(ref mut code) = state.code {
+                code.branches = branches;
+            }
+            vec![]
+        }
+        Message::CodeTagsLoaded(tags) => {
+            state.loading.remove("code_tags");
+            if let Some(ref mut code) = state.code {
+                code.tags = tags;
+            }
+            vec![]
+        }
+        Message::CodeOpenRefPicker => {
+            if let Some(ref mut code) = state.code {
+                code.build_ref_picker_items();
+                code.ref_picker_open = true;
+            }
+            vec![]
+        }
+        Message::CodeCloseRefPicker => {
+            if let Some(ref mut code) = state.code {
+                code.ref_picker_open = false;
+            }
+            vec![]
+        }
+        Message::CodeSelectRef => {
+            if let Some(ref mut code) = state.code {
+                if let Some((ref_name, _is_branch)) =
+                    code.ref_picker_items.get(code.ref_picker_selected).cloned()
+                {
+                    code.ref_picker_open = false;
+                    code.git_ref = ref_name;
+                    code.file_content = None;
+                    code.file_name = None;
+                    code.readme_content = None;
+                    code.entries.clear();
+                    code.path_stack.clear();
+                    code.current_path.clear();
+                    code.selected = 0;
+                    code.scroll = 0;
+                    code.commits.clear();
+                    code.commit_detail = None;
+                    code.show_commits = false;
+                    code.commit_selected = 0;
+                    if let Some(ref repo) = state.current_repo {
+                        state.loading.insert("code_contents".to_string());
+                        return vec![Command::FetchContents(
+                            repo.clone(),
+                            String::new(),
+                            code.git_ref.clone(),
+                        )];
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::CodeCommitsLoaded(commits) => {
+            state.loading.remove("code_commits");
+            if let Some(ref mut code) = state.code {
+                code.commits = commits;
+                code.commit_selected = 0;
+            }
+            vec![]
+        }
+        Message::CodeCommitDetailLoaded(detail) => {
+            state.loading.remove("code_commit_detail");
+            if let Some(ref mut code) = state.code {
+                code.commit_detail = Some(*detail);
+                code.commit_scroll = 0;
+            }
+            vec![]
+        }
+        Message::CodeToggleCommits => {
+            if let Some(ref mut code) = state.code {
+                code.show_commits = !code.show_commits;
+                code.commit_detail = None;
+                code.commit_scroll = 0;
+                if code.show_commits && code.commits.is_empty() {
+                    if let Some(ref repo) = state.current_repo {
+                        state.loading.insert("code_commits".to_string());
+                        return vec![Command::FetchCommits(
+                            repo.clone(),
+                            code.git_ref.clone(),
+                            code.current_path.clone(),
+                            30,
+                        )];
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::CodeOpenCommitDetail => {
+            if let Some(ref mut code) = state.code {
+                if let Some(entry) = code.commits.get(code.commit_selected) {
+                    let sha = entry.sha.clone();
+                    if let Some(ref repo) = state.current_repo {
+                        state.loading.insert("code_commit_detail".to_string());
+                        return vec![Command::FetchCommitDetail(repo.clone(), sha)];
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::CodeCloseCommitDetail => {
+            if let Some(ref mut code) = state.code {
+                code.commit_detail = None;
+                code.commit_scroll = 0;
             }
             vec![]
         }
