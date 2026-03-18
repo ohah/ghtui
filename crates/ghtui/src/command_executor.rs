@@ -350,6 +350,15 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
                 Err(e) => Message::Error(e.into()),
             }
         }
+        Command::FetchWorkflowInputs(repo, workflow_id, workflow_name, path) => {
+            match client.get_workflow_file(&repo, &path).await {
+                Ok(content) => {
+                    let inputs = parse_workflow_inputs(&content);
+                    Message::WorkflowInputsLoaded(workflow_id, workflow_name, inputs)
+                }
+                Err(e) => Message::Error(e.into()),
+            }
+        }
         Command::FetchPendingDeployments(repo, run_id) => {
             match client.list_pending_deployments(&repo, run_id).await {
                 Ok(deployments) => Message::PendingDeploymentsLoaded(deployments),
@@ -485,4 +494,56 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
         // SwitchAccount is handled directly in App::run(), not here
         Command::SwitchAccount(_) => Message::Tick,
     }
+}
+
+/// Parse workflow YAML to extract `on.workflow_dispatch.inputs`.
+fn parse_workflow_inputs(yaml_content: &str) -> Vec<ghtui_core::types::WorkflowInput> {
+    let Ok(doc) = serde_yaml::from_str::<serde_json::Value>(yaml_content) else {
+        return Vec::new();
+    };
+
+    // Look for on.workflow_dispatch.inputs
+    let Some(inputs_obj) = doc
+        .pointer("/on/workflow_dispatch/inputs")
+        .and_then(|v| v.as_object())
+    else {
+        return Vec::new();
+    };
+
+    inputs_obj
+        .iter()
+        .map(|(name, val)| {
+            let input_type = val["type"].as_str().unwrap_or("string").to_string();
+            let required = val["required"].as_bool().unwrap_or(false);
+            let description = val["description"].as_str().map(|s| s.to_string());
+            let default = val["default"]
+                .as_str()
+                .or_else(|| val["default"].as_bool().map(|_| "false"))
+                .map(|s| s.to_string())
+                .or_else(|| {
+                    if val["default"].is_boolean() {
+                        Some(val["default"].as_bool().unwrap().to_string())
+                    } else {
+                        None
+                    }
+                });
+            let options = val["options"]
+                .as_array()
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect()
+                })
+                .unwrap_or_default();
+
+            ghtui_core::types::WorkflowInput {
+                name: name.clone(),
+                required,
+                input_type,
+                description,
+                default,
+                options,
+            }
+        })
+        .collect()
 }

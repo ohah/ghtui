@@ -1,9 +1,9 @@
 use ghtui_core::AppState;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::style::Style;
+use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph};
+use ratatui::widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap};
 
 pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     let theme = &state.theme;
@@ -39,14 +39,33 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     };
 
+    // Workflow sidebar layout
+    let content_area = if list_state.show_workflow_sidebar {
+        let sidebar_width = 30u16.min(area.width / 3);
+        let h_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Length(sidebar_width), Constraint::Min(0)])
+            .split(area);
+        render_workflow_sidebar(frame, state, list_state, h_chunks[0]);
+        h_chunks[1]
+    } else {
+        area
+    };
+
     // Layout: filter bar + list
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(1), Constraint::Min(0)])
-        .split(area);
+        .split(content_area);
 
     // Filter bar
     render_filter_bar(frame, state, list_state, chunks[0]);
+
+    // Dispatch modal overlay
+    if list_state.dispatch.is_some() {
+        render_dispatch_modal(frame, state, list_state, area);
+        return;
+    }
 
     // List
     let items: Vec<ListItem> = list_state
@@ -125,7 +144,11 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         .unwrap_or_default();
     let page_str = format!(" p.{}{} ", list_state.pagination.page, total_str);
 
-    let title = format!(" Actions ({}) {}", list_state.items.len(), page_str);
+    let title = format!(
+        " Actions ({}) {} w:Workflows d:Dispatch ",
+        list_state.items.len(),
+        page_str
+    );
 
     let list = List::new(items)
         .block(
@@ -217,4 +240,187 @@ fn render_filter_bar(
     let filter_line = Line::from(spans);
     let paragraph = Paragraph::new(filter_line).style(Style::default().bg(theme.bg));
     frame.render_widget(paragraph, area);
+}
+
+fn render_workflow_sidebar(
+    frame: &mut Frame,
+    state: &AppState,
+    list_state: &ghtui_core::state::ActionsListState,
+    area: Rect,
+) {
+    let theme = &state.theme;
+    let focused = list_state.workflow_sidebar_focused;
+    let border_color = if focused { theme.accent } else { theme.border };
+
+    let mut items: Vec<ListItem> = Vec::new();
+
+    // "All workflows" option
+    let all_style = if list_state.workflow_sidebar_selected == 0 && focused {
+        theme.selected()
+    } else if list_state.workflow_sidebar_selected == 0 {
+        Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(theme.fg_dim)
+    };
+    let all_marker = if list_state.filters.workflow_id.is_none() {
+        "● "
+    } else {
+        "  "
+    };
+    items.push(ListItem::new(Line::from(vec![
+        Span::styled(all_marker, Style::default().fg(theme.accent)),
+        Span::styled("All workflows", all_style),
+    ])));
+
+    for (i, wf) in list_state.workflows.iter().enumerate() {
+        let idx = i + 1;
+        let is_selected = idx == list_state.workflow_sidebar_selected;
+        let is_active = list_state.filters.workflow_id == Some(wf.id);
+
+        let name_style = if is_selected && focused {
+            theme.selected()
+        } else if is_selected {
+            Style::default().fg(theme.fg).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(theme.fg_dim)
+        };
+
+        let marker = if is_active { "● " } else { "  " };
+
+        items.push(ListItem::new(Line::from(vec![
+            Span::styled(marker, Style::default().fg(theme.accent)),
+            Span::styled(&wf.name, name_style),
+        ])));
+    }
+
+    let title = if focused {
+        " Workflows (Enter:select  d:dispatch) "
+    } else {
+        " Workflows (w:toggle) "
+    };
+
+    let list = List::new(items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(border_color))
+            .title(title),
+    );
+
+    let mut sidebar_state = ListState::default();
+    sidebar_state.select(Some(list_state.workflow_sidebar_selected));
+    frame.render_stateful_widget(list, area, &mut sidebar_state);
+}
+
+fn render_dispatch_modal(
+    frame: &mut Frame,
+    state: &AppState,
+    list_state: &ghtui_core::state::ActionsListState,
+    area: Rect,
+) {
+    let theme = &state.theme;
+    let Some(ref dispatch) = list_state.dispatch else {
+        return;
+    };
+
+    let height = (dispatch.inputs.len() as u16 * 2 + 8).min(area.height.saturating_sub(4));
+    let width = 60u16.min(area.width.saturating_sub(4));
+    let x = (area.width.saturating_sub(width)) / 2 + area.x;
+    let y = (area.height.saturating_sub(height)) / 2 + area.y;
+    let popup_area = Rect::new(x, y, width, height);
+
+    frame.render_widget(Clear, popup_area);
+
+    let mut lines: Vec<Line> = Vec::new();
+
+    // Header
+    lines.push(Line::styled(
+        format!("  Dispatch: {}", dispatch.workflow_name),
+        Style::default()
+            .fg(theme.accent)
+            .add_modifier(Modifier::BOLD),
+    ));
+    lines.push(Line::raw(""));
+
+    // Ref field
+    let ref_focused = dispatch.focused_field == 0;
+    let ref_marker = if ref_focused { "▸ " } else { "  " };
+    let ref_value = if dispatch.editing && ref_focused {
+        format!("{}█", dispatch.edit_buffer)
+    } else {
+        dispatch.git_ref.clone()
+    };
+    lines.push(Line::from(vec![
+        Span::styled(
+            format!("{}Branch/Tag: ", ref_marker),
+            if ref_focused {
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme.fg_dim)
+            },
+        ),
+        Span::styled(ref_value, theme.text()),
+    ]));
+
+    // Input fields
+    for (i, field) in dispatch.inputs.iter().enumerate() {
+        let field_idx = i + 1;
+        let is_focused = dispatch.focused_field == field_idx;
+        let marker = if is_focused { "▸ " } else { "  " };
+
+        let value = if dispatch.editing && is_focused {
+            format!("{}█", dispatch.edit_buffer)
+        } else if field.value.is_empty() {
+            "(empty)".to_string()
+        } else {
+            field.value.clone()
+        };
+
+        let required_tag = if field.required { " *" } else { "" };
+
+        lines.push(Line::from(vec![
+            Span::styled(
+                format!("{}{}{}: ", marker, field.name, required_tag),
+                if is_focused {
+                    Style::default()
+                        .fg(theme.accent)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(theme.fg_dim)
+                },
+            ),
+            Span::styled(value, theme.text()),
+        ]));
+
+        // Description hint
+        if is_focused {
+            if let Some(ref desc) = field.description {
+                lines.push(Line::styled(
+                    format!("    {}", desc),
+                    Style::default().fg(theme.fg_muted),
+                ));
+            }
+            if !field.options.is_empty() {
+                lines.push(Line::styled(
+                    format!("    Options: {}", field.options.join(", ")),
+                    Style::default().fg(theme.fg_muted),
+                ));
+            }
+        }
+    }
+
+    lines.push(Line::raw(""));
+    lines.push(Line::styled(
+        "  j/k:navigate  Enter:edit  Ctrl+S:submit  Esc:cancel",
+        Style::default().fg(theme.fg_dim),
+    ));
+
+    let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false }).block(
+        Block::default()
+            .title(" Workflow Dispatch ")
+            .borders(Borders::ALL)
+            .style(Style::default().bg(theme.bg)),
+    );
+    frame.render_widget(paragraph, popup_area);
 }

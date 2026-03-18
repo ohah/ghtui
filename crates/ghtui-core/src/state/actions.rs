@@ -16,6 +16,33 @@ pub struct ActionsListState {
     pub search_mode: bool,
     pub search_query: String,
     pub workflows: Vec<Workflow>,
+    pub show_workflow_sidebar: bool,
+    pub workflow_sidebar_selected: usize,
+    pub workflow_sidebar_focused: bool,
+    /// Dispatch modal state
+    pub dispatch: Option<DispatchState>,
+}
+
+/// State for the workflow dispatch modal.
+#[derive(Debug)]
+pub struct DispatchState {
+    pub workflow_id: u64,
+    pub workflow_name: String,
+    pub git_ref: String,
+    pub inputs: Vec<DispatchInputField>,
+    pub focused_field: usize, // 0 = ref, 1..N = inputs
+    pub editing: bool,
+    pub edit_buffer: String,
+}
+
+#[derive(Debug)]
+pub struct DispatchInputField {
+    pub name: String,
+    pub value: String,
+    pub input_type: String,
+    pub required: bool,
+    pub options: Vec<String>,
+    pub description: Option<String>,
 }
 
 impl ActionsListState {
@@ -28,6 +55,10 @@ impl ActionsListState {
             search_mode: false,
             search_query: String::new(),
             workflows: Vec::new(),
+            show_workflow_sidebar: false,
+            workflow_sidebar_selected: 0,
+            workflow_sidebar_focused: false,
+            dispatch: None,
         }
     }
 
@@ -44,6 +75,10 @@ impl ActionsListState {
             search_mode: false,
             search_query: String::new(),
             workflows: Vec::new(),
+            show_workflow_sidebar: false,
+            workflow_sidebar_selected: 0,
+            workflow_sidebar_focused: false,
+            dispatch: None,
         }
     }
 
@@ -133,6 +168,8 @@ pub struct ActionDetailState {
     pub log_poll_counter: u32,
     /// Whether the selected job is actively running (enables log polling)
     pub log_streaming: bool,
+    /// Artifact currently being downloaded (name shown as progress indicator)
+    pub downloading_artifact: Option<String>,
 }
 
 impl ActionDetailState {
@@ -155,6 +192,7 @@ impl ActionDetailState {
             workflow_file: None,
             log_poll_counter: 0,
             log_streaming: false,
+            downloading_artifact: None,
         }
     }
 
