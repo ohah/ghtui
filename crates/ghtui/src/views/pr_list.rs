@@ -194,7 +194,7 @@ fn render_pr_list(
                 theme.text()
             };
 
-            // Line 1: state icon + title + draft badge + labels
+            // Line 1: state icon + title + draft badge
             let mut line1_spans = vec![
                 Span::raw("  "),
                 state_icon,
@@ -205,13 +205,20 @@ fn render_pr_list(
                 line1_spans.push(Span::styled(" Draft", Style::default().fg(theme.fg_muted)));
             }
 
-            for label in &pr.labels {
-                line1_spans.push(Span::raw(" "));
-                line1_spans.push(super::components::label_span(&label.name, &label.color));
+            let mut lines = vec![Line::from(line1_spans)];
+
+            // Line 2 (optional): labels on their own line
+            if !pr.labels.is_empty() {
+                let mut label_spans: Vec<Span> = vec![Span::raw("    ")];
+                for label in &pr.labels {
+                    label_spans.push(super::components::label_span(&label.name, &label.color));
+                    label_spans.push(Span::raw(" "));
+                }
+                lines.push(Line::from(label_spans));
             }
 
-            // Line 2: #number · opened time ago by user · branch · +/- · assignees · comments
-            let mut line2_spans: Vec<Span> = vec![
+            // Line 2/3: #number · opened time ago by user · +/- · assignees · comments
+            let mut meta_spans: Vec<Span> = vec![
                 Span::raw("    "),
                 Span::styled(
                     format!("#{}", pr.number),
@@ -230,11 +237,11 @@ fn render_pr_list(
             // Show +/- stats if available
             if let (Some(additions), Some(deletions)) = (pr.additions, pr.deletions) {
                 if additions > 0 || deletions > 0 {
-                    line2_spans.push(Span::styled(
+                    meta_spans.push(Span::styled(
                         format!("  +{}", additions),
                         Style::default().fg(theme.success),
                     ));
-                    line2_spans.push(Span::styled(
+                    meta_spans.push(Span::styled(
                         format!(" -{}", deletions),
                         Style::default().fg(theme.danger),
                     ));
@@ -243,7 +250,7 @@ fn render_pr_list(
 
             if !pr.assignees.is_empty() {
                 let assignees: Vec<String> = pr.assignees.iter().map(|a| a.login.clone()).collect();
-                line2_spans.push(Span::styled(
+                meta_spans.push(Span::styled(
                     format!("  → {}", assignees.join(", ")),
                     Style::default().fg(theme.fg_dim),
                 ));
@@ -251,14 +258,15 @@ fn render_pr_list(
 
             if let Some(count) = pr.comments {
                 if count > 0 {
-                    line2_spans.push(Span::styled(
+                    meta_spans.push(Span::styled(
                         format!("  💬{}", count),
                         Style::default().fg(theme.fg_dim),
                     ));
                 }
             }
 
-            ListItem::new(vec![Line::from(line1_spans), Line::from(line2_spans)])
+            lines.push(Line::from(meta_spans));
+            ListItem::new(lines)
         })
         .collect();
 

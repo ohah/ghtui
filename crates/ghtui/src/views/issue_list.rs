@@ -338,8 +338,8 @@ fn render_issue_list(
                 theme.text()
             };
 
-            // Line 1: pin icon + state icon + title + labels
-            let mut line1_spans = vec![
+            // Line 1: pin icon + state icon + title
+            let line1_spans = vec![
                 if is_pinned {
                     Span::styled("📌", Style::default().fg(theme.warning))
                 } else {
@@ -349,13 +349,20 @@ fn render_issue_list(
                 Span::styled(issue.title.clone(), title_style),
             ];
 
-            for label in &issue.labels {
-                line1_spans.push(Span::raw(" "));
-                line1_spans.push(super::components::label_span(&label.name, &label.color));
+            let mut lines = vec![Line::from(line1_spans)];
+
+            // Line 2 (optional): labels on their own line
+            if !issue.labels.is_empty() {
+                let mut label_spans: Vec<Span> = vec![Span::raw("    ")];
+                for label in &issue.labels {
+                    label_spans.push(super::components::label_span(&label.name, &label.color));
+                    label_spans.push(Span::raw(" "));
+                }
+                lines.push(Line::from(label_spans));
             }
 
-            // Line 2: #number · opened time ago by user · assignees · comment count
-            let mut line2_spans: Vec<Span> = vec![
+            // Line 2/3: #number · opened time ago by user · assignees · comment count
+            let mut meta_spans: Vec<Span> = vec![
                 Span::raw("    "),
                 Span::styled(
                     format!("#{}", issue.number),
@@ -374,7 +381,7 @@ fn render_issue_list(
             if !issue.assignees.is_empty() {
                 let assignees: Vec<String> =
                     issue.assignees.iter().map(|a| a.login.clone()).collect();
-                line2_spans.push(Span::styled(
+                meta_spans.push(Span::styled(
                     format!("  → {}", assignees.join(", ")),
                     Style::default().fg(theme.fg_dim),
                 ));
@@ -382,14 +389,15 @@ fn render_issue_list(
 
             if let Some(count) = issue.comments {
                 if count > 0 {
-                    line2_spans.push(Span::styled(
+                    meta_spans.push(Span::styled(
                         format!("  💬{}", count),
                         Style::default().fg(theme.fg_dim),
                     ));
                 }
             }
 
-            ListItem::new(vec![Line::from(line1_spans), Line::from(line2_spans)])
+            lines.push(Line::from(meta_spans));
+            ListItem::new(lines)
         })
         .collect();
 
