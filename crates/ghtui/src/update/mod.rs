@@ -3446,17 +3446,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::GoHome => {
             state.route = Route::Dashboard;
-            state.current_repo = None;
-            state.code = None;
-            state.pr_list = None;
-            state.pr_detail = None;
-            state.issue_list = None;
-            state.issue_detail = None;
-            state.actions_list = None;
-            state.action_detail = None;
-            state.security = None;
-            state.insights = None;
-            state.settings = None;
+            state.reset_repo_state();
             refresh_current_view(state)
         }
         Message::GlobalTabNext => {

@@ -94,100 +94,90 @@ fn get_tree_sitter_language(ext: &str) -> Option<tree_sitter::Language> {
     }
 }
 
-/// Map Tree-sitter node kind to a color based on theme.
+/// Categorize a Tree-sitter node kind.
+enum NodeCategory {
+    Keyword,
+    Type,
+    Identifier,
+    StringLit,
+    Number,
+    Comment,
+    Operator,
+    Macro,
+    Default,
+}
+
+fn categorize_node(kind: &str) -> NodeCategory {
+    match kind {
+        // Keywords (all languages)
+        "fn" | "let" | "mut" | "pub" | "use" | "mod" | "struct" | "enum" | "impl" | "trait"
+        | "type" | "const" | "static" | "async" | "await" | "return" | "if" | "else" | "match"
+        | "for" | "while" | "loop" | "break" | "continue" | "where" | "self" | "super"
+        | "crate" | "as" | "in" | "ref" | "move" | "unsafe" | "dyn" | "extern" | "true"
+        | "false" | "function" | "var" | "class" | "import" | "export" | "from" | "default"
+        | "new" | "this" | "def" | "elif" | "except" | "finally" | "try" | "with" | "yield"
+        | "lambda" | "pass" | "raise" | "del" | "global" | "nonlocal" | "assert" | "is" | "not"
+        | "and" | "or" | "None" | "True" | "False" | "package" | "func" | "defer" | "go"
+        | "chan" | "select" | "case" | "switch" | "fallthrough" | "range" | "interface"
+        | "void" | "int" | "float" | "double" | "char" | "boolean" | "byte" | "short" | "long"
+        | "abstract" | "final" | "synchronized" | "volatile" | "transient" | "native"
+        | "throws" | "instanceof" | "extends" | "implements" | "do" | "end" | "then" | "begin"
+        | "rescue" | "ensure" | "module" | "require" | "include" | "elsif" | "unless" | "until"
+        | "when" | "defined?" => NodeCategory::Keyword,
+        // Types
+        "type_identifier"
+        | "primitive_type"
+        | "builtin_type"
+        | "scoped_type_identifier"
+        | "generic_type"
+        | "lifetime" => NodeCategory::Type,
+        // Identifiers
+        "identifier" | "field_identifier" | "method_identifier" => NodeCategory::Identifier,
+        // Strings
+        "string_literal" | "string_content" | "raw_string_literal" | "char_literal" | "string"
+        | "template_string" | "string_fragment" | "heredoc_body" => NodeCategory::StringLit,
+        // Numbers
+        "integer_literal" | "float_literal" | "number" | "integer" => NodeCategory::Number,
+        // Comments
+        "line_comment" | "block_comment" | "comment" | "comment_content" => NodeCategory::Comment,
+        // Operators / punctuation
+        "=" | "+" | "-" | "*" | "/" | "%" | "&" | "|" | "^" | "!" | "<" | ">" | "." | "," | ";"
+        | ":" | "::" | "->" | "=>" | ".." | "..." | "?" | "@" | "#" | "~" | "(" | ")" | "["
+        | "]" | "{" | "}" => NodeCategory::Operator,
+        // Macros
+        "macro_invocation" | "attribute_item" | "attribute" | "inner_attribute_item" => {
+            NodeCategory::Macro
+        }
+        _ => NodeCategory::Default,
+    }
+}
+
+/// Map node category to color based on theme.
 fn node_color(kind: &str, is_dark: bool) -> (u8, u8, u8) {
+    let cat = categorize_node(kind);
     if is_dark {
-        match kind {
-            // Keywords
-            "fn" | "let" | "mut" | "pub" | "use" | "mod" | "struct" | "enum" | "impl" | "trait"
-            | "type" | "const" | "static" | "async" | "await" | "return" | "if" | "else"
-            | "match" | "for" | "while" | "loop" | "break" | "continue" | "where" | "self"
-            | "super" | "crate" | "as" | "in" | "ref" | "move" | "unsafe" | "dyn" | "extern"
-            | "true" | "false" | "function" | "var" | "class" | "import" | "export" | "from"
-            | "default" | "new" | "this" | "def" | "elif" | "except" | "finally" | "try"
-            | "with" | "yield" | "lambda" | "pass" | "raise" | "del" | "global" | "nonlocal"
-            | "assert" | "is" | "not" | "and" | "or" | "None" | "True" | "False" | "package"
-            | "func" | "defer" | "go" | "chan" | "select" | "case" | "switch" | "fallthrough"
-            | "range" | "map" | "interface" | "void" | "int" | "float" | "double" | "char"
-            | "boolean" | "byte" | "short" | "long" | "abstract" | "final" | "synchronized"
-            | "volatile" | "transient" | "native" | "throws" | "instanceof" | "extends"
-            | "implements" | "do" | "end" | "then" | "begin" | "rescue" | "ensure" | "module"
-            | "require" | "include" | "elsif" | "unless" | "until" | "when" | "defined?" => {
-                (255, 123, 114) // red-ish — keywords
-            }
-
-            // Types
-            "type_identifier"
-            | "primitive_type"
-            | "builtin_type"
-            | "scoped_type_identifier"
-            | "generic_type"
-            | "lifetime" => {
-                (121, 192, 255) // light blue — types
-            }
-
-            // Functions
-            "identifier" | "field_identifier" | "method_identifier" => {
-                (210, 168, 255) // purple — identifiers
-            }
-
-            // Strings
-            "string_literal" | "string_content" | "raw_string_literal" | "char_literal"
-            | "string" | "template_string" | "string_fragment" | "heredoc_body" => {
-                (165, 214, 255) // cyan — strings
-            }
-
-            // Numbers
-            "integer_literal" | "float_literal" | "number" | "integer" => {
-                (121, 192, 255) // blue — numbers
-            }
-
-            // Comments
-            "line_comment" | "block_comment" | "comment" | "comment_content" => {
-                (139, 148, 158) // gray — comments
-            }
-
-            // Operators / punctuation
-            "=" | "+" | "-" | "*" | "/" | "%" | "&" | "|" | "^" | "!" | "<" | ">" | "." | ","
-            | ";" | ":" | "::" | "->" | "=>" | ".." | "..." | "?" | "@" | "#" | "~" | "(" | ")"
-            | "[" | "]" | "{" | "}" => {
-                (230, 237, 243) // white — operators
-            }
-
-            // Macros
-            "macro_invocation" | "attribute_item" | "attribute" | "inner_attribute_item" => {
-                (121, 184, 255) // blue — macros/attributes
-            }
-
-            _ => (230, 237, 243), // default white
+        match cat {
+            NodeCategory::Keyword => (255, 123, 114),    // red
+            NodeCategory::Type => (121, 192, 255),       // light blue
+            NodeCategory::Identifier => (210, 168, 255), // purple
+            NodeCategory::StringLit => (165, 214, 255),  // cyan
+            NodeCategory::Number => (121, 192, 255),     // blue
+            NodeCategory::Comment => (139, 148, 158),    // gray
+            NodeCategory::Operator => (230, 237, 243),   // white
+            NodeCategory::Macro => (121, 184, 255),      // blue
+            NodeCategory::Default => (230, 237, 243),    // white
         }
     } else {
-        // Light theme
-        match kind {
-            "fn" | "let" | "mut" | "pub" | "use" | "mod" | "struct" | "enum" | "impl" | "trait"
-            | "type" | "const" | "static" | "async" | "await" | "return" | "if" | "else"
-            | "match" | "for" | "while" | "loop" | "break" | "continue" | "function" | "var"
-            | "class" | "import" | "export" | "def" | "elif" | "except" | "try" | "with"
-            | "true" | "false" | "True" | "False" | "None" | "package" | "func" | "defer"
-            | "go" | "do" | "end" | "then" | "begin" | "module" | "require" => {
-                (207, 34, 46) // red — keywords
-            }
-            "type_identifier" | "primitive_type" | "builtin_type" => {
-                (5, 80, 174) // blue — types
-            }
-            "identifier" | "field_identifier" => {
-                (102, 57, 186) // purple — identifiers
-            }
-            "string_literal" | "string_content" | "string" | "template_string" => {
-                (10, 104, 71) // green — strings
-            }
-            "integer_literal" | "float_literal" | "number" => {
-                (5, 80, 174) // blue — numbers
-            }
-            "line_comment" | "block_comment" | "comment" => {
-                (110, 119, 129) // gray — comments
-            }
-            _ => (31, 35, 40), // default dark
+        match cat {
+            NodeCategory::Keyword => (207, 34, 46),     // red
+            NodeCategory::Type => (5, 80, 174),         // blue
+            NodeCategory::Identifier => (102, 57, 186), // purple
+            NodeCategory::StringLit => (10, 104, 71),   // green
+            NodeCategory::Number => (5, 80, 174),       // blue
+            NodeCategory::Comment => (110, 119, 129),   // gray
+            NodeCategory::Operator => (31, 35, 40),     // dark
+            NodeCategory::Macro => (5, 80, 174),        // blue
+            NodeCategory::Default => (31, 35, 40),      // dark
         }
     }
 }
@@ -206,15 +196,15 @@ fn highlight_with_tree_sitter(
         return plain_tokens(content, is_dark);
     };
 
-    let source = content.as_bytes();
     let lines: Vec<&str> = content.lines().collect();
     let mut result: Vec<Vec<HlToken>> = lines.iter().map(|_| Vec::new()).collect();
 
     // Walk the AST and color each leaf node
     let mut cursor = tree.walk();
-    walk_tree(&mut cursor, source, &lines, &mut result, is_dark);
+    walk_tree(&mut cursor, &lines, &mut result, is_dark);
 
-    // Fill gaps: any part of a line not covered by a node gets default color
+    // Fill gaps: tokens only cover AST nodes, not whitespace/indentation between them.
+    // For each line, sort tokens by position and fill gaps with default-colored text.
     let default_color = if is_dark {
         (230, 237, 243)
     } else {
@@ -222,14 +212,64 @@ fn highlight_with_tree_sitter(
     };
 
     for (i, line) in lines.iter().enumerate() {
-        if result[i].is_empty() && !line.is_empty() {
-            result[i].push((
+        if line.is_empty() {
+            continue;
+        }
+        let tokens = &result[i];
+        if tokens.is_empty() {
+            result[i] = vec![(
                 default_color.0,
                 default_color.1,
                 default_color.2,
                 line.to_string(),
+            )];
+            continue;
+        }
+
+        // Rebuild the line by filling gaps between tokens
+        let mut filled: Vec<HlToken> = Vec::new();
+        let mut pos = 0usize; // current byte position in line
+
+        for (r, g, b, text) in tokens {
+            // Find where this token starts in the line
+            if let Some(token_start) = line[pos..].find(text.as_str()) {
+                let abs_start = pos + token_start;
+                // Fill gap before this token (whitespace/indentation)
+                if abs_start > pos {
+                    let gap = &line[pos..abs_start];
+                    // Convert tabs to spaces for display
+                    let gap_display = gap.replace('\t', "    ");
+                    filled.push((
+                        default_color.0,
+                        default_color.1,
+                        default_color.2,
+                        gap_display,
+                    ));
+                }
+                // Convert tabs in token text too
+                let token_display = text.replace('\t', "    ");
+                filled.push((*r, *g, *b, token_display));
+                pos = abs_start + text.len();
+            } else {
+                // Token text not found at expected position — just append
+                let token_display = text.replace('\t', "    ");
+                filled.push((*r, *g, *b, token_display));
+            }
+        }
+
+        // Fill trailing gap
+        if pos < line.len() {
+            let trailing = &line[pos..];
+            let trailing_display = trailing.replace('\t', "    ");
+            filled.push((
+                default_color.0,
+                default_color.1,
+                default_color.2,
+                trailing_display,
             ));
         }
+
+        result[i] = filled;
     }
 
     result
@@ -237,7 +277,6 @@ fn highlight_with_tree_sitter(
 
 fn walk_tree(
     cursor: &mut tree_sitter::TreeCursor,
-    _source: &[u8],
     lines: &[&str],
     result: &mut Vec<Vec<HlToken>>,
     is_dark: bool,
@@ -291,7 +330,7 @@ fn walk_tree(
     // Recurse into children
     if cursor.goto_first_child() {
         loop {
-            walk_tree(cursor, _source, lines, result, is_dark);
+            walk_tree(cursor, lines, result, is_dark);
             if !cursor.goto_next_sibling() {
                 break;
             }
