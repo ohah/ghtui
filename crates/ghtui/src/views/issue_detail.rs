@@ -31,12 +31,14 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     }
 
     let Some(ref detail_state) = state.issue_detail else {
-        let paragraph = Paragraph::new("No data").style(theme.text_dim()).block(
-            Block::default()
-                .title(" Issue Detail ")
-                .borders(Borders::ALL)
-                .border_style(theme.border_style()),
-        );
+        let paragraph = Paragraph::new("  No data — check API rate limit or network")
+            .style(theme.text_dim())
+            .block(
+                Block::default()
+                    .title(" Issue Detail ")
+                    .borders(Borders::ALL)
+                    .border_style(theme.border_style()),
+            );
         frame.render_widget(paragraph, area);
         return;
     };

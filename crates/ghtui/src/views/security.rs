@@ -15,12 +15,14 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     }
 
     let Some(ref security) = state.security else {
-        let paragraph = Paragraph::new("No data").style(theme.text_dim()).block(
-            Block::default()
-                .title(" Security ")
-                .borders(Borders::ALL)
-                .border_style(theme.border_style()),
-        );
+        let paragraph = Paragraph::new("  No data — check API rate limit or network")
+            .style(theme.text_dim())
+            .block(
+                Block::default()
+                    .title(" Security ")
+                    .borders(Borders::ALL)
+                    .border_style(theme.border_style()),
+            );
         frame.render_widget(paragraph, area);
         return;
     };
