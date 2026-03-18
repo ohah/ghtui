@@ -1,4 +1,3 @@
-use base64::Engine;
 use ghtui_core::types::common::RepoId;
 use ghtui_core::types::*;
 
@@ -255,18 +254,8 @@ impl GithubClient {
         repo: &RepoId,
         workflow_path: &str,
     ) -> Result<String, ApiError> {
-        // Use Contents API to get the workflow YAML file
-        let path = format!(
-            "/repos/{}/{}/contents/{}",
-            repo.owner, repo.name, workflow_path
-        );
-        let body = self.get(&path).await?;
-        let response: serde_json::Value = serde_json::from_str(&body)?;
-        let content = response["content"].as_str().unwrap_or("").replace('\n', "");
-        let decoded = base64::engine::general_purpose::STANDARD
-            .decode(&content)
-            .map_err(|e| ApiError::Other(format!("Base64 decode error: {}", e)))?;
-        String::from_utf8(decoded).map_err(|e| ApiError::Other(format!("UTF-8 error: {}", e)))
+        // Delegate to shared get_file_content (default branch via empty ref)
+        self.get_file_content(repo, workflow_path, "").await
     }
 
     pub async fn list_pending_deployments(

@@ -182,7 +182,7 @@ fn render_content(
         let lines = ghtui_widgets::render_markdown(readme);
 
         let paragraph = Paragraph::new(lines)
-            .scroll((code.scroll as u16, 0))
+            .scroll((code.scroll.min(u16::MAX as usize) as u16, 0))
             .style(Style::default().bg(theme.bg))
             .block(
                 Block::default()
