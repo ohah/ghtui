@@ -368,6 +368,14 @@ pub enum Message {
     Tick,
     Resize(u16, u16),
 
+    // Command Palette
+    PaletteOpen,
+    PaletteClose,
+    PaletteInput(String),
+    PaletteSelect,
+    PaletteUp,
+    PaletteDown,
+
     // System
     Error(GhtuiError),
     Quit,

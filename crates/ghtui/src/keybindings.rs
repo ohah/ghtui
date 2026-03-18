@@ -35,9 +35,19 @@ fn handle_insert_mode(key: KeyEvent) -> Option<Message> {
 }
 
 fn handle_normal_mode(key: KeyEvent, state: &AppState) -> Option<Message> {
+    // Command palette intercepts all keys when open
+    if state.command_palette.is_some() {
+        return handle_palette_keys(key, state);
+    }
+
     // Modal-specific keys
     if state.modal.is_some() {
         return handle_modal_keys(key, state);
+    }
+
+    // Ctrl+P opens command palette (before any other processing)
+    if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('p') {
+        return Some(Message::PaletteOpen);
     }
 
     // Skip global keys when editing inline or in diff comment
@@ -156,6 +166,27 @@ fn handle_modal_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
                 None
             }
         }
+    }
+}
+
+fn handle_palette_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
+    let palette = state.command_palette.as_ref().unwrap();
+    match key.code {
+        KeyCode::Esc => Some(Message::PaletteClose),
+        KeyCode::Enter => Some(Message::PaletteSelect),
+        KeyCode::Char('k') | KeyCode::Up => Some(Message::PaletteUp),
+        KeyCode::Char('j') | KeyCode::Down => Some(Message::PaletteDown),
+        KeyCode::Backspace => {
+            let mut q = palette.query.clone();
+            q.pop();
+            Some(Message::PaletteInput(q))
+        }
+        KeyCode::Char(c) => {
+            let mut q = palette.query.clone();
+            q.push(c);
+            Some(Message::PaletteInput(q))
+        }
+        _ => None,
     }
 }
 

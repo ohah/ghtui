@@ -25,35 +25,40 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     };
 
-    // Horizontal split: sidebar (30) | content (rest)
-    let h_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(30), Constraint::Min(0)])
-        .split(area);
+    let show_sidebar = area.width >= 80;
 
-    // Sidebar
-    let sidebar_titles = [
-        format!("Dependabot ({})", security.dependabot_alerts.len()),
-        format!("Code Scanning ({})", security.code_scanning_alerts.len()),
-        format!(
-            "Secret Scanning ({})",
-            security.secret_scanning_alerts.len()
-        ),
-        format!("Advisories ({})", security.advisories.len()),
-    ];
+    let content_area = if show_sidebar {
+        // Horizontal split: sidebar (30) | content (rest)
+        let h_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Length(30), Constraint::Min(0)])
+            .split(area);
 
-    components::render_sidebar(
-        frame,
-        theme,
-        "Security",
-        &sidebar_titles,
-        security.tab,
-        security.sidebar_focused,
-        h_chunks[0],
-    );
+        // Sidebar
+        let sidebar_titles = [
+            format!("Dependabot ({})", security.dependabot_alerts.len()),
+            format!("Code Scanning ({})", security.code_scanning_alerts.len()),
+            format!(
+                "Secret Scanning ({})",
+                security.secret_scanning_alerts.len()
+            ),
+            format!("Advisories ({})", security.advisories.len()),
+        ];
 
-    // Content area
-    let content_area = h_chunks[1];
+        components::render_sidebar(
+            frame,
+            theme,
+            "Security",
+            &sidebar_titles,
+            security.tab,
+            security.sidebar_focused,
+            h_chunks[0],
+        );
+
+        h_chunks[1]
+    } else {
+        area
+    };
 
     if security.detail_open {
         let split = Layout::default()

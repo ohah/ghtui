@@ -37,22 +37,33 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
         return;
     }
 
-    // Horizontal split: sidebar (35) | content (rest)
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(35), Constraint::Min(0)])
-        .split(area);
+    let show_sidebar = area.width >= 80;
 
-    if code.show_commits {
-        render_commit_list(frame, state, code, chunks[0]);
-    } else {
-        render_file_tree(frame, state, code, chunks[0]);
-    }
+    if show_sidebar {
+        // Horizontal split: sidebar (35) | content (rest)
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Length(35), Constraint::Min(0)])
+            .split(area);
 
-    if let Some(ref detail) = code.commit_detail {
-        render_commit_detail(frame, state, detail, code.commit_scroll, chunks[1]);
+        if code.show_commits {
+            render_commit_list(frame, state, code, chunks[0]);
+        } else {
+            render_file_tree(frame, state, code, chunks[0]);
+        }
+
+        if let Some(ref detail) = code.commit_detail {
+            render_commit_detail(frame, state, detail, code.commit_scroll, chunks[1]);
+        } else {
+            render_content(frame, state, code, chunks[1]);
+        }
     } else {
-        render_content(frame, state, code, chunks[1]);
+        // Narrow: show only content (or commit detail)
+        if let Some(ref detail) = code.commit_detail {
+            render_commit_detail(frame, state, detail, code.commit_scroll, area);
+        } else {
+            render_content(frame, state, code, area);
+        }
     }
 
     // Ref picker overlay

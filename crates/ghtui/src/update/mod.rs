@@ -3821,6 +3821,55 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.push_toast(e.to_string(), ToastLevel::Error);
             vec![]
         }
+        // Command Palette
+        Message::PaletteOpen => {
+            state.command_palette = Some(CommandPaletteState::new());
+            vec![]
+        }
+        Message::PaletteClose => {
+            state.command_palette = None;
+            vec![]
+        }
+        Message::PaletteInput(query) => {
+            if let Some(ref mut palette) = state.command_palette {
+                palette.query = query;
+                palette.filter();
+            }
+            vec![]
+        }
+        Message::PaletteSelect => {
+            if let Some(palette) = state.command_palette.take() {
+                if let Some(&idx) = palette.filtered.get(palette.selected) {
+                    // We need to dispatch the selected message
+                    // Since messages are not Clone, we reconstruct from the item
+                    let items = CommandPaletteState::new().items;
+                    if idx < items.len() {
+                        // Re-create the message from a fresh palette
+                        let fresh = CommandPaletteState::new();
+                        // Use the index to pick the right item
+                        return update(state, fresh.items.into_iter().nth(idx).unwrap().message);
+                    }
+                }
+            }
+            vec![]
+        }
+        Message::PaletteUp => {
+            if let Some(ref mut palette) = state.command_palette {
+                if palette.selected > 0 {
+                    palette.selected -= 1;
+                }
+            }
+            vec![]
+        }
+        Message::PaletteDown => {
+            if let Some(ref mut palette) = state.command_palette {
+                if palette.selected + 1 < palette.filtered.len() {
+                    palette.selected += 1;
+                }
+            }
+            vec![]
+        }
+
         Message::Quit => vec![Command::Quit],
         Message::InsightsSidebarFocus => {
             if let Some(ref mut ins) = state.insights {
