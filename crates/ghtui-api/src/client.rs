@@ -5,6 +5,7 @@ use lru::LruCache;
 use reqwest::Client;
 use reqwest::header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT};
 
+use crate::disk_cache::DiskCache;
 use crate::error::ApiError;
 use crate::rate_limit::RateLimitState;
 
@@ -16,6 +17,7 @@ pub struct GithubClient {
     pub(crate) token: String,
     pub(crate) cache: Arc<Mutex<LruCache<String, CachedResponse>>>,
     pub(crate) rate_limit: Arc<Mutex<RateLimitState>>,
+    pub(crate) disk_cache: Option<DiskCache>,
 }
 
 #[derive(Debug, Clone)]
@@ -63,17 +65,27 @@ impl GithubClient {
             std::num::NonZeroUsize::new(500).unwrap(),
         )));
 
+        let disk_cache = DiskCache::new();
+
         Ok(Self {
             http,
             base_url,
             token,
             cache,
             rate_limit: Arc::new(Mutex::new(RateLimitState::default())),
+            disk_cache,
         })
     }
 
     pub fn rate_limit_info(&self) -> RateLimitState {
         self.rate_limit.lock().unwrap().clone()
+    }
+
+    /// Run disk cache cleanup, removing entries older than 24 hours.
+    pub fn cleanup_disk_cache(&self) {
+        if let Some(ref dc) = self.disk_cache {
+            dc.cleanup();
+        }
     }
 
     pub(crate) fn url(&self, path: &str) -> String {
@@ -115,7 +127,7 @@ impl GithubClient {
         let url = self.url(path);
         let cache_key = url.clone();
 
-        // Check cache
+        // Check in-memory LRU cache
         {
             let cache = self.cache.lock().unwrap();
             if let Some(cached) = cache.peek(&cache_key) {
@@ -125,38 +137,77 @@ impl GithubClient {
             }
         }
 
-        let response = self.http.get(&url).send().await?;
+        // Try HTTP request; on failure, fall back to disk cache
+        let http_result = self.http.get(&url).send().await;
 
-        self.update_rate_limit(&response);
+        match http_result {
+            Ok(response) => {
+                self.update_rate_limit(&response);
 
-        let status = response.status();
-        let etag = response
-            .headers()
-            .get("etag")
-            .and_then(|v| v.to_str().ok())
-            .map(String::from);
+                let status = response.status();
+                let etag = response
+                    .headers()
+                    .get("etag")
+                    .and_then(|v| v.to_str().ok())
+                    .map(String::from);
 
-        let body = response.text().await?;
+                let body = response.text().await?;
 
-        if !status.is_success() {
-            return Err(self.parse_error(status.as_u16(), &body));
+                if !status.is_success() {
+                    let error = self.parse_error(status.as_u16(), &body);
+
+                    // On rate limit or server error, try disk cache fallback
+                    if matches!(error, ApiError::RateLimit { .. })
+                        || matches!(error, ApiError::GitHub { status, .. } if status >= 500)
+                    {
+                        if let Some(cached_body) = self.disk_cache_get(&cache_key) {
+                            tracing::warn!("API error, serving disk-cached response for {}", path);
+                            return Ok(cached_body);
+                        }
+                    }
+
+                    return Err(error);
+                }
+
+                // Store in LRU cache
+                {
+                    let mut cache = self.cache.lock().unwrap();
+                    cache.put(
+                        cache_key.clone(),
+                        CachedResponse {
+                            body: body.clone(),
+                            etag,
+                            cached_at: std::time::Instant::now(),
+                            ttl_secs,
+                        },
+                    );
+                }
+
+                // Store in disk cache
+                if let Some(ref dc) = self.disk_cache {
+                    dc.set(&cache_key, &body);
+                }
+
+                Ok(body)
+            }
+            Err(e) => {
+                // Network error — try disk cache fallback
+                if let Some(cached_body) = self.disk_cache_get(&cache_key) {
+                    tracing::warn!(
+                        "Network error, serving disk-cached response for {}: {}",
+                        path,
+                        e
+                    );
+                    return Ok(cached_body);
+                }
+                Err(ApiError::Http(e))
+            }
         }
+    }
 
-        // Store in cache
-        {
-            let mut cache = self.cache.lock().unwrap();
-            cache.put(
-                cache_key,
-                CachedResponse {
-                    body: body.clone(),
-                    etag,
-                    cached_at: std::time::Instant::now(),
-                    ttl_secs,
-                },
-            );
-        }
-
-        Ok(body)
+    /// Read from disk cache if available.
+    fn disk_cache_get(&self, url: &str) -> Option<String> {
+        self.disk_cache.as_ref()?.get(url)
     }
 
     pub(crate) async fn get_raw(&self, url: &str) -> Result<String, ApiError> {
