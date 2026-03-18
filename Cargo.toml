@@ -37,7 +37,6 @@ clap = { version = "4", features = ["derive"] }
 
 # Markdown & Syntax
 pulldown-cmark = "0.13"
-syntect = "5"
 
 # Tree-sitter (AST-based syntax highlighting)
 tree-sitter = "0.24"
@@ -57,6 +56,15 @@ tree-sitter-css = "0.23"
 tree-sitter-bash = "0.23"
 tree-sitter-yaml = "0.7"
 tree-sitter-md = "0.5"
+tree-sitter-swift = "0.7"
+tree-sitter-c-sharp = "0.23"
+tree-sitter-php = "0.24"
+tree-sitter-scala = "0.25"
+tree-sitter-lua = "0.5"
+tree-sitter-zig = "1.1"
+tree-sitter-elixir = "0.3"
+tree-sitter-hcl = "1.1"
+tree-sitter-proto = "0.4"
 
 # Utilities
 chrono = { version = "0.4", features = ["serde"] }

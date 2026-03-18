@@ -26,7 +26,6 @@ arboard.workspace = true
 chrono.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
-syntect.workspace = true
 tree-sitter.workspace = true
 tree-sitter-rust.workspace = true
 tree-sitter-javascript.workspace = true
@@ -44,5 +43,14 @@ tree-sitter-css.workspace = true
 tree-sitter-bash.workspace = true
 tree-sitter-yaml.workspace = true
 tree-sitter-md.workspace = true
+tree-sitter-swift.workspace = true
+tree-sitter-c-sharp.workspace = true
+tree-sitter-php.workspace = true
+tree-sitter-scala.workspace = true
+tree-sitter-lua.workspace = true
+tree-sitter-zig.workspace = true
+tree-sitter-elixir.workspace = true
+tree-sitter-hcl.workspace = true
+tree-sitter-proto.workspace = true
 
 [dev-dependencies]
