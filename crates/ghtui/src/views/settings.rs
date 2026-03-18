@@ -648,8 +648,8 @@ fn render_settings_form(frame: &mut Frame, state: &AppState, area: Rect) {
             Style::default().fg(theme.fg_muted)
         };
 
-        let value_display = if form.editing && is_focused {
-            format!("{}_", form.edit_buffer)
+        let value_display = if form.field_editing && is_focused {
+            format!("{}_", form.field_buffer)
         } else {
             match &field.field_type {
                 SettingsFieldType::Bool => {

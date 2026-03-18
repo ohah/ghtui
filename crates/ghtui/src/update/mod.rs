@@ -3308,8 +3308,8 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     let field = &mut form.fields[form.focused_field];
                     match &field.field_type {
                         SettingsFieldType::Text => {
-                            form.edit_buffer = field.value.clone();
-                            form.editing = true;
+                            form.field_buffer = field.value.clone();
+                            form.field_editing = true;
                         }
                         SettingsFieldType::Bool => {
                             field.value = if field.value == "true" {
@@ -3333,8 +3333,8 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::SettingsFormEditChar(c) => {
             if let Some(ref mut settings) = state.settings {
                 if let Some(ref mut form) = settings.form {
-                    if form.editing {
-                        form.edit_buffer.push(c);
+                    if form.field_editing {
+                        form.field_buffer.push(c);
                     }
                 }
             }
@@ -3343,8 +3343,8 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::SettingsFormEditBackspace => {
             if let Some(ref mut settings) = state.settings {
                 if let Some(ref mut form) = settings.form {
-                    if form.editing {
-                        form.edit_buffer.pop();
+                    if form.field_editing {
+                        form.field_buffer.pop();
                     }
                 }
             }
@@ -3353,10 +3353,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::SettingsFormEditDone => {
             if let Some(ref mut settings) = state.settings {
                 if let Some(ref mut form) = settings.form {
-                    if form.editing {
-                        form.fields[form.focused_field].value = form.edit_buffer.clone();
-                        form.editing = false;
-                        form.edit_buffer.clear();
+                    if form.field_editing {
+                        form.fields[form.focused_field].value = form.field_buffer.clone();
+                        form.field_editing = false;
+                        form.field_buffer.clear();
                     }
                 }
             }
@@ -3370,61 +3370,55 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     None => return vec![],
                 };
                 let repo = repo.clone();
-                let fields = &form.fields;
-                let get = |i: usize| fields[i].value.clone();
-                let get_bool = |i: usize| fields[i].value == "true";
 
                 match form.kind {
                     SettingsFormKind::CreateBranchProtection
                     | SettingsFormKind::EditBranchProtection(_) => {
-                        let branch = get(0);
+                        let branch = form.get_value("Branch").to_string();
                         if branch.is_empty() {
                             state.push_toast("Branch name is required".into(), ToastLevel::Warning);
                             return vec![];
                         }
-                        let reviews_count: u32 = get(4).parse().unwrap_or(0);
-                        let mut body = serde_json::json!({
-                            "enforce_admins": get_bool(3),
-                            "required_pull_request_reviews": null,
-                            "required_status_checks": null,
-                            "restrictions": null,
-                        });
-                        // Status checks
-                        let strict = get_bool(1);
-                        let contexts_str = get(2);
+                        let reviews_count: u32 =
+                            form.get_value("Required reviews").parse().unwrap_or(0);
+                        let strict = form.get_bool("Strict status checks");
+                        let contexts_str = form.get_value("Status check contexts");
                         let contexts: Vec<&str> = contexts_str
                             .split(',')
                             .map(|s| s.trim())
                             .filter(|s| !s.is_empty())
                             .collect();
+                        let mut body = serde_json::json!({
+                            "enforce_admins": form.get_bool("Enforce admins"),
+                            "required_pull_request_reviews": null,
+                            "required_status_checks": null,
+                            "restrictions": null,
+                        });
                         if strict || !contexts.is_empty() {
                             body["required_status_checks"] = serde_json::json!({
                                 "strict": strict,
                                 "contexts": contexts,
                             });
                         }
-                        // PR reviews
-                        if reviews_count > 0 || get_bool(5) || get_bool(6) {
+                        if reviews_count > 0
+                            || form.get_bool("Dismiss stale reviews")
+                            || form.get_bool("Require code owner reviews")
+                        {
                             body["required_pull_request_reviews"] = serde_json::json!({
                                 "required_approving_review_count": reviews_count,
-                                "dismiss_stale_reviews": get_bool(5),
-                                "require_code_owner_reviews": get_bool(6),
+                                "dismiss_stale_reviews": form.get_bool("Dismiss stale reviews"),
+                                "require_code_owner_reviews": form.get_bool("Require code owner reviews"),
                             });
                         }
                         state.push_toast(
                             format!("Saving protection for '{}'...", branch),
                             ToastLevel::Info,
                         );
-                        let cmd = if matches!(form.kind, SettingsFormKind::CreateBranchProtection) {
-                            Command::CreateBranchProtection(repo, branch, body)
-                        } else {
-                            Command::UpdateBranchProtection(repo, branch, body)
-                        };
-                        return vec![cmd];
+                        return vec![Command::SaveBranchProtection(repo, branch, body)];
                     }
                     SettingsFormKind::AddCollaborator => {
-                        let username = get(0);
-                        let permission = get(1);
+                        let username = form.get_value("Username").to_string();
+                        let permission = form.get_value("Permission").to_string();
                         if username.is_empty() {
                             state.push_toast("Username is required".into(), ToastLevel::Warning);
                             return vec![];
@@ -3436,25 +3430,24 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         return vec![Command::AddCollaborator(repo, username, permission)];
                     }
                     SettingsFormKind::CreateWebhook | SettingsFormKind::EditWebhook(_) => {
-                        let url = get(0);
+                        let url = form.get_value("URL").to_string();
                         if url.is_empty() {
                             state.push_toast("URL is required".into(), ToastLevel::Warning);
                             return vec![];
                         }
-                        let content_type = get(1);
-                        let events: Vec<String> = get(2)
+                        let events: Vec<String> = form
+                            .get_value("Events")
                             .split(',')
                             .map(|s| s.trim().to_string())
                             .filter(|s| !s.is_empty())
                             .collect();
-                        let active = get_bool(3);
                         let body = serde_json::json!({
                             "config": {
                                 "url": url,
-                                "content_type": content_type,
+                                "content_type": form.get_value("Content type"),
                             },
                             "events": events,
-                            "active": active,
+                            "active": form.get_bool("Active"),
                         });
                         state.push_toast("Saving webhook...".into(), ToastLevel::Info);
                         return match form.kind {
@@ -3468,8 +3461,8 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         };
                     }
                     SettingsFormKind::CreateDeployKey => {
-                        let title = get(0);
-                        let key = get(1);
+                        let title = form.get_value("Title").to_string();
+                        let key = form.get_value("Key (public key)").to_string();
                         if title.is_empty() || key.is_empty() {
                             state.push_toast(
                                 "Title and key are required".into(),
@@ -3480,7 +3473,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                         let body = serde_json::json!({
                             "title": title,
                             "key": key,
-                            "read_only": get_bool(2),
+                            "read_only": form.get_bool("Read only"),
                         });
                         state.push_toast("Creating deploy key...".into(), ToastLevel::Info);
                         return vec![Command::CreateDeployKey(repo, body)];
