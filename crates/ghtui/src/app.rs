@@ -16,6 +16,8 @@ pub struct App {
     state: AppState,
     client: GithubClient,
     tick: usize,
+    /// Last click position and time for double-click detection
+    last_click: Option<(u16, u16, std::time::Instant)>,
 }
 
 impl App {
@@ -30,6 +32,7 @@ impl App {
             state: AppState::new(config.clone(), repo, current_account, accounts),
             client,
             tick: 0,
+            last_click: None,
         }
     }
 
@@ -70,7 +73,23 @@ impl App {
                                 MouseEventKind::ScrollUp => Some(Message::ScrollUp),
                                 MouseEventKind::ScrollDown => Some(Message::ScrollDown),
                                 MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
-                                    Some(Message::MouseClick(mouse.column, mouse.row))
+                                    let col = mouse.column;
+                                    let row = mouse.row;
+                                    let now = std::time::Instant::now();
+
+                                    // Double-click detection (300ms, same position)
+                                    if let Some((lc, lr, lt)) = self.last_click {
+                                        if lc == col && lr == row && now.duration_since(lt).as_millis() < 300 {
+                                            self.last_click = None;
+                                            Some(Message::MouseDoubleClick(col, row))
+                                        } else {
+                                            self.last_click = Some((col, row, now));
+                                            Some(Message::MouseClick(col, row))
+                                        }
+                                    } else {
+                                        self.last_click = Some((col, row, now));
+                                        Some(Message::MouseClick(col, row))
+                                    }
                                 }
                                 _ => None,
                             }
