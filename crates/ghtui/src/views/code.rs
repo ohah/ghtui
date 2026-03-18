@@ -149,11 +149,7 @@ fn render_file_tree(
                         Style::default().fg(theme.fg)
                     };
 
-                    let arrow_style = if node.is_dir {
-                        Style::default().fg(theme.fg_muted)
-                    } else {
-                        Style::default().fg(theme.fg_dim)
-                    };
+                    let arrow_style = Style::default().fg(theme.fg_muted);
 
                     let spans = vec![
                         Span::styled(
