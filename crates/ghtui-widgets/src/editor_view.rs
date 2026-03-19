@@ -168,7 +168,8 @@ impl Widget for EditorView<'_> {
                         // Cursor is before or at selection start
                         let before_cursor = &line[..byte_col];
                         let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
-                        let between = &line[after_cursor_byte..sel_start];
+                        let between_start = after_cursor_byte.min(sel_start);
+                        let between = &line[between_start..sel_start];
                         spans.push(Span::styled(before_cursor.to_string(), normal_style));
                         spans.push(Span::styled(cursor_ch, cursor_style));
                         spans.push(Span::styled(between.to_string(), normal_style));
@@ -189,7 +190,8 @@ impl Widget for EditorView<'_> {
                         spans.push(Span::styled(before_sel.to_string(), normal_style));
                         let sel_before_cursor = &line[sel_start..byte_col];
                         let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
-                        let sel_after_cursor = &line[after_cursor_byte..sel_end];
+                        let after_cursor_clamped = after_cursor_byte.min(sel_end);
+                        let sel_after_cursor = &line[after_cursor_clamped..sel_end];
                         spans.push(Span::styled(sel_before_cursor.to_string(), sel_style));
                         spans.push(Span::styled(
                             cursor_ch,
@@ -404,7 +406,8 @@ impl Widget for InlineEditorView<'_> {
                     if byte_col <= sel_start {
                         let before_cursor = &line[..byte_col];
                         let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
-                        let between = &line[after_cursor_byte..sel_start];
+                        let between_start = after_cursor_byte.min(sel_start);
+                        let between = &line[between_start..sel_start];
                         spans.push(Span::styled(before_cursor.to_string(), normal_style));
                         spans.push(Span::styled(cursor_ch, cursor_style));
                         spans.push(Span::styled(between.to_string(), normal_style));
@@ -423,7 +426,8 @@ impl Widget for InlineEditorView<'_> {
                         spans.push(Span::styled(before_sel.to_string(), normal_style));
                         let sel_before_cursor = &line[sel_start..byte_col];
                         let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
-                        let sel_after_cursor = &line[after_cursor_byte..sel_end];
+                        let after_cursor_clamped = after_cursor_byte.min(sel_end);
+                        let sel_after_cursor = &line[after_cursor_clamped..sel_end];
                         spans.push(Span::styled(sel_before_cursor.to_string(), sel_style));
                         spans.push(Span::styled(
                             cursor_ch,

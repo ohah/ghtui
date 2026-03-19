@@ -28,19 +28,34 @@ impl EventHandler {
                 if event::poll(tick_rate).unwrap_or(false) {
                     match event::read() {
                         Ok(CrosstermEvent::Key(key)) if key.kind == KeyEventKind::Press => {
+                            tracing::debug!("Key event: {:?}", key);
+
                             // Debounce bare Esc: some terminals (Warp, Terminal.app)
                             // split Shift+Arrow escape sequences into Esc + rest.
                             // Wait briefly to see if more data follows.
                             if key.code == KeyCode::Esc
                                 && key.modifiers.is_empty()
-                                && event::poll(Duration::from_millis(50)).unwrap_or(false)
+                                && event::poll(Duration::from_millis(100)).unwrap_or(false)
                             {
                                 // More data arrived — this Esc was part of an
                                 // escape sequence. Read the actual key and send it.
-                                if let Ok(CrosstermEvent::Key(real_key)) = event::read()
-                                    && real_key.kind == KeyEventKind::Press
-                                {
-                                    let _ = tx.send(Event::Key(real_key));
+                                match event::read() {
+                                    Ok(CrosstermEvent::Key(real_key))
+                                        if real_key.kind == KeyEventKind::Press =>
+                                    {
+                                        tracing::debug!(
+                                            "Esc debounce: discarded Esc, forwarding {:?}",
+                                            real_key
+                                        );
+                                        let _ = tx.send(Event::Key(real_key));
+                                    }
+                                    Ok(other) => {
+                                        tracing::debug!(
+                                            "Esc debounce: discarded Esc, got non-key: {:?}",
+                                            other
+                                        );
+                                    }
+                                    _ => {}
                                 }
                                 continue;
                             }
