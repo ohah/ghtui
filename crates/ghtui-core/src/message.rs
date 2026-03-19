@@ -201,27 +201,27 @@ pub enum Message {
     ActionsFilterClear,
     ActionsSelectWorkflow(Option<u64>),
     ActionsOpenInBrowser,
-    ActionsCancelRun,              // Cancel selected run from list
-    ActionsRerunRun,               // Re-run selected run from list
-    ActionsToggleWorkflowSidebar,  // Toggle workflow sidebar
-    ActionsWorkflowSidebarUp,      // Navigate up in workflow sidebar
-    ActionsWorkflowSidebarDown,    // Navigate down in workflow sidebar
-    ActionsWorkflowSidebarSelect,  // Select workflow from sidebar
-    ActionsDispatchOpen,           // Open dispatch modal for selected workflow
-    ActionsDispatchClose,          // Close dispatch modal
-    ActionsDispatchSubmit,         // Submit dispatch
-    ActionsDispatchFieldNext,      // Next field in dispatch form
-    ActionsDispatchFieldPrev,      // Prev field in dispatch form
-    ActionsDispatchEditStart,      // Start editing current field
-    ActionsDispatchEditChar(char), // Type char in dispatch field
-    ActionsDispatchEditBackspace,  // Backspace in dispatch field
-    ActionsDispatchEditDone,       // Finish editing field (Enter/Esc)
-    ActionsDispatchRefPickerToggle, // Toggle branch/tag picker
-    ActionsDispatchRefPickerNext,   // Next item in ref picker
-    ActionsDispatchRefPickerPrev,   // Prev item in ref picker
-    ActionsDispatchRefPickerSelect, // Select current ref in picker
+    ActionsCancelRun,                     // Cancel selected run from list
+    ActionsRerunRun,                      // Re-run selected run from list
+    ActionsToggleWorkflowSidebar,         // Toggle workflow sidebar
+    ActionsWorkflowSidebarUp,             // Navigate up in workflow sidebar
+    ActionsWorkflowSidebarDown,           // Navigate down in workflow sidebar
+    ActionsWorkflowSidebarSelect,         // Select workflow from sidebar
+    ActionsDispatchOpen,                  // Open dispatch modal for selected workflow
+    ActionsDispatchClose,                 // Close dispatch modal
+    ActionsDispatchSubmit,                // Submit dispatch
+    ActionsDispatchFieldNext,             // Next field in dispatch form
+    ActionsDispatchFieldPrev,             // Prev field in dispatch form
+    ActionsDispatchEditStart,             // Start editing current field
+    ActionsDispatchEditChar(char),        // Type char in dispatch field
+    ActionsDispatchEditBackspace,         // Backspace in dispatch field
+    ActionsDispatchEditDone,              // Finish editing field (Enter/Esc)
+    ActionsDispatchRefPickerToggle,       // Toggle branch/tag picker
+    ActionsDispatchRefPickerNext,         // Next item in ref picker
+    ActionsDispatchRefPickerPrev,         // Prev item in ref picker
+    ActionsDispatchRefPickerSelect,       // Select current ref in picker
     ActionsDispatchRefPickerFilter(char), // Filter ref picker
-    ActionsDispatchRefPickerBackspace, // Backspace in ref filter
+    ActionsDispatchRefPickerBackspace,    // Backspace in ref filter
     WorkflowInputsLoaded(u64, String, Vec<WorkflowInput>), // workflow_id, name, inputs
     // Action detail
     ActionDetailToggleStep(u32), // toggle step fold by step number

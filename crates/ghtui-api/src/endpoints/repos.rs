@@ -37,9 +37,7 @@ impl GithubClient {
         let result = self.graphql(query, variables).await?;
         let repo_data = &result["data"]["repository"];
         Ok(RepoCounts {
-            open_issues: repo_data["issues"]["totalCount"]
-                .as_u64()
-                .unwrap_or(0) as u32,
+            open_issues: repo_data["issues"]["totalCount"].as_u64().unwrap_or(0) as u32,
             open_prs: repo_data["pullRequests"]["totalCount"]
                 .as_u64()
                 .unwrap_or(0) as u32,

@@ -744,4 +744,3 @@ fn format_size(bytes: u64) -> String {
         format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
     }
 }
-

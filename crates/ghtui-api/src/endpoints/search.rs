@@ -61,13 +61,8 @@ impl GithubClient {
                                 .collect()
                         })
                         .unwrap_or_default(),
-                    created_at: v["created_at"]
-                        .as_str()
-                        .and_then(|s| s.parse().ok()),
-                    user: v["user"]["login"]
-                        .as_str()
-                        .unwrap_or("")
-                        .to_string(),
+                    created_at: v["created_at"].as_str().and_then(|s| s.parse().ok()),
+                    user: v["user"]["login"].as_str().unwrap_or("").to_string(),
                 })
                 .collect(),
             (SearchKind::Code, Some(arr)) => arr

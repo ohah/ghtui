@@ -121,11 +121,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
 
 fn member_count_hint(count: Option<u64>) -> String {
     match count {
-        Some(n) => format!(
-            "{} member{}",
-            n,
-            if n == 1 { "" } else { "s" }
-        ),
+        Some(n) => format!("{} member{}", n, if n == 1 { "" } else { "s" }),
         None => String::new(),
     }
 }
