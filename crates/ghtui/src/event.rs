@@ -1,4 +1,6 @@
-use crossterm::event::{self, Event as CrosstermEvent, KeyEvent, KeyEventKind, MouseEvent};
+use crossterm::event::{
+    self, Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, MouseEvent,
+};
 use std::time::Duration;
 use tokio::sync::mpsc;
 
@@ -26,6 +28,23 @@ impl EventHandler {
                 if event::poll(tick_rate).unwrap_or(false) {
                     match event::read() {
                         Ok(CrosstermEvent::Key(key)) if key.kind == KeyEventKind::Press => {
+                            // Debounce bare Esc: some terminals (Warp, Terminal.app)
+                            // split Shift+Arrow escape sequences into Esc + rest.
+                            // Wait briefly to see if more data follows.
+                            if key.code == KeyCode::Esc
+                                && key.modifiers.is_empty()
+                                && event::poll(Duration::from_millis(50)).unwrap_or(false)
+                            {
+                                // More data arrived — this Esc was part of an
+                                // escape sequence. Read the actual key and send it.
+                                if let Ok(CrosstermEvent::Key(real_key)) = event::read()
+                                    && real_key.kind == KeyEventKind::Press
+                                {
+                                    let _ = tx.send(Event::Key(real_key));
+                                }
+                                continue;
+                            }
+
                             if tx.send(Event::Key(key)).is_err() {
                                 break;
                             }
