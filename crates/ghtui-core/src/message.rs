@@ -461,6 +461,9 @@ pub enum Message {
     KeymapSettingsCapture(String),
     KeymapSettingsReset,
 
+    // Update check
+    UpdateAvailable(String), // latest version string
+
     // System
     Error(GhtuiError),
     Quit,

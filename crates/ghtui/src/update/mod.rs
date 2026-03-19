@@ -4519,6 +4519,16 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
 
+        Message::UpdateAvailable(version) => {
+            state.push_toast(
+                format!(
+                    "New version v{} available! Run `brew upgrade ghtui` or `cargo install ghtui` to update",
+                    version
+                ),
+                ToastLevel::Info,
+            );
+            vec![]
+        }
         Message::Quit => vec![Command::Quit],
         Message::InsightsSidebarFocus => {
             if let Some(ref mut ins) = state.insights {

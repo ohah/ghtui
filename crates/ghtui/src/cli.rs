@@ -22,6 +22,10 @@ pub struct Cli {
     /// Log file path for debug output
     #[arg(long)]
     pub log_file: Option<String>,
+
+    /// Check for updates and exit
+    #[arg(long)]
+    pub check_update: bool,
 }
 
 impl Cli {

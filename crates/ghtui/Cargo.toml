@@ -25,6 +25,7 @@ open.workspace = true
 arboard.workspace = true
 chrono.workspace = true
 serde_json.workspace = true
+reqwest.workspace = true
 serde_yaml.workspace = true
 ratatui-image.workspace = true
 image.workspace = true

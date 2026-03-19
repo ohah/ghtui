@@ -1177,6 +1177,7 @@ dependencies = [
  "open",
  "ratatui",
  "ratatui-image",
+ "reqwest",
  "serde_json",
  "serde_yaml",
  "tokio",
