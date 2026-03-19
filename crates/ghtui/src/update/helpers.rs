@@ -816,3 +816,283 @@ pub(crate) fn find_thread_root_id(
     }
     comment_id
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ghtui_core::types::PrState;
+
+    // -- is_image_file --
+
+    #[test]
+    fn test_is_image_file_png() {
+        assert!(is_image_file("photo.png"));
+        assert!(is_image_file("photo.PNG"));
+    }
+
+    #[test]
+    fn test_is_image_file_jpg() {
+        assert!(is_image_file("image.jpg"));
+        assert!(is_image_file("image.jpeg"));
+        assert!(is_image_file("image.JPEG"));
+    }
+
+    #[test]
+    fn test_is_image_file_gif() {
+        assert!(is_image_file("anim.gif"));
+    }
+
+    #[test]
+    fn test_is_image_file_non_image() {
+        assert!(!is_image_file("code.rs"));
+        assert!(!is_image_file("readme.md"));
+        assert!(!is_image_file("data.json"));
+        assert!(!is_image_file("image.svg"));
+        assert!(!is_image_file("image.webp"));
+        assert!(!is_image_file("image.bmp"));
+    }
+
+    #[test]
+    fn test_is_image_file_no_extension() {
+        assert!(!is_image_file("Makefile"));
+        assert!(!is_image_file(""));
+    }
+
+    #[test]
+    fn test_is_image_file_nested_path() {
+        assert!(is_image_file("assets/images/logo.png"));
+        assert!(!is_image_file("assets/images/logo.svg"));
+    }
+
+    // -- try_move_subtab --
+
+    #[test]
+    fn test_try_move_subtab_next() {
+        assert_eq!(try_move_subtab(0, 1, 3), Some(1));
+        assert_eq!(try_move_subtab(1, 1, 3), Some(2));
+    }
+
+    #[test]
+    fn test_try_move_subtab_overflow_next() {
+        assert_eq!(try_move_subtab(2, 1, 3), None);
+    }
+
+    #[test]
+    fn test_try_move_subtab_prev() {
+        assert_eq!(try_move_subtab(1, usize::MAX, 3), Some(0));
+        assert_eq!(try_move_subtab(2, usize::MAX, 3), Some(1));
+    }
+
+    #[test]
+    fn test_try_move_subtab_overflow_prev() {
+        assert_eq!(try_move_subtab(0, usize::MAX, 3), None);
+    }
+
+    #[test]
+    fn test_try_move_subtab_zero_count() {
+        assert_eq!(try_move_subtab(0, 1, 0), None);
+        assert_eq!(try_move_subtab(0, usize::MAX, 0), None);
+    }
+
+    #[test]
+    fn test_try_move_subtab_single_tab() {
+        assert_eq!(try_move_subtab(0, 1, 1), None);
+        assert_eq!(try_move_subtab(0, usize::MAX, 1), None);
+    }
+
+    // -- action_bar_count --
+
+    #[test]
+    fn test_action_bar_count_open() {
+        assert_eq!(action_bar_count(&PrState::Open), 5);
+    }
+
+    #[test]
+    fn test_action_bar_count_closed() {
+        assert_eq!(action_bar_count(&PrState::Closed), 1);
+    }
+
+    #[test]
+    fn test_action_bar_count_merged() {
+        assert_eq!(action_bar_count(&PrState::Merged), 0);
+    }
+
+    // -- action_bar_action --
+
+    #[test]
+    fn test_action_bar_action_open_comment() {
+        let msg = action_bar_action(0, &PrState::Open);
+        assert!(matches!(msg, Some(Message::PrStartComment)));
+    }
+
+    #[test]
+    fn test_action_bar_action_open_approve() {
+        let msg = action_bar_action(1, &PrState::Open);
+        assert!(matches!(msg, Some(Message::PrApprove)));
+    }
+
+    #[test]
+    fn test_action_bar_action_open_request_changes() {
+        let msg = action_bar_action(2, &PrState::Open);
+        assert!(matches!(msg, Some(Message::PrRequestChanges)));
+    }
+
+    #[test]
+    fn test_action_bar_action_open_merge() {
+        let msg = action_bar_action(3, &PrState::Open);
+        assert!(matches!(
+            msg,
+            Some(Message::ModalOpen(ghtui_core::ModalKind::MergePr))
+        ));
+    }
+
+    #[test]
+    fn test_action_bar_action_open_toggle_state() {
+        let msg = action_bar_action(4, &PrState::Open);
+        assert!(matches!(msg, Some(Message::PrToggleState)));
+    }
+
+    #[test]
+    fn test_action_bar_action_open_out_of_range() {
+        assert!(action_bar_action(5, &PrState::Open).is_none());
+        assert!(action_bar_action(100, &PrState::Open).is_none());
+    }
+
+    #[test]
+    fn test_action_bar_action_closed_reopen() {
+        let msg = action_bar_action(0, &PrState::Closed);
+        assert!(matches!(msg, Some(Message::PrToggleState)));
+    }
+
+    #[test]
+    fn test_action_bar_action_closed_out_of_range() {
+        assert!(action_bar_action(1, &PrState::Closed).is_none());
+    }
+
+    #[test]
+    fn test_action_bar_action_merged() {
+        assert!(action_bar_action(0, &PrState::Merged).is_none());
+    }
+
+    // -- count_review_comment_lines --
+
+    #[test]
+    fn test_count_review_comment_lines_no_match() {
+        assert_eq!(count_review_comment_lines(&[], "file.rs", Some(1)), 0);
+    }
+
+    #[test]
+    fn test_count_review_comment_lines_none_line() {
+        assert_eq!(count_review_comment_lines(&[], "file.rs", None), 0);
+    }
+
+    #[test]
+    fn test_count_review_comment_lines_single_root() {
+        let comments = vec![make_review_comment_with_body(
+            1,
+            None,
+            "file.rs",
+            Some(10),
+            "looks good",
+        )];
+        // 1 header + 1 body line + 1 footer = 3
+        assert_eq!(
+            count_review_comment_lines(&comments, "file.rs", Some(10)),
+            3
+        );
+    }
+
+    #[test]
+    fn test_count_review_comment_lines_root_with_reply() {
+        let comments = vec![
+            make_review_comment_with_body(1, None, "file.rs", Some(10), "nit"),
+            make_review_comment_with_body(2, Some(1), "file.rs", Some(10), "fixed"),
+        ];
+        // 1 header + 1 body line + 1 reply + 1 footer = 4
+        assert_eq!(
+            count_review_comment_lines(&comments, "file.rs", Some(10)),
+            4
+        );
+    }
+
+    #[test]
+    fn test_count_review_comment_lines_different_file() {
+        let comments = vec![make_review_comment_with_body(
+            1,
+            None,
+            "other.rs",
+            Some(10),
+            "comment",
+        )];
+        assert_eq!(
+            count_review_comment_lines(&comments, "file.rs", Some(10)),
+            0
+        );
+    }
+
+    // -- find_thread_root_id --
+
+    #[test]
+    fn test_find_thread_root_id_already_root() {
+        let comments = vec![make_review_comment(1, None, "file.rs", Some(1))];
+        assert_eq!(find_thread_root_id(1, &comments), 1);
+    }
+
+    #[test]
+    fn test_find_thread_root_id_one_level() {
+        let comments = vec![
+            make_review_comment(1, None, "file.rs", Some(1)),
+            make_review_comment(2, Some(1), "file.rs", Some(1)),
+        ];
+        assert_eq!(find_thread_root_id(2, &comments), 1);
+    }
+
+    #[test]
+    fn test_find_thread_root_id_multi_level_chain() {
+        let comments = vec![
+            make_review_comment(1, None, "file.rs", Some(1)),
+            make_review_comment(2, Some(1), "file.rs", Some(1)),
+            make_review_comment(3, Some(2), "file.rs", Some(1)),
+        ];
+        assert_eq!(find_thread_root_id(3, &comments), 1);
+    }
+
+    #[test]
+    fn test_find_thread_root_id_missing_comment() {
+        let comments = vec![make_review_comment(1, None, "file.rs", Some(1))];
+        assert_eq!(find_thread_root_id(999, &comments), 999);
+    }
+
+    fn make_review_comment(
+        id: u64,
+        in_reply_to_id: Option<u64>,
+        path: &str,
+        line: Option<u32>,
+    ) -> ghtui_core::types::ReviewComment {
+        make_review_comment_with_body(id, in_reply_to_id, path, line, "")
+    }
+
+    fn make_review_comment_with_body(
+        id: u64,
+        in_reply_to_id: Option<u64>,
+        path: &str,
+        line: Option<u32>,
+        body: &str,
+    ) -> ghtui_core::types::ReviewComment {
+        ghtui_core::types::ReviewComment {
+            id,
+            body: body.to_string(),
+            user: ghtui_core::types::common::User {
+                login: "user".into(),
+                avatar_url: String::new(),
+                name: None,
+            },
+            path: path.to_string(),
+            line,
+            original_line: None,
+            in_reply_to_id,
+            created_at: chrono::Utc::now(),
+            diff_hunk: String::new(),
+        }
+    }
+}
