@@ -285,6 +285,22 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             if let Some(ref detail) = state.pr_detail
                 && let Some(ref repo) = state.current_repo
             {
+                // If focused on Body or Comment, try to open markdown links
+                let md_text = match &detail.focus {
+                    ghtui_core::state::pr::PrSection::Body => detail.detail.pr.body.as_deref(),
+                    ghtui_core::state::pr::PrSection::Comment(idx) => {
+                        detail.detail.comments.get(*idx).map(|c| c.body.as_str())
+                    }
+                    _ => None,
+                };
+                if let Some(text) = md_text {
+                    let urls = ghtui_widgets::markdown::extract_urls(text);
+                    if !urls.is_empty() {
+                        return vec![Command::OpenInBrowser(urls[0].clone())];
+                    }
+                }
+
+                // Fallback: open PR page
                 let url = format!(
                     "https://github.com/{}/pull/{}",
                     repo.full_name(),
@@ -1689,6 +1705,24 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             if let Some(ref detail) = state.issue_detail
                 && let Some(ref repo) = state.current_repo
             {
+                // If focused on Body or Comment, try to open markdown links
+                let md_text = match &detail.focus {
+                    ghtui_core::state::issue::IssueSection::Body => {
+                        detail.detail.issue.body.as_deref()
+                    }
+                    ghtui_core::state::issue::IssueSection::Comment(idx) => {
+                        detail.detail.comments.get(*idx).map(|c| c.body.as_str())
+                    }
+                    _ => None,
+                };
+                if let Some(text) = md_text {
+                    let urls = ghtui_widgets::markdown::extract_urls(text);
+                    if !urls.is_empty() {
+                        return vec![Command::OpenInBrowser(urls[0].clone())];
+                    }
+                }
+
+                // Fallback: open issue page
                 let url = format!(
                     "https://github.com/{}/issues/{}",
                     repo.full_name(),

@@ -104,8 +104,8 @@ impl PrSection {
             PrSection::Title => "e:Edit  o:Open in browser",
             PrSection::Labels => "l:Edit labels",
             PrSection::Assignees => "a:Edit assignees",
-            PrSection::Body => "e:Edit body",
-            PrSection::Comment(_) => "e:Edit  r:Reply  d:Delete",
+            PrSection::Body => "e:Edit body  o:Open link",
+            PrSection::Comment(_) => "e:Edit  r:Reply  d:Delete  o:Open link",
         }
     }
 }
