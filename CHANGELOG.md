@@ -1,5 +1,7 @@
 # Changelog
 
+[한국어](CHANGELOG_KO.md)
+
 All notable changes to this project will be documented in this file.
 
 ## [0.1.0] - 2026-03-19
