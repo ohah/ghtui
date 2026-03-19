@@ -450,10 +450,38 @@ pub fn list_gh_accounts() -> Vec<GhAccount> {
     accounts
 }
 
+/// Resolve the gh CLI config directory.
+/// Priority: $GH_CONFIG_DIR > OS-specific default.
+///   - macOS/Linux: $XDG_CONFIG_HOME/gh or ~/.config/gh
+///   - Windows: %APPDATA%/gh
+fn gh_config_dir() -> Option<PathBuf> {
+    if let Ok(dir) = std::env::var("GH_CONFIG_DIR") {
+        return Some(PathBuf::from(dir));
+    }
+
+    #[cfg(windows)]
+    {
+        // On Windows, gh CLI uses %APPDATA%\gh
+        std::env::var("APPDATA")
+            .ok()
+            .map(|d| PathBuf::from(d).join("gh"))
+    }
+
+    #[cfg(not(windows))]
+    {
+        // On Unix, gh CLI follows XDG: $XDG_CONFIG_HOME/gh or ~/.config/gh
+        if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
+            Some(PathBuf::from(xdg).join("gh"))
+        } else {
+            dirs::home_dir().map(|d| d.join(".config").join("gh"))
+        }
+    }
+}
+
 /// Parse gh CLI hosts.yml which supports multiple accounts per host.
 fn read_gh_hosts_yml() -> Option<HashMap<String, Vec<HostAccount>>> {
-    let home = dirs::home_dir()?;
-    let hosts_path = home.join(".config").join("gh").join("hosts.yml");
+    let gh_dir = gh_config_dir()?;
+    let hosts_path = gh_dir.join("hosts.yml");
     let content = std::fs::read_to_string(&hosts_path).ok()?;
     parse_hosts_yml(&content)
 }
