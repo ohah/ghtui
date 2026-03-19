@@ -586,8 +586,16 @@ impl<'a> DiffView<'a> {
                         line_ids.push(DiffLineId::Summary);
                     }
 
-                    // Inline comment editor
-                    if let Some((editor_path, editor_line, editor)) = &self.comment_editor
+                    // Inline comment editor — only show on the Add line (or Context/Remove
+                    // if there's no corresponding Add line) to prevent duplicate editors
+                    // when a Remove and Add line share the same line number.
+                    let show_editor = match diff_line.kind {
+                        DiffLineKind::Add | DiffLineKind::Context => true,
+                        DiffLineKind::Remove => diff_line.new_line.is_some(),
+                        DiffLineKind::Header => false,
+                    };
+                    if show_editor
+                        && let Some((editor_path, editor_line, editor)) = &self.comment_editor
                         && *editor_path == file.filename
                         && *editor_line == ln
                     {
