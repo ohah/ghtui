@@ -65,12 +65,28 @@ A comprehensive GitHub TUI (Terminal User Interface) built in Rust. Browse repos
 - Global search (repos, issues, code)
 - Command palette (Ctrl+P)
 - GitHub Primer theme (Dark/Light, toggle with `t`)
-- Multi-account support (gh CLI hosts.yml)
+- Multi-account support (gh CLI hosts.yml, cross-platform)
 - Mouse support (click tabs/lists, scroll)
 - Markdown renderer (tables, links, checkboxes, code blocks)
+- Open markdown links/images in browser (`o` key with URL picker)
+- Diff context expand (`e` key to show surrounding code)
+- Update check (startup notification + `--check-update` flag)
 - Discussions and Gists views
+- Offline mode (disk cache with 24h TTL)
 
 ## Installation
+
+### Prerequisites
+
+GitHub authentication is required. Use one of:
+
+```sh
+# Option 1: gh CLI (recommended)
+gh auth login
+
+# Option 2: Environment variable
+export GITHUB_TOKEN=ghp_xxxx
+```
 
 ### From source (cargo)
 
@@ -78,26 +94,54 @@ A comprehensive GitHub TUI (Terminal User Interface) built in Rust. Browse repos
 cargo install --git https://github.com/ohah/ghtui
 ```
 
-### Homebrew (planned)
+### Homebrew
 
 ```sh
-brew install ohah/tap/ghtui
+brew tap ohah/ghtui https://github.com/ohah/ghtui
+brew install ghtui
 ```
 
 ### GitHub Releases
 
-Download the latest binary from [Releases](https://github.com/ohah/ghtui/releases).
+Download the latest binary for your platform from [Releases](https://github.com/ohah/ghtui/releases).
+
+| Platform | Binary |
+|----------|--------|
+| macOS (Apple Silicon) | `ghtui-aarch64-apple-darwin.tar.gz` |
+| macOS (Intel) | `ghtui-x86_64-apple-darwin.tar.gz` |
+| Linux (x86_64) | `ghtui-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux (ARM64) | `ghtui-aarch64-unknown-linux-gnu.tar.gz` |
+| Windows | `ghtui-x86_64-pc-windows-msvc.zip` |
 
 ## Usage
 
 ```sh
-# Browse a repository
-ghtui owner/repo
+# Auto-detect repo from current git directory
+ghtui
 
-# Uses gh CLI authentication automatically
-# Make sure you are logged in:
-gh auth login
+# Specify a repository
+ghtui --repo owner/repo
+
+# Check for updates
+ghtui --check-update
+
+# See all options
+ghtui --help
 ```
+
+### Updating
+
+```sh
+# Homebrew
+brew upgrade ghtui
+
+# Cargo
+cargo install ghtui
+
+# Or just re-download from GitHub Releases
+```
+
+The app also checks for updates on startup and shows a notification if a newer version is available.
 
 ## Keybindings
 
@@ -124,7 +168,8 @@ gh auth login
 | `Esc` / `Backspace` | Go back |
 | `n` / `p` | Next/previous page |
 | `s` | Toggle state filter |
-| `o` | Cycle sort / open in browser |
+| `o` | Open in browser / open markdown link |
+| `r` | Refresh current view |
 
 ### Editing
 
@@ -136,25 +181,73 @@ gh auth login
 | `d` | Delete comment |
 | `l` | Edit labels |
 | `a` | Edit assignees |
-| `m` | Merge PR |
-| `A` | Approve PR |
-| `R` | Request changes on PR |
+| `m` | Set milestone |
 | `Ctrl+S` | Submit editor content |
 | `Ctrl+Z` / `Ctrl+Y` | Undo / Redo |
 | Arrow keys | Cursor movement in editor |
 | `Ctrl+Left` / `Ctrl+Right` | Word movement |
+
+### PR Detail
+
+| Key | Action |
+|-----|--------|
+| `Tab` | Switch sub-tabs (Conversation/Commits/Checks/Files changed) |
+| `A` | Approve PR |
+| `R` | Request changes |
+| `M` | Set milestone |
+| `D` | Toggle draft |
+| `G` | Toggle auto-merge |
+| `v` | Add reviewer |
+| `b` | Change base branch |
+| `x` | Close/reopen PR |
+
+### Files Changed (Diff)
+
+| Key | Action |
+|-----|--------|
+| `j` / `k` | Move cursor up/down |
+| `J` / `K` | Block select (multi-line) |
+| `Enter` | Toggle fold / open review comment editor |
+| `e` | Expand context (show surrounding code) |
+| `s` | Toggle side-by-side diff mode |
+| `f` | Toggle file tree panel |
+| `V` | Mark file as viewed |
+| `z` | Resolve/unresolve review thread |
+| `Ctrl+S` | Submit review comment |
+| `Ctrl+G` | Insert suggestion template |
+
+### Actions
+
+| Key | Action |
+|-----|--------|
+| `s` | Cycle status filter |
+| `e` | Cycle event filter |
+| `w` | Toggle workflow sidebar |
+| `d` | Open workflow dispatch |
+| `x` | Cancel run |
+| `R` | Re-run |
+| `F` | Clear filters |
 
 ## Configuration
 
 Configuration file location: `~/.config/ghtui/config.toml`
 
 ```toml
-[general]
-theme = "dark"          # "dark" or "light"
+theme = "dark"              # "dark" or "light"
 default_repo = "owner/repo"
+offline_cache = true        # Enable disk cache for offline mode
 
 [keybindings]
-# Custom keybindings (planned)
+quit = "q"
+help = "?"
+theme_toggle = "t"
+search = "Ctrl+k"
+palette = "Ctrl+p"
+home = "H"
+account_switch = "S"
+nav_down = "j"
+nav_up = "k"
+# See ? (Help) in-app for full keybinding reference
 ```
 
 ## Architecture
