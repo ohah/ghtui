@@ -370,10 +370,11 @@ impl AppConfig {
     /// Resolve a token, optionally filtering by host and user.
     pub fn resolve_token_for(&self, host: Option<&str>, user: Option<&str>) -> Option<String> {
         // 1. Config file token (only if no specific host/user requested)
-        if host.is_none() && user.is_none() {
-            if let Some(ref token) = self.token {
-                return Some(token.clone());
-            }
+        if host.is_none()
+            && user.is_none()
+            && let Some(ref token) = self.token
+        {
+            return Some(token.clone());
         }
 
         // 2. Environment variable (only if no specific host/user requested)
@@ -393,10 +394,11 @@ impl AppConfig {
         }
 
         // 4. Fallback: if no host/user filter, try default gh auth token
-        if host.is_none() && user.is_none() {
-            if let Some(account) = accounts.first() {
-                return Some(account.token.clone());
-            }
+        if host.is_none()
+            && user.is_none()
+            && let Some(account) = accounts.first()
+        {
+            return Some(account.token.clone());
         }
 
         None
@@ -439,10 +441,10 @@ pub fn list_gh_accounts() -> Vec<GhAccount> {
     }
 
     // If no accounts found from hosts.yml, try `gh auth token`
-    if accounts.is_empty() {
-        if let Some(account) = read_gh_auth_token() {
-            accounts.push(account);
-        }
+    if accounts.is_empty()
+        && let Some(account) = read_gh_auth_token()
+    {
+        accounts.push(account);
     }
 
     accounts
@@ -484,22 +486,22 @@ fn parse_hosts_yml(content: &str) -> Option<HashMap<String, Vec<HostAccount>>> {
         let map = value.as_mapping()?;
 
         // Check for multi-account "users" key (gh 2.40+)
-        if let Some(users_val) = map.get(serde_yaml::Value::String("users".to_string())) {
-            if let Some(users_map) = users_val.as_mapping() {
-                for (username_val, user_data) in users_map {
-                    let username = username_val.as_str().unwrap_or_default().to_string();
-                    if let Some(user_map) = user_data.as_mapping() {
-                        let token = user_map
-                            .get(serde_yaml::Value::String("oauth_token".to_string()))
-                            .and_then(|v| v.as_str())
-                            .unwrap_or_default()
-                            .to_string();
-                        if !token.is_empty() {
-                            host_accounts.push(HostAccount {
-                                user: username,
-                                token,
-                            });
-                        }
+        if let Some(users_val) = map.get(serde_yaml::Value::String("users".to_string()))
+            && let Some(users_map) = users_val.as_mapping()
+        {
+            for (username_val, user_data) in users_map {
+                let username = username_val.as_str().unwrap_or_default().to_string();
+                if let Some(user_map) = user_data.as_mapping() {
+                    let token = user_map
+                        .get(serde_yaml::Value::String("oauth_token".to_string()))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default()
+                        .to_string();
+                    if !token.is_empty() {
+                        host_accounts.push(HostAccount {
+                            user: username,
+                            token,
+                        });
                     }
                 }
             }

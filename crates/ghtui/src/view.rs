@@ -248,15 +248,15 @@ fn render_global_tabs(frame: &mut Frame, state: &AppState, theme: &Theme, area: 
     if let Some(&(label_start, label_width)) = tab_positions.get(state.active_tab) {
         for lx in label_start..label_start + label_width {
             let abs_x = area.x + lx;
-            if abs_x < area.x + area.width {
-                if let Some(cell) = frame.buffer_mut().cell_mut((abs_x, area.y)) {
-                    cell.set_style(
-                        Style::default()
-                            .fg(theme.tab_active_border)
-                            .bg(theme.header_bg)
-                            .add_modifier(Modifier::UNDERLINED),
-                    );
-                }
+            if abs_x < area.x + area.width
+                && let Some(cell) = frame.buffer_mut().cell_mut((abs_x, area.y))
+            {
+                cell.set_style(
+                    Style::default()
+                        .fg(theme.tab_active_border)
+                        .bg(theme.header_bg)
+                        .add_modifier(Modifier::UNDERLINED),
+                );
             }
         }
     }

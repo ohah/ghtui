@@ -390,19 +390,19 @@ fn render_detail_panel(frame: &mut Frame, state: &AppState, area: Rect) {
                     lines.push(detail_kv("Rule ID", rule_id, label, value));
                 }
 
-                if let Some(ref instance) = alert.most_recent_instance {
-                    if let Some(ref loc) = instance.location {
-                        lines.push(Line::raw(""));
-                        lines.push(Line::styled("  Location", accent));
-                        if let Some(ref path) = loc.path {
-                            let loc_str = match (loc.start_line, loc.end_line) {
-                                (Some(s), Some(e)) if s == e => format!("{}:{}", path, s),
-                                (Some(s), Some(e)) => format!("{}:{}-{}", path, s, e),
-                                (Some(s), None) => format!("{}:{}", path, s),
-                                _ => path.clone(),
-                            };
-                            lines.push(detail_kv("File", &loc_str, label, value));
-                        }
+                if let Some(ref instance) = alert.most_recent_instance
+                    && let Some(ref loc) = instance.location
+                {
+                    lines.push(Line::raw(""));
+                    lines.push(Line::styled("  Location", accent));
+                    if let Some(ref path) = loc.path {
+                        let loc_str = match (loc.start_line, loc.end_line) {
+                            (Some(s), Some(e)) if s == e => format!("{}:{}", path, s),
+                            (Some(s), Some(e)) => format!("{}:{}-{}", path, s, e),
+                            (Some(s), None) => format!("{}:{}", path, s),
+                            _ => path.clone(),
+                        };
+                        lines.push(detail_kv("File", &loc_str, label, value));
                     }
                 }
 

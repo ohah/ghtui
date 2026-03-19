@@ -109,10 +109,10 @@ impl DiffViewState {
                 | DiffLineId::Code(f, _, _) => Some(*f),
                 _ => None,
             };
-            if let Some(idx) = file_idx {
-                if !self.collapsed_files.remove(&idx) {
-                    self.collapsed_files.insert(idx);
-                }
+            if let Some(idx) = file_idx
+                && !self.collapsed_files.remove(&idx)
+            {
+                self.collapsed_files.insert(idx);
             }
         }
     }
@@ -562,89 +562,92 @@ impl<'a> DiffView<'a> {
                     }
 
                     // Inline comment editor
-                    if let Some((editor_path, editor_line, editor)) = &self.comment_editor {
-                        if *editor_path == file.filename && *editor_line == ln {
-                            lines.push(box_top(
-                                vec![Span::styled(
-                                    " Review comment  Ctrl+S:submit  Ctrl+G:suggestion  Esc:cancel ",
-                                    Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
-                                )],
-                                accent_style,
-                                width,
-                            ));
-                            line_ids.push(DiffLineId::Summary);
+                    if let Some((editor_path, editor_line, editor)) = &self.comment_editor
+                        && *editor_path == file.filename
+                        && *editor_line == ln
+                    {
+                        lines.push(box_top(
+                            vec![Span::styled(
+                                " Review comment  Ctrl+S:submit  Ctrl+G:suggestion  Esc:cancel ",
+                                Style::default()
+                                    .fg(theme.accent)
+                                    .add_modifier(Modifier::BOLD),
+                            )],
+                            accent_style,
+                            width,
+                        ));
+                        line_ids.push(DiffLineId::Summary);
 
-                            for (ei, editor_line_text) in editor.lines.iter().enumerate() {
-                                let is_cursor_line = ei == editor.cursor_row;
-                                if is_cursor_line {
-                                    let col = editor.cursor_byte_col().min(editor_line_text.len());
-                                    let before = &editor_line_text[..col];
-                                    let after = &editor_line_text[col..];
-                                    lines.push(box_mid(
-                                        vec![
-                                            Span::styled(
-                                                before.to_string(),
-                                                Style::default().fg(theme.fg),
-                                            ),
-                                            Span::styled(
-                                                "█",
-                                                Style::default()
-                                                    .fg(theme.accent)
-                                                    .add_modifier(Modifier::SLOW_BLINK),
-                                            ),
-                                            Span::styled(
-                                                after.to_string(),
-                                                Style::default().fg(theme.fg),
-                                            ),
-                                        ],
-                                        accent_style,
-                                        width,
-                                    ));
-                                } else {
-                                    lines.push(box_mid(
-                                        vec![Span::styled(
-                                            editor_line_text.to_string(),
+                        for (ei, editor_line_text) in editor.lines.iter().enumerate() {
+                            let is_cursor_line = ei == editor.cursor_row;
+                            if is_cursor_line {
+                                let col = editor.cursor_byte_col().min(editor_line_text.len());
+                                let before = &editor_line_text[..col];
+                                let after = &editor_line_text[col..];
+                                lines.push(box_mid(
+                                    vec![
+                                        Span::styled(
+                                            before.to_string(),
                                             Style::default().fg(theme.fg),
-                                        )],
-                                        accent_style,
-                                        width,
-                                    ));
-                                }
-                                line_ids.push(DiffLineId::Summary);
+                                        ),
+                                        Span::styled(
+                                            "█",
+                                            Style::default()
+                                                .fg(theme.accent)
+                                                .add_modifier(Modifier::SLOW_BLINK),
+                                        ),
+                                        Span::styled(
+                                            after.to_string(),
+                                            Style::default().fg(theme.fg),
+                                        ),
+                                    ],
+                                    accent_style,
+                                    width,
+                                ));
+                            } else {
+                                lines.push(box_mid(
+                                    vec![Span::styled(
+                                        editor_line_text.to_string(),
+                                        Style::default().fg(theme.fg),
+                                    )],
+                                    accent_style,
+                                    width,
+                                ));
                             }
-
-                            // Action buttons row
-                            lines.push(box_mid(
-                                vec![
-                                    Span::styled(
-                                        " [Ctrl+S] Submit ",
-                                        Style::default()
-                                            .fg(theme.bg)
-                                            .bg(theme.success)
-                                            .add_modifier(Modifier::BOLD),
-                                    ),
-                                    Span::styled("  ", Style::default()),
-                                    Span::styled(
-                                        " [Ctrl+G] Suggestion ",
-                                        Style::default()
-                                            .fg(theme.bg)
-                                            .bg(theme.info)
-                                            .add_modifier(Modifier::BOLD),
-                                    ),
-                                    Span::styled("  ", Style::default()),
-                                    Span::styled(
-                                        " [Esc] Cancel ",
-                                        Style::default().fg(theme.fg).bg(theme.bg_subtle),
-                                    ),
-                                ],
-                                accent_style,
-                                width,
-                            ));
-                            line_ids.push(DiffLineId::Summary);
-
-                            lines.push(box_btm(accent_style, width));
                             line_ids.push(DiffLineId::Summary);
                         }
+
+                        // Action buttons row
+                        lines.push(box_mid(
+                            vec![
+                                Span::styled(
+                                    " [Ctrl+S] Submit ",
+                                    Style::default()
+                                        .fg(theme.bg)
+                                        .bg(theme.success)
+                                        .add_modifier(Modifier::BOLD),
+                                ),
+                                Span::styled("  ", Style::default()),
+                                Span::styled(
+                                    " [Ctrl+G] Suggestion ",
+                                    Style::default()
+                                        .fg(theme.bg)
+                                        .bg(theme.info)
+                                        .add_modifier(Modifier::BOLD),
+                                ),
+                                Span::styled("  ", Style::default()),
+                                Span::styled(
+                                    " [Esc] Cancel ",
+                                    Style::default().fg(theme.fg).bg(theme.bg_subtle),
+                                ),
+                            ],
+                            accent_style,
+                            width,
+                        ));
+                        line_ids.push(DiffLineId::Summary);
+
+                        lines.push(box_btm(accent_style, width));
+                        line_ids.push(DiffLineId::Summary);
                     }
                 }
             }

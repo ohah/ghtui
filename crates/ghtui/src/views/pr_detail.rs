@@ -466,11 +466,11 @@ fn render_conversation(
         focus_style(&PrSection::Body),
     ));
 
-    if let Some(ref body) = pr.body {
-        if !body.is_empty() {
-            lines.push(Line::raw(""));
-            lines.extend(render_markdown(body));
-        }
+    if let Some(ref body) = pr.body
+        && !body.is_empty()
+    {
+        lines.push(Line::raw(""));
+        lines.extend(render_markdown(body));
     }
     // PR body reactions
     if let Some(ref reactions) = pr.reactions {
@@ -570,31 +570,31 @@ fn render_conversation(
 
     // Reviews with bodies
     for review in &detail.detail.reviews {
-        if let Some(ref body) = review.body {
-            if !body.is_empty() {
-                lines.push(Line::raw(""));
-                let state_color = match review.state {
-                    ghtui_core::types::ReviewState::Approved => theme.success,
-                    ghtui_core::types::ReviewState::ChangesRequested => theme.danger,
-                    _ => theme.warning,
-                };
-                lines.push(Line::from(vec![
-                    Span::styled(
-                        format!("  @{}", review.user.login),
-                        Style::default()
-                            .fg(theme.accent)
-                            .add_modifier(Modifier::BOLD),
-                    ),
-                    Span::styled(
-                        format!(" {}", review.state),
-                        Style::default()
-                            .fg(state_color)
-                            .add_modifier(Modifier::BOLD),
-                    ),
-                ]));
-                lines.extend(render_markdown(body));
-                lines.push(Line::styled("─".repeat(50), theme.border_style()));
-            }
+        if let Some(ref body) = review.body
+            && !body.is_empty()
+        {
+            lines.push(Line::raw(""));
+            let state_color = match review.state {
+                ghtui_core::types::ReviewState::Approved => theme.success,
+                ghtui_core::types::ReviewState::ChangesRequested => theme.danger,
+                _ => theme.warning,
+            };
+            lines.push(Line::from(vec![
+                Span::styled(
+                    format!("  @{}", review.user.login),
+                    Style::default()
+                        .fg(theme.accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    format!(" {}", review.state),
+                    Style::default()
+                        .fg(state_color)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            ]));
+            lines.extend(render_markdown(body));
+            lines.push(Line::styled("─".repeat(50), theme.border_style()));
         }
     }
 

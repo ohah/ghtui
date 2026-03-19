@@ -228,17 +228,17 @@ fn render_pr_list(
             ];
 
             // Show +/- stats if available
-            if let (Some(additions), Some(deletions)) = (pr.additions, pr.deletions) {
-                if additions > 0 || deletions > 0 {
-                    meta_spans.push(Span::styled(
-                        format!("  +{}", additions),
-                        Style::default().fg(theme.success),
-                    ));
-                    meta_spans.push(Span::styled(
-                        format!(" -{}", deletions),
-                        Style::default().fg(theme.danger),
-                    ));
-                }
+            if let (Some(additions), Some(deletions)) = (pr.additions, pr.deletions)
+                && (additions > 0 || deletions > 0)
+            {
+                meta_spans.push(Span::styled(
+                    format!("  +{}", additions),
+                    Style::default().fg(theme.success),
+                ));
+                meta_spans.push(Span::styled(
+                    format!(" -{}", deletions),
+                    Style::default().fg(theme.danger),
+                ));
             }
 
             if !pr.assignees.is_empty() {
@@ -249,13 +249,13 @@ fn render_pr_list(
                 ));
             }
 
-            if let Some(count) = pr.comments {
-                if count > 0 {
-                    meta_spans.push(Span::styled(
-                        format!("  💬 {}", count),
-                        Style::default().fg(theme.fg_dim),
-                    ));
-                }
+            if let Some(count) = pr.comments
+                && count > 0
+            {
+                meta_spans.push(Span::styled(
+                    format!("  💬 {}", count),
+                    Style::default().fg(theme.fg_dim),
+                ));
             }
 
             lines.push(Line::from(meta_spans));

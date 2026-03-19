@@ -301,11 +301,11 @@ fn render_body_comments(
         focus_style(&IssueSection::Body),
     ));
 
-    if let Some(ref body) = issue.body {
-        if !body.is_empty() {
-            lines.push(Line::raw(""));
-            lines.extend(render_markdown(body));
-        }
+    if let Some(ref body) = issue.body
+        && !body.is_empty()
+    {
+        lines.push(Line::raw(""));
+        lines.extend(render_markdown(body));
     }
     // Issue reactions
     if let Some(ref reactions) = issue.reactions {

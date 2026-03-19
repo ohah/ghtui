@@ -530,14 +530,14 @@ fn test_code_navigate_into_clears_previous_file() {
 
     // Simulate CodeNavigateInto for a file node:
     // The handler clears previous file immediately before fetching
-    if let Some(node) = code.tree_selected_node().cloned() {
-        if !node.is_dir {
-            code.file_content = None;
-            code.file_name = None;
-            code.image_data = None;
-            code.scroll = 0;
-            code.file_path = Some(node.path.clone());
-        }
+    if let Some(node) = code.tree_selected_node().cloned()
+        && !node.is_dir
+    {
+        code.file_content = None;
+        code.file_name = None;
+        code.image_data = None;
+        code.scroll = 0;
+        code.file_path = Some(node.path.clone());
     }
 
     let code = state.code.as_ref().unwrap();

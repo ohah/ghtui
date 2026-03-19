@@ -37,10 +37,10 @@ pub fn parse_diff(raw: &str) -> Vec<DiffFile> {
             }
         } else if line.starts_with("@@") {
             // New hunk
-            if let Some(ref mut file) = current_file {
-                if let Some(hunk) = current_hunk.take() {
-                    file.hunks.push(hunk.build());
-                }
+            if let Some(ref mut file) = current_file
+                && let Some(hunk) = current_hunk.take()
+            {
+                file.hunks.push(hunk.build());
             }
             current_hunk = Some(HunkBuilder::from_header(line));
         } else if current_hunk.is_some() {
