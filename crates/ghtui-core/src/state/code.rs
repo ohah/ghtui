@@ -144,18 +144,17 @@ impl CodeViewState {
 
     /// Toggle the expand/collapse state of the currently selected directory.
     pub fn toggle_expand(&mut self) {
-        if let Some(&idx) = self.tree_visible.get(self.selected) {
-            if let Some(node) = self.tree.get(idx) {
-                if node.is_dir {
-                    let path = node.path.clone();
-                    if self.expanded_dirs.contains(&path) {
-                        self.expanded_dirs.remove(&path);
-                    } else {
-                        self.expanded_dirs.insert(path);
-                    }
-                    self.rebuild_visible_tree();
-                }
+        if let Some(&idx) = self.tree_visible.get(self.selected)
+            && let Some(node) = self.tree.get(idx)
+            && node.is_dir
+        {
+            let path = node.path.clone();
+            if self.expanded_dirs.contains(&path) {
+                self.expanded_dirs.remove(&path);
+            } else {
+                self.expanded_dirs.insert(path);
             }
+            self.rebuild_visible_tree();
         }
     }
 

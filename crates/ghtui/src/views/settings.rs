@@ -214,16 +214,16 @@ fn render_general(frame: &mut Frame, state: &AppState, area: Rect) {
     lines.push(Line::raw(""));
 
     // Topics
-    if let Some(ref topics) = repo.topics {
-        if !topics.is_empty() {
-            lines.push(Line::styled("  Topics".to_string(), accent_bold));
-            let topic_spans: Vec<Span> = topics
-                .iter()
-                .map(|t| Span::styled(format!(" {} ", t), Style::default().fg(theme.accent)))
-                .collect();
-            lines.push(Line::from(topic_spans));
-            lines.push(Line::raw(""));
-        }
+    if let Some(ref topics) = repo.topics
+        && !topics.is_empty()
+    {
+        lines.push(Line::styled("  Topics".to_string(), accent_bold));
+        let topic_spans: Vec<Span> = topics
+            .iter()
+            .map(|t| Span::styled(format!(" {} ", t), Style::default().fg(theme.accent)))
+            .collect();
+        lines.push(Line::from(topic_spans));
+        lines.push(Line::raw(""));
     }
 
     // Dates
@@ -286,17 +286,16 @@ fn render_branch_protections(frame: &mut Frame, state: &AppState, area: Rect) {
                     details.push("status checks");
                 }
             }
-            if let Some(ref enforce) = bp.enforce_admins {
-                if enforce.enabled {
-                    details.push("enforce admins");
-                }
+            if let Some(ref enforce) = bp.enforce_admins
+                && enforce.enabled
+            {
+                details.push("enforce admins");
             }
-            if let Some(ref reviews) = bp.required_pull_request_reviews {
-                if let Some(count) = reviews.required_approving_review_count {
-                    if count > 0 {
-                        details.push("reviews required");
-                    }
-                }
+            if let Some(ref reviews) = bp.required_pull_request_reviews
+                && let Some(count) = reviews.required_approving_review_count
+                && count > 0
+            {
+                details.push("reviews required");
             }
 
             let detail_str = if details.is_empty() {

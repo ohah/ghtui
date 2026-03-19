@@ -39,15 +39,15 @@ impl NotificationListState {
         self.items
             .iter()
             .filter(|n| {
-                if let Some(ref reason) = self.filters.reason {
-                    if n.reason != *reason {
-                        return false;
-                    }
+                if let Some(ref reason) = self.filters.reason
+                    && n.reason != *reason
+                {
+                    return false;
                 }
-                if let Some(ref stype) = self.filters.subject_type {
-                    if n.subject.subject_type != *stype {
-                        return false;
-                    }
+                if let Some(ref stype) = self.filters.subject_type
+                    && n.subject.subject_type != *stype
+                {
+                    return false;
                 }
                 true
             })

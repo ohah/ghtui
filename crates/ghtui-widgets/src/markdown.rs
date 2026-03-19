@@ -223,13 +223,13 @@ pub fn render_markdown(text: &str) -> Vec<Line<'static>> {
                 let marker = if checked { "☑ " } else { "☐ " };
                 let color = if checked { HEADING_H2 } else { LIST_BULLET };
                 // Replace the last bullet
-                if let Some(last) = current_spans.last_mut() {
-                    if last.content.ends_with("• ") {
-                        *last = Span::styled(
-                            last.content.replace("• ", marker),
-                            Style::default().fg(color),
-                        );
-                    }
+                if let Some(last) = current_spans.last_mut()
+                    && last.content.ends_with("• ")
+                {
+                    *last = Span::styled(
+                        last.content.replace("• ", marker),
+                        Style::default().fg(color),
+                    );
                 }
             }
             _ => {}

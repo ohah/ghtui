@@ -277,13 +277,13 @@ fn render_pinned_cards(
                 meta_spans.push(super::components::label_span(&label.name, &label.color));
                 meta_spans.push(Span::raw(" "));
             }
-            if let Some(count) = issue.comments {
-                if count > 0 {
-                    meta_spans.push(Span::styled(
-                        format!(" 💬 {}", count),
-                        Style::default().fg(theme.fg_dim),
-                    ));
-                }
+            if let Some(count) = issue.comments
+                && count > 0
+            {
+                meta_spans.push(Span::styled(
+                    format!(" 💬 {}", count),
+                    Style::default().fg(theme.fg_dim),
+                ));
             }
 
             let lines = vec![Line::from(title_spans), Line::from(meta_spans)];
@@ -380,13 +380,13 @@ fn render_issue_list(
                 ));
             }
 
-            if let Some(count) = issue.comments {
-                if count > 0 {
-                    meta_spans.push(Span::styled(
-                        format!("  💬 {}", count),
-                        Style::default().fg(theme.fg_dim),
-                    ));
-                }
+            if let Some(count) = issue.comments
+                && count > 0
+            {
+                meta_spans.push(Span::styled(
+                    format!("  💬 {}", count),
+                    Style::default().fg(theme.fg_dim),
+                ));
             }
 
             lines.push(Line::from(meta_spans));

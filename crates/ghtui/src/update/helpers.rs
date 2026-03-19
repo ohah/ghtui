@@ -485,43 +485,43 @@ pub(crate) fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Comm
             }
         }
         Route::Discussions { .. } => {
-            if let Some(ref mut disc) = state.discussions {
-                if !disc.items.is_empty() {
-                    if delta == usize::MAX {
-                        disc.selected = disc.selected.saturating_sub(1);
-                    } else if delta > 0 {
-                        disc.selected = (disc.selected + 1).min(disc.items.len().saturating_sub(1));
-                    }
+            if let Some(ref mut disc) = state.discussions
+                && !disc.items.is_empty()
+            {
+                if delta == usize::MAX {
+                    disc.selected = disc.selected.saturating_sub(1);
+                } else if delta > 0 {
+                    disc.selected = (disc.selected + 1).min(disc.items.len().saturating_sub(1));
                 }
             }
         }
         Route::Gists => {
-            if let Some(ref mut g) = state.gists {
-                if !g.items.is_empty() {
-                    if delta == usize::MAX {
-                        g.selected = g.selected.saturating_sub(1);
-                    } else if delta > 0 {
-                        g.selected = (g.selected + 1).min(g.items.len().saturating_sub(1));
-                    }
+            if let Some(ref mut g) = state.gists
+                && !g.items.is_empty()
+            {
+                if delta == usize::MAX {
+                    g.selected = g.selected.saturating_sub(1);
+                } else if delta > 0 {
+                    g.selected = (g.selected + 1).min(g.items.len().saturating_sub(1));
                 }
             }
         }
         Route::Organizations => {
-            if let Some(ref mut org_state) = state.org {
-                if !org_state.orgs.is_empty() {
-                    let old_selected = org_state.selected_org;
-                    if delta == usize::MAX {
-                        org_state.selected_org = org_state.selected_org.saturating_sub(1);
-                    } else if delta > 0 {
-                        org_state.selected_org = (org_state.selected_org + 1)
-                            .min(org_state.orgs.len().saturating_sub(1));
-                    }
-                    // If selection changed, fetch members for new org
-                    if old_selected != org_state.selected_org {
-                        let login = org_state.orgs[org_state.selected_org].login.clone();
-                        state.loading.insert("org_members".to_string());
-                        return vec![Command::FetchOrgMembers(login)];
-                    }
+            if let Some(ref mut org_state) = state.org
+                && !org_state.orgs.is_empty()
+            {
+                let old_selected = org_state.selected_org;
+                if delta == usize::MAX {
+                    org_state.selected_org = org_state.selected_org.saturating_sub(1);
+                } else if delta > 0 {
+                    org_state.selected_org =
+                        (org_state.selected_org + 1).min(org_state.orgs.len().saturating_sub(1));
+                }
+                // If selection changed, fetch members for new org
+                if old_selected != org_state.selected_org {
+                    let login = org_state.orgs[org_state.selected_org].login.clone();
+                    state.loading.insert("org_members".to_string());
+                    return vec![Command::FetchOrgMembers(login)];
                 }
             }
         }
@@ -543,31 +543,31 @@ pub(crate) fn handle_list_select(state: &mut AppState, delta: usize) -> Vec<Comm
 pub(crate) fn handle_mouse_list_select(state: &mut AppState, item_index: usize) -> Vec<Command> {
     match &state.route {
         Route::PrList { .. } => {
-            if let Some(ref mut list) = state.pr_list {
-                if item_index < list.items.len() {
-                    list.selected = item_index;
-                }
+            if let Some(ref mut list) = state.pr_list
+                && item_index < list.items.len()
+            {
+                list.selected = item_index;
             }
         }
         Route::IssueList { .. } => {
-            if let Some(ref mut list) = state.issue_list {
-                if item_index < list.items.len() {
-                    list.selected = item_index;
-                }
+            if let Some(ref mut list) = state.issue_list
+                && item_index < list.items.len()
+            {
+                list.selected = item_index;
             }
         }
         Route::ActionsList { .. } => {
-            if let Some(ref mut list) = state.actions_list {
-                if item_index < list.items.len() {
-                    list.selected = item_index;
-                }
+            if let Some(ref mut list) = state.actions_list
+                && item_index < list.items.len()
+            {
+                list.selected = item_index;
             }
         }
         Route::Notifications => {
-            if let Some(ref mut list) = state.notifications {
-                if item_index < list.items.len() {
-                    list.selected = item_index;
-                }
+            if let Some(ref mut list) = state.notifications
+                && item_index < list.items.len()
+            {
+                list.selected = item_index;
             }
         }
         _ => {}

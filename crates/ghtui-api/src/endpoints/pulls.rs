@@ -127,76 +127,73 @@ impl GithubClient {
 
         // Parse check runs
         let mut checks: Vec<CheckStatus> = Vec::new();
-        if let Ok(body) = checks_body {
-            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&body) {
-                if let Some(runs) = val["check_runs"].as_array() {
-                    for run in runs {
-                        checks.push(CheckStatus {
-                            name: run["name"].as_str().unwrap_or("").to_string(),
-                            status: run["status"].as_str().unwrap_or("").to_string(),
-                            conclusion: run["conclusion"].as_str().map(|s| s.to_string()),
-                            url: run["html_url"].as_str().map(|s| s.to_string()),
-                        });
-                    }
-                }
+        if let Ok(body) = checks_body
+            && let Ok(val) = serde_json::from_str::<serde_json::Value>(&body)
+            && let Some(runs) = val["check_runs"].as_array()
+        {
+            for run in runs {
+                checks.push(CheckStatus {
+                    name: run["name"].as_str().unwrap_or("").to_string(),
+                    status: run["status"].as_str().unwrap_or("").to_string(),
+                    conclusion: run["conclusion"].as_str().map(|s| s.to_string()),
+                    url: run["html_url"].as_str().map(|s| s.to_string()),
+                });
             }
         }
 
         // Parse commit statuses (older CI systems use this)
-        if let Ok(body) = status_body {
-            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&body) {
-                if let Some(statuses) = val["statuses"].as_array() {
-                    for status in statuses {
-                        checks.push(CheckStatus {
-                            name: status["context"].as_str().unwrap_or("").to_string(),
-                            status: status["state"].as_str().unwrap_or("").to_string(),
-                            conclusion: status["state"].as_str().map(|s| s.to_string()),
-                            url: status["target_url"].as_str().map(|s| s.to_string()),
-                        });
-                    }
-                }
+        if let Ok(body) = status_body
+            && let Ok(val) = serde_json::from_str::<serde_json::Value>(&body)
+            && let Some(statuses) = val["statuses"].as_array()
+        {
+            for status in statuses {
+                checks.push(CheckStatus {
+                    name: status["context"].as_str().unwrap_or("").to_string(),
+                    status: status["state"].as_str().unwrap_or("").to_string(),
+                    conclusion: status["state"].as_str().map(|s| s.to_string()),
+                    url: status["target_url"].as_str().map(|s| s.to_string()),
+                });
             }
         }
 
         // Parse commits
         let mut commits: Vec<PrCommit> = Vec::new();
-        if let Ok(body) = commits_body {
-            if let Ok(arr) = serde_json::from_str::<Vec<serde_json::Value>>(&body) {
-                for c in arr {
-                    commits.push(PrCommit {
-                        sha: c["sha"].as_str().unwrap_or("").to_string(),
-                        message: c["commit"]["message"]
-                            .as_str()
-                            .unwrap_or("")
-                            .lines()
-                            .next()
-                            .unwrap_or("")
-                            .to_string(),
-                        author: c["commit"]["author"]["name"]
-                            .as_str()
-                            .or_else(|| c["author"]["login"].as_str())
-                            .unwrap_or("unknown")
-                            .to_string(),
-                        date: c["commit"]["author"]["date"]
-                            .as_str()
-                            .and_then(|s| s.parse().ok()),
-                    });
-                }
+        if let Ok(body) = commits_body
+            && let Ok(arr) = serde_json::from_str::<Vec<serde_json::Value>>(&body)
+        {
+            for c in arr {
+                commits.push(PrCommit {
+                    sha: c["sha"].as_str().unwrap_or("").to_string(),
+                    message: c["commit"]["message"]
+                        .as_str()
+                        .unwrap_or("")
+                        .lines()
+                        .next()
+                        .unwrap_or("")
+                        .to_string(),
+                    author: c["commit"]["author"]["name"]
+                        .as_str()
+                        .or_else(|| c["author"]["login"].as_str())
+                        .unwrap_or("unknown")
+                        .to_string(),
+                    date: c["commit"]["author"]["date"]
+                        .as_str()
+                        .and_then(|s| s.parse().ok()),
+                });
             }
         }
 
         // Parse timeline (individual items to handle varied event schemas)
         let mut timeline = Vec::new();
-        if let Ok(body) = timeline_body {
-            if let Ok(arr) = serde_json::from_str::<Vec<serde_json::Value>>(&body) {
-                for item in arr {
-                    if let Ok(event) =
-                        serde_json::from_value::<ghtui_core::types::issue::TimelineEvent>(item)
-                    {
-                        if !event.event.is_empty() {
-                            timeline.push(event);
-                        }
-                    }
+        if let Ok(body) = timeline_body
+            && let Ok(arr) = serde_json::from_str::<Vec<serde_json::Value>>(&body)
+        {
+            for item in arr {
+                if let Ok(event) =
+                    serde_json::from_value::<ghtui_core::types::issue::TimelineEvent>(item)
+                    && !event.event.is_empty()
+                {
+                    timeline.push(event);
                 }
             }
         }

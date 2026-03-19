@@ -78,11 +78,11 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
             state.pr_detail = Some(new_state);
             // Fetch diff after detail is loaded (avoids race condition)
-            if let Some(ref repo) = state.current_repo {
-                if let Route::PrDetail { number, .. } = &state.route {
-                    state.loading.insert("pr_diff".to_string());
-                    return vec![Command::FetchPrDiff(repo.clone(), *number)];
-                }
+            if let Some(ref repo) = state.current_repo
+                && let Route::PrDetail { number, .. } = &state.route
+            {
+                state.loading.insert("pr_diff".to_string());
+                return vec![Command::FetchPrDiff(repo.clone(), *number)];
             }
             vec![]
         }
@@ -219,11 +219,11 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             if let Some(ref mut list) = state.pr_list {
                 list.filters.label = Some(label);
             }
-            if let Some(ref repo) = state.current_repo {
-                if let Some(ref list) = state.pr_list {
-                    state.loading.insert("pr_list".to_string());
-                    return vec![Command::FetchPrList(repo.clone(), list.filters.clone(), 1)];
-                }
+            if let Some(ref repo) = state.current_repo
+                && let Some(ref list) = state.pr_list
+            {
+                state.loading.insert("pr_list".to_string());
+                return vec![Command::FetchPrList(repo.clone(), list.filters.clone(), 1)];
             }
             vec![]
         }
@@ -231,11 +231,11 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             if let Some(ref mut list) = state.pr_list {
                 list.filters.author = Some(author);
             }
-            if let Some(ref repo) = state.current_repo {
-                if let Some(ref list) = state.pr_list {
-                    state.loading.insert("pr_list".to_string());
-                    return vec![Command::FetchPrList(repo.clone(), list.filters.clone(), 1)];
-                }
+            if let Some(ref repo) = state.current_repo
+                && let Some(ref list) = state.pr_list
+            {
+                state.loading.insert("pr_list".to_string());
+                return vec![Command::FetchPrList(repo.clone(), list.filters.clone(), 1)];
             }
             vec![]
         }
@@ -243,11 +243,11 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             if let Some(ref mut list) = state.pr_list {
                 list.filters.assignee = Some(assignee);
             }
-            if let Some(ref repo) = state.current_repo {
-                if let Some(ref list) = state.pr_list {
-                    state.loading.insert("pr_list".to_string());
-                    return vec![Command::FetchPrList(repo.clone(), list.filters.clone(), 1)];
-                }
+            if let Some(ref repo) = state.current_repo
+                && let Some(ref list) = state.pr_list
+            {
+                state.loading.insert("pr_list".to_string());
+                return vec![Command::FetchPrList(repo.clone(), list.filters.clone(), 1)];
             }
             vec![]
         }
@@ -259,38 +259,38 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     ..Default::default()
                 };
             }
-            if let Some(ref repo) = state.current_repo {
-                if let Some(ref list) = state.pr_list {
-                    state.loading.insert("pr_list".to_string());
-                    return vec![Command::FetchPrList(repo.clone(), list.filters.clone(), 1)];
-                }
+            if let Some(ref repo) = state.current_repo
+                && let Some(ref list) = state.pr_list
+            {
+                state.loading.insert("pr_list".to_string());
+                return vec![Command::FetchPrList(repo.clone(), list.filters.clone(), 1)];
             }
             vec![]
         }
         // PR detail: close/reopen
         Message::PrToggleState => {
-            if let Some(ref detail) = state.pr_detail {
-                if let Some(ref repo) = state.current_repo {
-                    let number = detail.detail.pr.number;
-                    return match detail.detail.pr.state {
-                        PrState::Open => vec![Command::ClosePr(repo.clone(), number)],
-                        PrState::Closed => vec![Command::ReopenPr(repo.clone(), number)],
-                        PrState::Merged => vec![], // Can't reopen merged
-                    };
-                }
+            if let Some(ref detail) = state.pr_detail
+                && let Some(ref repo) = state.current_repo
+            {
+                let number = detail.detail.pr.number;
+                return match detail.detail.pr.state {
+                    PrState::Open => vec![Command::ClosePr(repo.clone(), number)],
+                    PrState::Closed => vec![Command::ReopenPr(repo.clone(), number)],
+                    PrState::Merged => vec![], // Can't reopen merged
+                };
             }
             vec![]
         }
         Message::PrOpenInBrowser => {
-            if let Some(ref detail) = state.pr_detail {
-                if let Some(ref repo) = state.current_repo {
-                    let url = format!(
-                        "https://github.com/{}/pull/{}",
-                        repo.full_name(),
-                        detail.detail.pr.number
-                    );
-                    return vec![Command::OpenInBrowser(url)];
-                }
+            if let Some(ref detail) = state.pr_detail
+                && let Some(ref repo) = state.current_repo
+            {
+                let url = format!(
+                    "https://github.com/{}/pull/{}",
+                    repo.full_name(),
+                    detail.detail.pr.number
+                );
+                return vec![Command::OpenInBrowser(url)];
             }
             vec![]
         }
@@ -353,14 +353,12 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::PrDeleteComment => {
-            if let Some(ref detail) = state.pr_detail {
-                if let Some(idx) = detail.selected_comment() {
-                    if let Some(comment) = detail.detail.comments.get(idx) {
-                        if let Some(ref repo) = state.current_repo {
-                            return vec![Command::DeletePrComment(repo.clone(), comment.id)];
-                        }
-                    }
-                }
+            if let Some(ref detail) = state.pr_detail
+                && let Some(idx) = detail.selected_comment()
+                && let Some(comment) = detail.detail.comments.get(idx)
+                && let Some(ref repo) = state.current_repo
+            {
+                return vec![Command::DeletePrComment(repo.clone(), comment.id)];
             }
             vec![]
         }
@@ -392,31 +390,30 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::PrLabelSelect(idx) => {
-            if let Some(ref mut detail) = state.pr_detail {
-                if let Some(ref mut picker) = detail.label_picker {
-                    if let Some(label) = picker.available.get(idx) {
-                        let name = label.name.clone();
-                        if picker.selected_names.contains(&name) {
-                            picker.selected_names.retain(|n| n != &name);
-                        } else {
-                            picker.selected_names.push(name);
-                        }
-                    }
+            if let Some(ref mut detail) = state.pr_detail
+                && let Some(ref mut picker) = detail.label_picker
+                && let Some(label) = picker.available.get(idx)
+            {
+                let name = label.name.clone();
+                if picker.selected_names.contains(&name) {
+                    picker.selected_names.retain(|n| n != &name);
+                } else {
+                    picker.selected_names.push(name);
                 }
             }
             vec![]
         }
         Message::PrLabelApply => {
-            if let Some(ref detail) = state.pr_detail {
-                if let (Some(picker), Some(repo)) = (&detail.label_picker, &state.current_repo) {
-                    let number = detail.detail.pr.number;
-                    let labels = picker.selected_names.clone();
-                    let cmds = vec![Command::SetPrLabels(repo.clone(), number, labels)];
-                    if let Some(ref mut detail) = state.pr_detail {
-                        detail.label_picker = None;
-                    }
-                    return cmds;
+            if let Some(ref detail) = state.pr_detail
+                && let (Some(picker), Some(repo)) = (&detail.label_picker, &state.current_repo)
+            {
+                let number = detail.detail.pr.number;
+                let labels = picker.selected_names.clone();
+                let cmds = vec![Command::SetPrLabels(repo.clone(), number, labels)];
+                if let Some(ref mut detail) = state.pr_detail {
+                    detail.label_picker = None;
                 }
+                return cmds;
             }
             if let Some(ref mut detail) = state.pr_detail {
                 detail.label_picker = None;
@@ -457,30 +454,29 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::PrAssigneeSelect(idx) => {
-            if let Some(ref mut detail) = state.pr_detail {
-                if let Some(ref mut picker) = detail.assignee_picker {
-                    if let Some(login) = picker.available.get(idx).cloned() {
-                        if picker.selected_names.contains(&login) {
-                            picker.selected_names.retain(|n| n != &login);
-                        } else {
-                            picker.selected_names.push(login);
-                        }
-                    }
+            if let Some(ref mut detail) = state.pr_detail
+                && let Some(ref mut picker) = detail.assignee_picker
+                && let Some(login) = picker.available.get(idx).cloned()
+            {
+                if picker.selected_names.contains(&login) {
+                    picker.selected_names.retain(|n| n != &login);
+                } else {
+                    picker.selected_names.push(login);
                 }
             }
             vec![]
         }
         Message::PrAssigneeApply => {
-            if let Some(ref detail) = state.pr_detail {
-                if let (Some(picker), Some(repo)) = (&detail.assignee_picker, &state.current_repo) {
-                    let number = detail.detail.pr.number;
-                    let assignees = picker.selected_names.clone();
-                    let cmds = vec![Command::SetPrAssignees(repo.clone(), number, assignees)];
-                    if let Some(ref mut detail) = state.pr_detail {
-                        detail.assignee_picker = None;
-                    }
-                    return cmds;
+            if let Some(ref detail) = state.pr_detail
+                && let (Some(picker), Some(repo)) = (&detail.assignee_picker, &state.current_repo)
+            {
+                let number = detail.detail.pr.number;
+                let assignees = picker.selected_names.clone();
+                let cmds = vec![Command::SetPrAssignees(repo.clone(), number, assignees)];
+                if let Some(ref mut detail) = state.pr_detail {
+                    detail.assignee_picker = None;
                 }
+                return cmds;
             }
             if let Some(ref mut detail) = state.pr_detail {
                 detail.assignee_picker = None;
@@ -503,32 +499,30 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
         }
         Message::PrMilestoneSelect(idx) => {
-            if let Some(ref mut detail) = state.pr_detail {
-                if let Some(ref mut picker) = detail.milestone_picker {
-                    if let Some(ms) = picker.available.get(idx) {
-                        let num = ms.number as u64;
-                        if picker.selected == Some(num) {
-                            picker.selected = None;
-                        } else {
-                            picker.selected = Some(num);
-                        }
-                    }
+            if let Some(ref mut detail) = state.pr_detail
+                && let Some(ref mut picker) = detail.milestone_picker
+                && let Some(ms) = picker.available.get(idx)
+            {
+                let num = ms.number as u64;
+                if picker.selected == Some(num) {
+                    picker.selected = None;
+                } else {
+                    picker.selected = Some(num);
                 }
             }
             vec![]
         }
         Message::PrMilestoneApply => {
-            if let Some(ref detail) = state.pr_detail {
-                if let (Some(picker), Some(repo)) = (&detail.milestone_picker, &state.current_repo)
-                {
-                    let number = detail.detail.pr.number;
-                    let ms = picker.selected;
-                    let cmds = vec![Command::SetMilestone(repo.clone(), number, ms)];
-                    if let Some(ref mut d) = state.pr_detail {
-                        d.milestone_picker = None;
-                    }
-                    return cmds;
+            if let Some(ref detail) = state.pr_detail
+                && let (Some(picker), Some(repo)) = (&detail.milestone_picker, &state.current_repo)
+            {
+                let number = detail.detail.pr.number;
+                let ms = picker.selected;
+                let cmds = vec![Command::SetMilestone(repo.clone(), number, ms)];
+                if let Some(ref mut d) = state.pr_detail {
+                    d.milestone_picker = None;
                 }
+                return cmds;
             }
             if let Some(ref mut d) = state.pr_detail {
                 d.milestone_picker = None;
@@ -536,14 +530,14 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::PrMilestoneClear => {
-            if let Some(ref detail) = state.pr_detail {
-                if let Some(ref repo) = state.current_repo {
-                    let number = detail.detail.pr.number;
-                    if let Some(ref mut d) = state.pr_detail {
-                        d.milestone_picker = None;
-                    }
-                    return vec![Command::SetMilestone(repo.clone(), number, None)];
+            if let Some(ref detail) = state.pr_detail
+                && let Some(ref repo) = state.current_repo
+            {
+                let number = detail.detail.pr.number;
+                if let Some(ref mut d) = state.pr_detail {
+                    d.milestone_picker = None;
                 }
+                return vec![Command::SetMilestone(repo.clone(), number, None)];
             }
             vec![]
         }
@@ -555,23 +549,23 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         // PR draft toggle
         Message::PrDraftToggle => {
-            if let Some(ref detail) = state.pr_detail {
-                if let Some(ref repo) = state.current_repo {
-                    let number = detail.detail.pr.number;
-                    let new_draft = !detail.detail.pr.draft;
-                    return vec![Command::SetPrDraft(repo.clone(), number, new_draft)];
-                }
+            if let Some(ref detail) = state.pr_detail
+                && let Some(ref repo) = state.current_repo
+            {
+                let number = detail.detail.pr.number;
+                let new_draft = !detail.detail.pr.draft;
+                return vec![Command::SetPrDraft(repo.clone(), number, new_draft)];
             }
             vec![]
         }
         // PR auto-merge toggle
         Message::PrAutoMergeToggle => {
-            if let Some(ref detail) = state.pr_detail {
-                if let Some(ref repo) = state.current_repo {
-                    let number = detail.detail.pr.number;
-                    let enable = !detail.detail.pr.auto_merge;
-                    return vec![Command::SetAutoMerge(repo.clone(), number, enable)];
-                }
+            if let Some(ref detail) = state.pr_detail
+                && let Some(ref repo) = state.current_repo
+            {
+                let number = detail.detail.pr.number;
+                let enable = !detail.detail.pr.auto_merge;
+                return vec![Command::SetAutoMerge(repo.clone(), number, enable)];
             }
             vec![]
         }
@@ -584,35 +578,34 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         // PR review thread resolve/unresolve
         Message::PrReviewThreadToggleResolve => {
-            if let (Some(detail), Some(repo)) = (&state.pr_detail, &state.current_repo) {
-                if let Some(ref files) = detail.diff {
-                    let cursor_comment_id = find_review_comment_at_cursor(detail, files);
-                    if let Some(comment_id) = cursor_comment_id {
-                        // Find root of the thread (in_reply_to_id chain)
-                        let root_id =
-                            find_thread_root_id(comment_id, &detail.detail.review_comments);
-                        // Find matching thread
-                        if let Some(thread) = detail
-                            .detail
-                            .review_threads
-                            .iter()
-                            .find(|t| t.root_comment_id == root_id)
-                        {
-                            let resolve = !thread.is_resolved;
-                            let number = detail.detail.pr.number;
-                            return vec![Command::ResolveReviewThread(
-                                repo.clone(),
-                                number,
-                                thread.node_id.clone(),
-                                resolve,
-                            )];
-                        }
+            if let (Some(detail), Some(repo)) = (&state.pr_detail, &state.current_repo)
+                && let Some(ref files) = detail.diff
+            {
+                let cursor_comment_id = find_review_comment_at_cursor(detail, files);
+                if let Some(comment_id) = cursor_comment_id {
+                    // Find root of the thread (in_reply_to_id chain)
+                    let root_id = find_thread_root_id(comment_id, &detail.detail.review_comments);
+                    // Find matching thread
+                    if let Some(thread) = detail
+                        .detail
+                        .review_threads
+                        .iter()
+                        .find(|t| t.root_comment_id == root_id)
+                    {
+                        let resolve = !thread.is_resolved;
+                        let number = detail.detail.pr.number;
+                        return vec![Command::ResolveReviewThread(
+                            repo.clone(),
+                            number,
+                            thread.node_id.clone(),
+                            resolve,
+                        )];
                     }
-                    state.push_toast(
-                        "No review thread at cursor".to_string(),
-                        ToastLevel::Warning,
-                    );
                 }
+                state.push_toast(
+                    "No review thread at cursor".to_string(),
+                    ToastLevel::Warning,
+                );
             }
             vec![]
         }
@@ -685,31 +678,26 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::PrReviewerApply | Message::PrReviewerCancel => vec![],
         // PR reactions
         Message::PrAddReaction(reaction) => {
-            if let Some(ref detail) = state.pr_detail {
-                if let Some(ref repo) = state.current_repo {
-                    use ghtui_core::state::pr::PrSection;
-                    match &detail.focus {
-                        PrSection::Body | PrSection::Title => {
-                            let number = detail.detail.pr.number;
+            if let Some(ref detail) = state.pr_detail
+                && let Some(ref repo) = state.current_repo
+            {
+                use ghtui_core::state::pr::PrSection;
+                match &detail.focus {
+                    PrSection::Body | PrSection::Title => {
+                        let number = detail.detail.pr.number;
+                        return vec![Command::AddReaction(repo.clone(), number, reaction, true)];
+                    }
+                    PrSection::Comment(idx) => {
+                        if let Some(comment) = detail.detail.comments.get(*idx) {
                             return vec![Command::AddReaction(
                                 repo.clone(),
-                                number,
+                                comment.id,
                                 reaction,
-                                true,
+                                false,
                             )];
                         }
-                        PrSection::Comment(idx) => {
-                            if let Some(comment) = detail.detail.comments.get(*idx) {
-                                return vec![Command::AddReaction(
-                                    repo.clone(),
-                                    comment.id,
-                                    reaction,
-                                    false,
-                                )];
-                            }
-                        }
-                        _ => {}
                     }
+                    _ => {}
                 }
             }
             vec![]
@@ -884,49 +872,29 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::PrEditSubmit => {
-            if let Some(ref detail) = state.pr_detail {
-                if let Some(ref repo) = state.current_repo {
-                    let cmds = match &detail.edit_target {
-                        Some(PrInlineEditTarget::PrTitle) => {
-                            let title = detail.editor_text().trim().to_string();
-                            let number = detail.detail.pr.number;
-                            if title.is_empty() {
-                                state.push_toast(
-                                    "Title cannot be empty".to_string(),
-                                    ToastLevel::Warning,
-                                );
-                                return vec![];
-                            }
-                            vec![Command::UpdatePr(repo.clone(), number, Some(title), None)]
+            if let Some(ref detail) = state.pr_detail
+                && let Some(ref repo) = state.current_repo
+            {
+                let cmds = match &detail.edit_target {
+                    Some(PrInlineEditTarget::PrTitle) => {
+                        let title = detail.editor_text().trim().to_string();
+                        let number = detail.detail.pr.number;
+                        if title.is_empty() {
+                            state.push_toast(
+                                "Title cannot be empty".to_string(),
+                                ToastLevel::Warning,
+                            );
+                            return vec![];
                         }
-                        Some(PrInlineEditTarget::PrBody) => {
-                            let body = detail.editor_text();
-                            let number = detail.detail.pr.number;
-                            vec![Command::UpdatePr(repo.clone(), number, None, Some(body))]
-                        }
-                        Some(PrInlineEditTarget::Comment(idx)) => {
-                            if let Some(comment) = detail.detail.comments.get(*idx) {
-                                let body = detail.editor_text();
-                                if body.trim().is_empty() {
-                                    state.push_toast(
-                                        "Comment cannot be empty".to_string(),
-                                        ToastLevel::Warning,
-                                    );
-                                    return vec![];
-                                }
-                                vec![Command::UpdatePrComment(
-                                    repo.clone(),
-                                    detail.detail.pr.number,
-                                    comment.id,
-                                    body,
-                                )]
-                            } else {
-                                vec![]
-                            }
-                        }
-                        Some(
-                            PrInlineEditTarget::NewComment | PrInlineEditTarget::QuoteReply(_),
-                        ) => {
+                        vec![Command::UpdatePr(repo.clone(), number, Some(title), None)]
+                    }
+                    Some(PrInlineEditTarget::PrBody) => {
+                        let body = detail.editor_text();
+                        let number = detail.detail.pr.number;
+                        vec![Command::UpdatePr(repo.clone(), number, None, Some(body))]
+                    }
+                    Some(PrInlineEditTarget::Comment(idx)) => {
+                        if let Some(comment) = detail.detail.comments.get(*idx) {
                             let body = detail.editor_text();
                             if body.trim().is_empty() {
                                 state.push_toast(
@@ -935,47 +903,65 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                                 );
                                 return vec![];
                             }
-                            let number = detail.detail.pr.number;
-                            vec![Command::AddPrComment(repo.clone(), number, body)]
+                            vec![Command::UpdatePrComment(
+                                repo.clone(),
+                                detail.detail.pr.number,
+                                comment.id,
+                                body,
+                            )]
+                        } else {
+                            vec![]
                         }
-                        Some(PrInlineEditTarget::ReviewApprove) => {
-                            let body = detail.editor_text();
-                            let number = detail.detail.pr.number;
-                            let input = ghtui_core::types::ReviewInput {
-                                event: ghtui_core::types::ReviewEvent::Approve,
-                                body: Some(if body.trim().is_empty() {
-                                    "Approved".to_string()
-                                } else {
-                                    body
-                                }),
-                                comments: vec![],
-                            };
-                            vec![Command::SubmitReview(repo.clone(), number, input)]
-                        }
-                        Some(PrInlineEditTarget::ReviewRequestChanges) => {
-                            let body = detail.editor_text();
-                            if body.trim().is_empty() {
-                                state.push_toast(
-                                    "Review comment cannot be empty".to_string(),
-                                    ToastLevel::Warning,
-                                );
-                                return vec![];
-                            }
-                            let number = detail.detail.pr.number;
-                            let input = ghtui_core::types::ReviewInput {
-                                event: ghtui_core::types::ReviewEvent::RequestChanges,
-                                body: Some(body),
-                                comments: vec![],
-                            };
-                            vec![Command::SubmitReview(repo.clone(), number, input)]
-                        }
-                        None => vec![],
-                    };
-                    if let Some(ref mut detail) = state.pr_detail {
-                        detail.cancel_edit();
                     }
-                    return cmds;
+                    Some(PrInlineEditTarget::NewComment | PrInlineEditTarget::QuoteReply(_)) => {
+                        let body = detail.editor_text();
+                        if body.trim().is_empty() {
+                            state.push_toast(
+                                "Comment cannot be empty".to_string(),
+                                ToastLevel::Warning,
+                            );
+                            return vec![];
+                        }
+                        let number = detail.detail.pr.number;
+                        vec![Command::AddPrComment(repo.clone(), number, body)]
+                    }
+                    Some(PrInlineEditTarget::ReviewApprove) => {
+                        let body = detail.editor_text();
+                        let number = detail.detail.pr.number;
+                        let input = ghtui_core::types::ReviewInput {
+                            event: ghtui_core::types::ReviewEvent::Approve,
+                            body: Some(if body.trim().is_empty() {
+                                "Approved".to_string()
+                            } else {
+                                body
+                            }),
+                            comments: vec![],
+                        };
+                        vec![Command::SubmitReview(repo.clone(), number, input)]
+                    }
+                    Some(PrInlineEditTarget::ReviewRequestChanges) => {
+                        let body = detail.editor_text();
+                        if body.trim().is_empty() {
+                            state.push_toast(
+                                "Review comment cannot be empty".to_string(),
+                                ToastLevel::Warning,
+                            );
+                            return vec![];
+                        }
+                        let number = detail.detail.pr.number;
+                        let input = ghtui_core::types::ReviewInput {
+                            event: ghtui_core::types::ReviewEvent::RequestChanges,
+                            body: Some(body),
+                            comments: vec![],
+                        };
+                        vec![Command::SubmitReview(repo.clone(), number, input)]
+                    }
+                    None => vec![],
+                };
+                if let Some(ref mut detail) = state.pr_detail {
+                    detail.cancel_edit();
                 }
+                return cmds;
             }
             if let Some(ref mut detail) = state.pr_detail {
                 detail.cancel_edit();
@@ -1022,104 +1008,102 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::PrDiffToggleCollapse => {
-            if let Some(ref mut detail) = state.pr_detail {
-                if let Some((fi, is_header)) = find_cursor_file_info(detail) {
-                    if is_header {
-                        // File header → toggle fold
-                        if detail.diff_collapsed.contains(&fi) {
-                            detail.diff_collapsed.remove(&fi);
-                        } else {
-                            detail.diff_collapsed.insert(fi);
-                        }
+            if let Some(ref mut detail) = state.pr_detail
+                && let Some((fi, is_header)) = find_cursor_file_info(detail)
+            {
+                if is_header {
+                    // File header → toggle fold
+                    if detail.diff_collapsed.contains(&fi) {
+                        detail.diff_collapsed.remove(&fi);
                     } else {
-                        // Code line → open inline comment editor
-                        if let Some(target) = find_cursor_line_info(detail) {
-                            detail.diff_comment_target = Some(target);
-                            detail.diff_comment_editor = ghtui_core::editor::TextEditor::new();
-                        }
+                        detail.diff_collapsed.insert(fi);
+                    }
+                } else {
+                    // Code line → open inline comment editor
+                    if let Some(target) = find_cursor_line_info(detail) {
+                        detail.diff_comment_target = Some(target);
+                        detail.diff_comment_editor = ghtui_core::editor::TextEditor::new();
                     }
                 }
             }
             vec![]
         }
         Message::PrDiffExpand => {
-            if let Some(ref mut detail) = state.pr_detail {
-                if let Some(fi) = find_cursor_file(detail) {
-                    detail.diff_collapsed.remove(&fi);
-                }
+            if let Some(ref mut detail) = state.pr_detail
+                && let Some(fi) = find_cursor_file(detail)
+            {
+                detail.diff_collapsed.remove(&fi);
             }
             vec![]
         }
         Message::PrDiffCollapse => {
-            if let Some(ref mut detail) = state.pr_detail {
-                if let Some(fi) = find_cursor_file(detail) {
-                    detail.diff_collapsed.insert(fi);
-                }
+            if let Some(ref mut detail) = state.pr_detail
+                && let Some(fi) = find_cursor_file(detail)
+            {
+                detail.diff_collapsed.insert(fi);
             }
             vec![]
         }
         Message::PrDiffCommentSubmit => {
-            if let Some(ref detail) = state.pr_detail {
-                if let (Some((path, line)), Some(repo)) =
+            if let Some(ref detail) = state.pr_detail
+                && let (Some((path, line)), Some(repo)) =
                     (&detail.diff_comment_target, &state.current_repo)
-                {
-                    let body = detail.diff_comment_editor.content();
-                    if body.trim().is_empty() {
-                        state
-                            .push_toast("Comment cannot be empty".to_string(), ToastLevel::Warning);
-                        return vec![];
-                    }
-                    let number = detail.detail.pr.number;
-                    let input = ghtui_core::types::ReviewInput {
-                        event: ghtui_core::types::ReviewEvent::Comment,
-                        body: None,
-                        comments: vec![ghtui_core::types::ReviewCommentInput {
-                            path: path.clone(),
-                            line: *line,
-                            body,
-                        }],
-                    };
-                    if let Some(ref mut d) = state.pr_detail {
-                        d.diff_comment_target = None;
-                        d.diff_comment_editor = ghtui_core::editor::TextEditor::new();
-                    }
-                    return vec![Command::SubmitReview(repo.clone(), number, input)];
+            {
+                let body = detail.diff_comment_editor.content();
+                if body.trim().is_empty() {
+                    state.push_toast("Comment cannot be empty".to_string(), ToastLevel::Warning);
+                    return vec![];
                 }
+                let number = detail.detail.pr.number;
+                let input = ghtui_core::types::ReviewInput {
+                    event: ghtui_core::types::ReviewEvent::Comment,
+                    body: None,
+                    comments: vec![ghtui_core::types::ReviewCommentInput {
+                        path: path.clone(),
+                        line: *line,
+                        body,
+                    }],
+                };
+                if let Some(ref mut d) = state.pr_detail {
+                    d.diff_comment_target = None;
+                    d.diff_comment_editor = ghtui_core::editor::TextEditor::new();
+                }
+                return vec![Command::SubmitReview(repo.clone(), number, input)];
             }
             vec![]
         }
         Message::PrDiffInsertSuggestion => {
-            if let Some(ref mut detail) = state.pr_detail {
-                if let Some((ref path, line)) = detail.diff_comment_target.clone() {
-                    // Find the original code at this line
-                    let original_code = detail
-                        .diff
-                        .as_ref()
-                        .and_then(|files| {
-                            files.iter().find(|f| f.filename == *path).and_then(|f| {
-                                f.hunks.iter().find_map(|h| {
-                                    h.lines.iter().find_map(|dl| {
-                                        if dl.new_line == Some(line) || dl.old_line == Some(line) {
-                                            Some(dl.content.clone())
-                                        } else {
-                                            None
-                                        }
-                                    })
+            if let Some(ref mut detail) = state.pr_detail
+                && let Some((ref path, line)) = detail.diff_comment_target.clone()
+            {
+                // Find the original code at this line
+                let original_code = detail
+                    .diff
+                    .as_ref()
+                    .and_then(|files| {
+                        files.iter().find(|f| f.filename == *path).and_then(|f| {
+                            f.hunks.iter().find_map(|h| {
+                                h.lines.iter().find_map(|dl| {
+                                    if dl.new_line == Some(line) || dl.old_line == Some(line) {
+                                        Some(dl.content.clone())
+                                    } else {
+                                        None
+                                    }
                                 })
                             })
                         })
-                        .unwrap_or_default();
+                    })
+                    .unwrap_or_default();
 
-                    let template = format!("```suggestion\n{}\n```", original_code);
-                    for c in template.chars() {
-                        if c == '\n' {
-                            detail.diff_comment_editor.insert_newline();
-                        } else {
-                            detail.diff_comment_editor.insert_char(c);
-                        }
+                let template = format!("```suggestion\n{}\n```", original_code);
+                for c in template.chars() {
+                    if c == '\n' {
+                        detail.diff_comment_editor.insert_newline();
+                    } else {
+                        detail.diff_comment_editor.insert_char(c);
                     }
-                    detail.diff_comment_editor.move_up();
                 }
+                detail.diff_comment_editor.move_up();
             }
             vec![]
         }
@@ -1146,10 +1130,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::PrDiffTreeFocus => {
-            if let Some(ref mut detail) = state.pr_detail {
-                if detail.show_file_tree {
-                    detail.file_tree_focused = !detail.file_tree_focused;
-                }
+            if let Some(ref mut detail) = state.pr_detail
+                && detail.show_file_tree
+            {
+                detail.file_tree_focused = !detail.file_tree_focused;
             }
             vec![]
         }
@@ -1160,37 +1144,36 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::PrDiffTreeDown => {
-            if let Some(ref mut detail) = state.pr_detail {
-                if let Some(ref files) = detail.diff {
-                    let max = files.len().saturating_sub(1);
-                    detail.file_tree_selected = (detail.file_tree_selected + 1).min(max);
-                }
+            if let Some(ref mut detail) = state.pr_detail
+                && let Some(ref files) = detail.diff
+            {
+                let max = files.len().saturating_sub(1);
+                detail.file_tree_selected = (detail.file_tree_selected + 1).min(max);
             }
             vec![]
         }
         Message::PrDiffTreeSelect => {
             // Jump diff cursor to selected file
-            if let Some(ref mut detail) = state.pr_detail {
-                if let Some(ref files) = detail.diff {
-                    let target_fi = detail.file_tree_selected;
-                    // Calculate line position of target file header
-                    let summary_lines = files.len() + 3;
-                    let mut line = summary_lines;
-                    for (fi, file) in files.iter().enumerate() {
-                        if fi == target_fi {
-                            detail.diff_cursor = line;
-                            detail.file_tree_focused = false; // switch focus to diff
-                            // Expand if collapsed
-                            detail.diff_collapsed.remove(&fi);
-                            break;
-                        }
-                        let collapsed = detail.diff_collapsed.contains(&fi);
-                        if collapsed {
-                            line += 1;
-                        } else {
-                            line +=
-                                1 + file.hunks.iter().map(|h| 1 + h.lines.len()).sum::<usize>() + 1;
-                        }
+            if let Some(ref mut detail) = state.pr_detail
+                && let Some(ref files) = detail.diff
+            {
+                let target_fi = detail.file_tree_selected;
+                // Calculate line position of target file header
+                let summary_lines = files.len() + 3;
+                let mut line = summary_lines;
+                for (fi, file) in files.iter().enumerate() {
+                    if fi == target_fi {
+                        detail.diff_cursor = line;
+                        detail.file_tree_focused = false; // switch focus to diff
+                        // Expand if collapsed
+                        detail.diff_collapsed.remove(&fi);
+                        break;
+                    }
+                    let collapsed = detail.diff_collapsed.contains(&fi);
+                    if collapsed {
+                        line += 1;
+                    } else {
+                        line += 1 + file.hunks.iter().map(|h| 1 + h.lines.len()).sum::<usize>() + 1;
                     }
                 }
             }
@@ -1295,26 +1278,26 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
         }
         Message::IssueLockToggle => {
-            if let Some(ref detail) = state.issue_detail {
-                if let Some(ref repo) = state.current_repo {
-                    let number = detail.detail.issue.number;
-                    let locked = detail.detail.issue.locked;
-                    return if locked {
-                        vec![Command::UnlockIssue(repo.clone(), number)]
-                    } else {
-                        vec![Command::LockIssue(repo.clone(), number)]
-                    };
-                }
+            if let Some(ref detail) = state.issue_detail
+                && let Some(ref repo) = state.current_repo
+            {
+                let number = detail.detail.issue.number;
+                let locked = detail.detail.issue.locked;
+                return if locked {
+                    vec![Command::UnlockIssue(repo.clone(), number)]
+                } else {
+                    vec![Command::LockIssue(repo.clone(), number)]
+                };
             }
             vec![]
         }
         Message::IssuePinToggle => {
-            if let Some(ref detail) = state.issue_detail {
-                if let Some(ref repo) = state.current_repo {
-                    let number = detail.detail.issue.number;
-                    // Try pin first; if already pinned, the API will error and we unpin
-                    return vec![Command::PinIssue(repo.clone(), number)];
-                }
+            if let Some(ref detail) = state.issue_detail
+                && let Some(ref repo) = state.current_repo
+            {
+                let number = detail.detail.issue.number;
+                // Try pin first; if already pinned, the API will error and we unpin
+                return vec![Command::PinIssue(repo.clone(), number)];
             }
             vec![]
         }
@@ -1322,15 +1305,15 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             if let Some(ref mut list) = state.issue_list {
                 list.filters.label = Some(label);
             }
-            if let Some(ref repo) = state.current_repo {
-                if let Some(ref list) = state.issue_list {
-                    state.loading.insert("issue_list".to_string());
-                    return vec![Command::FetchIssueList(
-                        repo.clone(),
-                        list.filters.clone(),
-                        1,
-                    )];
-                }
+            if let Some(ref repo) = state.current_repo
+                && let Some(ref list) = state.issue_list
+            {
+                state.loading.insert("issue_list".to_string());
+                return vec![Command::FetchIssueList(
+                    repo.clone(),
+                    list.filters.clone(),
+                    1,
+                )];
             }
             vec![]
         }
@@ -1338,15 +1321,15 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             if let Some(ref mut list) = state.issue_list {
                 list.filters.author = Some(author);
             }
-            if let Some(ref repo) = state.current_repo {
-                if let Some(ref list) = state.issue_list {
-                    state.loading.insert("issue_list".to_string());
-                    return vec![Command::FetchIssueList(
-                        repo.clone(),
-                        list.filters.clone(),
-                        1,
-                    )];
-                }
+            if let Some(ref repo) = state.current_repo
+                && let Some(ref list) = state.issue_list
+            {
+                state.loading.insert("issue_list".to_string());
+                return vec![Command::FetchIssueList(
+                    repo.clone(),
+                    list.filters.clone(),
+                    1,
+                )];
             }
             vec![]
         }
@@ -1354,15 +1337,15 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             if let Some(ref mut list) = state.issue_list {
                 list.filters.assignee = Some(assignee);
             }
-            if let Some(ref repo) = state.current_repo {
-                if let Some(ref list) = state.issue_list {
-                    state.loading.insert("issue_list".to_string());
-                    return vec![Command::FetchIssueList(
-                        repo.clone(),
-                        list.filters.clone(),
-                        1,
-                    )];
-                }
+            if let Some(ref repo) = state.current_repo
+                && let Some(ref list) = state.issue_list
+            {
+                state.loading.insert("issue_list".to_string());
+                return vec![Command::FetchIssueList(
+                    repo.clone(),
+                    list.filters.clone(),
+                    1,
+                )];
             }
             vec![]
         }
@@ -1374,15 +1357,15 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     ..Default::default()
                 };
             }
-            if let Some(ref repo) = state.current_repo {
-                if let Some(ref list) = state.issue_list {
-                    state.loading.insert("issue_list".to_string());
-                    return vec![Command::FetchIssueList(
-                        repo.clone(),
-                        list.filters.clone(),
-                        1,
-                    )];
-                }
+            if let Some(ref repo) = state.current_repo
+                && let Some(ref list) = state.issue_list
+            {
+                state.loading.insert("issue_list".to_string());
+                return vec![Command::FetchIssueList(
+                    repo.clone(),
+                    list.filters.clone(),
+                    1,
+                )];
             }
             vec![]
         }
@@ -1508,31 +1491,30 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::IssueLabelSelect(idx) => {
-            if let Some(ref mut detail) = state.issue_detail {
-                if let Some(ref mut picker) = detail.label_picker {
-                    if let Some(label) = picker.available.get(idx) {
-                        let name = label.name.clone();
-                        if picker.selected_names.contains(&name) {
-                            picker.selected_names.retain(|n| n != &name);
-                        } else {
-                            picker.selected_names.push(name);
-                        }
-                    }
+            if let Some(ref mut detail) = state.issue_detail
+                && let Some(ref mut picker) = detail.label_picker
+                && let Some(label) = picker.available.get(idx)
+            {
+                let name = label.name.clone();
+                if picker.selected_names.contains(&name) {
+                    picker.selected_names.retain(|n| n != &name);
+                } else {
+                    picker.selected_names.push(name);
                 }
             }
             vec![]
         }
         Message::IssueLabelApply => {
-            if let Some(ref detail) = state.issue_detail {
-                if let (Some(picker), Some(repo)) = (&detail.label_picker, &state.current_repo) {
-                    let number = detail.detail.issue.number;
-                    let labels = picker.selected_names.clone();
-                    let cmds = vec![Command::SetIssueLabels(repo.clone(), number, labels)];
-                    if let Some(ref mut detail) = state.issue_detail {
-                        detail.label_picker = None;
-                    }
-                    return cmds;
+            if let Some(ref detail) = state.issue_detail
+                && let (Some(picker), Some(repo)) = (&detail.label_picker, &state.current_repo)
+            {
+                let number = detail.detail.issue.number;
+                let labels = picker.selected_names.clone();
+                let cmds = vec![Command::SetIssueLabels(repo.clone(), number, labels)];
+                if let Some(ref mut detail) = state.issue_detail {
+                    detail.label_picker = None;
                 }
+                return cmds;
             }
             if let Some(ref mut detail) = state.issue_detail {
                 detail.label_picker = None;
@@ -1577,30 +1559,29 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::IssueAssigneeSelect(idx) => {
-            if let Some(ref mut detail) = state.issue_detail {
-                if let Some(ref mut picker) = detail.assignee_picker {
-                    if let Some(login) = picker.available.get(idx).cloned() {
-                        if picker.selected_names.contains(&login) {
-                            picker.selected_names.retain(|n| n != &login);
-                        } else {
-                            picker.selected_names.push(login);
-                        }
-                    }
+            if let Some(ref mut detail) = state.issue_detail
+                && let Some(ref mut picker) = detail.assignee_picker
+                && let Some(login) = picker.available.get(idx).cloned()
+            {
+                if picker.selected_names.contains(&login) {
+                    picker.selected_names.retain(|n| n != &login);
+                } else {
+                    picker.selected_names.push(login);
                 }
             }
             vec![]
         }
         Message::IssueAssigneeApply => {
-            if let Some(ref detail) = state.issue_detail {
-                if let (Some(picker), Some(repo)) = (&detail.assignee_picker, &state.current_repo) {
-                    let number = detail.detail.issue.number;
-                    let assignees = picker.selected_names.clone();
-                    let cmds = vec![Command::SetIssueAssignees(repo.clone(), number, assignees)];
-                    if let Some(ref mut detail) = state.issue_detail {
-                        detail.assignee_picker = None;
-                    }
-                    return cmds;
+            if let Some(ref detail) = state.issue_detail
+                && let (Some(picker), Some(repo)) = (&detail.assignee_picker, &state.current_repo)
+            {
+                let number = detail.detail.issue.number;
+                let assignees = picker.selected_names.clone();
+                let cmds = vec![Command::SetIssueAssignees(repo.clone(), number, assignees)];
+                if let Some(ref mut detail) = state.issue_detail {
+                    detail.assignee_picker = None;
                 }
+                return cmds;
             }
             if let Some(ref mut detail) = state.issue_detail {
                 detail.assignee_picker = None;
@@ -1616,14 +1597,12 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
 
         // Comment delete
         Message::IssueDeleteComment => {
-            if let Some(ref detail) = state.issue_detail {
-                if let Some(idx) = detail.selected_comment() {
-                    if let Some(comment) = detail.detail.comments.get(idx) {
-                        if let Some(ref repo) = state.current_repo {
-                            return vec![Command::DeleteComment(repo.clone(), comment.id)];
-                        }
-                    }
-                }
+            if let Some(ref detail) = state.issue_detail
+                && let Some(idx) = detail.selected_comment()
+                && let Some(comment) = detail.detail.comments.get(idx)
+                && let Some(ref repo) = state.current_repo
+            {
+                return vec![Command::DeleteComment(repo.clone(), comment.id)];
             }
             vec![]
         }
@@ -1634,60 +1613,55 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
 
         // Close/Reopen
         Message::IssueToggleState => {
-            if let Some(ref detail) = state.issue_detail {
-                if let Some(ref repo) = state.current_repo {
-                    let number = detail.detail.issue.number;
-                    return match detail.detail.issue.state {
-                        IssueState::Open => vec![Command::CloseIssue(repo.clone(), number)],
-                        IssueState::Closed => vec![Command::ReopenIssue(repo.clone(), number)],
-                    };
-                }
+            if let Some(ref detail) = state.issue_detail
+                && let Some(ref repo) = state.current_repo
+            {
+                let number = detail.detail.issue.number;
+                return match detail.detail.issue.state {
+                    IssueState::Open => vec![Command::CloseIssue(repo.clone(), number)],
+                    IssueState::Closed => vec![Command::ReopenIssue(repo.clone(), number)],
+                };
             }
             vec![]
         }
 
         // Open in browser
         Message::IssueOpenInBrowser => {
-            if let Some(ref detail) = state.issue_detail {
-                if let Some(ref repo) = state.current_repo {
-                    let url = format!(
-                        "https://github.com/{}/issues/{}",
-                        repo.full_name(),
-                        detail.detail.issue.number
-                    );
-                    return vec![Command::OpenInBrowser(url)];
-                }
+            if let Some(ref detail) = state.issue_detail
+                && let Some(ref repo) = state.current_repo
+            {
+                let url = format!(
+                    "https://github.com/{}/issues/{}",
+                    repo.full_name(),
+                    detail.detail.issue.number
+                );
+                return vec![Command::OpenInBrowser(url)];
             }
             vec![]
         }
 
         // Reactions
         Message::IssueAddReaction(reaction) => {
-            if let Some(ref detail) = state.issue_detail {
-                if let Some(ref repo) = state.current_repo {
-                    use ghtui_core::state::issue::IssueSection;
-                    match &detail.focus {
-                        IssueSection::Body | IssueSection::Title => {
-                            let number = detail.detail.issue.number;
+            if let Some(ref detail) = state.issue_detail
+                && let Some(ref repo) = state.current_repo
+            {
+                use ghtui_core::state::issue::IssueSection;
+                match &detail.focus {
+                    IssueSection::Body | IssueSection::Title => {
+                        let number = detail.detail.issue.number;
+                        return vec![Command::AddReaction(repo.clone(), number, reaction, true)];
+                    }
+                    IssueSection::Comment(idx) => {
+                        if let Some(comment) = detail.detail.comments.get(*idx) {
                             return vec![Command::AddReaction(
                                 repo.clone(),
-                                number,
+                                comment.id,
                                 reaction,
-                                true,
+                                false,
                             )];
                         }
-                        IssueSection::Comment(idx) => {
-                            if let Some(comment) = detail.detail.comments.get(*idx) {
-                                return vec![Command::AddReaction(
-                                    repo.clone(),
-                                    comment.id,
-                                    reaction,
-                                    false,
-                                )];
-                            }
-                        }
-                        _ => {}
                     }
+                    _ => {}
                 }
             }
             vec![]
@@ -1737,32 +1711,30 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::IssueMilestoneSelect(idx) => {
-            if let Some(ref mut detail) = state.issue_detail {
-                if let Some(ref mut picker) = detail.milestone_picker {
-                    if let Some(ms) = picker.available.get(idx) {
-                        let num = ms.number as u64;
-                        if picker.selected == Some(num) {
-                            picker.selected = None;
-                        } else {
-                            picker.selected = Some(num);
-                        }
-                    }
+            if let Some(ref mut detail) = state.issue_detail
+                && let Some(ref mut picker) = detail.milestone_picker
+                && let Some(ms) = picker.available.get(idx)
+            {
+                let num = ms.number as u64;
+                if picker.selected == Some(num) {
+                    picker.selected = None;
+                } else {
+                    picker.selected = Some(num);
                 }
             }
             vec![]
         }
         Message::IssueMilestoneApply => {
-            if let Some(ref detail) = state.issue_detail {
-                if let (Some(picker), Some(repo)) = (&detail.milestone_picker, &state.current_repo)
-                {
-                    let number = detail.detail.issue.number;
-                    let ms = picker.selected;
-                    let cmds = vec![Command::SetMilestone(repo.clone(), number, ms)];
-                    if let Some(ref mut detail) = state.issue_detail {
-                        detail.milestone_picker = None;
-                    }
-                    return cmds;
+            if let Some(ref detail) = state.issue_detail
+                && let (Some(picker), Some(repo)) = (&detail.milestone_picker, &state.current_repo)
+            {
+                let number = detail.detail.issue.number;
+                let ms = picker.selected;
+                let cmds = vec![Command::SetMilestone(repo.clone(), number, ms)];
+                if let Some(ref mut detail) = state.issue_detail {
+                    detail.milestone_picker = None;
                 }
+                return cmds;
             }
             if let Some(ref mut detail) = state.issue_detail {
                 detail.milestone_picker = None;
@@ -1770,14 +1742,14 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::IssueMilestoneClear => {
-            if let Some(ref detail) = state.issue_detail {
-                if let Some(ref repo) = state.current_repo {
-                    let number = detail.detail.issue.number;
-                    if let Some(ref mut d) = state.issue_detail {
-                        d.milestone_picker = None;
-                    }
-                    return vec![Command::SetMilestone(repo.clone(), number, None)];
+            if let Some(ref detail) = state.issue_detail
+                && let Some(ref repo) = state.current_repo
+            {
+                let number = detail.detail.issue.number;
+                if let Some(ref mut d) = state.issue_detail {
+                    d.milestone_picker = None;
                 }
+                return vec![Command::SetMilestone(repo.clone(), number, None)];
             }
             vec![]
         }
@@ -1926,52 +1898,34 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::IssueEditSubmit => {
-            if let Some(ref detail) = state.issue_detail {
-                if let Some(ref repo) = state.current_repo {
-                    let cmds = match &detail.edit_target {
-                        Some(InlineEditTarget::IssueTitle) => {
-                            let title = detail.editor_text().trim().to_string();
-                            let number = detail.detail.issue.number;
-                            if title.is_empty() {
-                                state.push_toast(
-                                    "Title cannot be empty".to_string(),
-                                    ToastLevel::Warning,
-                                );
-                                return vec![];
-                            }
-                            vec![Command::UpdateIssue(
-                                repo.clone(),
-                                number,
-                                Some(title),
-                                None,
-                            )]
+            if let Some(ref detail) = state.issue_detail
+                && let Some(ref repo) = state.current_repo
+            {
+                let cmds = match &detail.edit_target {
+                    Some(InlineEditTarget::IssueTitle) => {
+                        let title = detail.editor_text().trim().to_string();
+                        let number = detail.detail.issue.number;
+                        if title.is_empty() {
+                            state.push_toast(
+                                "Title cannot be empty".to_string(),
+                                ToastLevel::Warning,
+                            );
+                            return vec![];
                         }
-                        Some(InlineEditTarget::IssueBody) => {
-                            let body = detail.editor_text();
-                            let number = detail.detail.issue.number;
-                            vec![Command::UpdateIssue(repo.clone(), number, None, Some(body))]
-                        }
-                        Some(InlineEditTarget::Comment(idx)) => {
-                            if let Some(comment) = detail.detail.comments.get(*idx) {
-                                let body = detail.editor_text();
-                                if body.trim().is_empty() {
-                                    state.push_toast(
-                                        "Comment cannot be empty".to_string(),
-                                        ToastLevel::Warning,
-                                    );
-                                    return vec![];
-                                }
-                                vec![Command::UpdateComment(
-                                    repo.clone(),
-                                    detail.detail.issue.number,
-                                    comment.id,
-                                    body,
-                                )]
-                            } else {
-                                vec![]
-                            }
-                        }
-                        Some(InlineEditTarget::NewComment | InlineEditTarget::QuoteReply(_)) => {
+                        vec![Command::UpdateIssue(
+                            repo.clone(),
+                            number,
+                            Some(title),
+                            None,
+                        )]
+                    }
+                    Some(InlineEditTarget::IssueBody) => {
+                        let body = detail.editor_text();
+                        let number = detail.detail.issue.number;
+                        vec![Command::UpdateIssue(repo.clone(), number, None, Some(body))]
+                    }
+                    Some(InlineEditTarget::Comment(idx)) => {
+                        if let Some(comment) = detail.detail.comments.get(*idx) {
                             let body = detail.editor_text();
                             if body.trim().is_empty() {
                                 state.push_toast(
@@ -1980,17 +1934,35 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                                 );
                                 return vec![];
                             }
-                            let number = detail.detail.issue.number;
-                            vec![Command::AddComment(repo.clone(), number, body)]
+                            vec![Command::UpdateComment(
+                                repo.clone(),
+                                detail.detail.issue.number,
+                                comment.id,
+                                body,
+                            )]
+                        } else {
+                            vec![]
                         }
-                        None => vec![],
-                    };
-                    // Clear editing state
-                    if let Some(ref mut detail) = state.issue_detail {
-                        detail.cancel_edit();
                     }
-                    return cmds;
+                    Some(InlineEditTarget::NewComment | InlineEditTarget::QuoteReply(_)) => {
+                        let body = detail.editor_text();
+                        if body.trim().is_empty() {
+                            state.push_toast(
+                                "Comment cannot be empty".to_string(),
+                                ToastLevel::Warning,
+                            );
+                            return vec![];
+                        }
+                        let number = detail.detail.issue.number;
+                        vec![Command::AddComment(repo.clone(), number, body)]
+                    }
+                    None => vec![],
+                };
+                // Clear editing state
+                if let Some(ref mut detail) = state.issue_detail {
+                    detail.cancel_edit();
                 }
+                return cmds;
             }
             if let Some(ref mut detail) = state.issue_detail {
                 detail.cancel_edit();
@@ -2205,26 +2177,26 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             }
         }
         Message::ActionsOpenInBrowser => {
-            if let Some(ref list) = state.actions_list {
-                if let Some(run) = list.selected_run() {
-                    return vec![Command::OpenInBrowser(run.html_url.clone())];
-                }
+            if let Some(ref list) = state.actions_list
+                && let Some(run) = list.selected_run()
+            {
+                return vec![Command::OpenInBrowser(run.html_url.clone())];
             }
             vec![]
         }
         Message::ActionsCancelRun => {
-            if let (Some(list), Some(repo)) = (&state.actions_list, &state.current_repo) {
-                if let Some(run) = list.selected_run() {
-                    return vec![Command::CancelRun(repo.clone(), run.id)];
-                }
+            if let (Some(list), Some(repo)) = (&state.actions_list, &state.current_repo)
+                && let Some(run) = list.selected_run()
+            {
+                return vec![Command::CancelRun(repo.clone(), run.id)];
             }
             vec![]
         }
         Message::ActionsRerunRun => {
-            if let (Some(list), Some(repo)) = (&state.actions_list, &state.current_repo) {
-                if let Some(run) = list.selected_run() {
-                    return vec![Command::RerunRun(repo.clone(), run.id)];
-                }
+            if let (Some(list), Some(repo)) = (&state.actions_list, &state.current_repo)
+                && let Some(run) = list.selected_run()
+            {
+                return vec![Command::RerunRun(repo.clone(), run.id)];
             }
             vec![]
         }
@@ -2329,161 +2301,157 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::ActionsDispatchFieldNext => {
-            if let Some(ref mut list) = state.actions_list {
-                if let Some(ref mut d) = list.dispatch {
-                    if d.focused_field < d.inputs.len() {
-                        d.focused_field += 1;
-                    }
-                }
+            if let Some(ref mut list) = state.actions_list
+                && let Some(ref mut d) = list.dispatch
+                && d.focused_field < d.inputs.len()
+            {
+                d.focused_field += 1;
             }
             vec![]
         }
         Message::ActionsDispatchFieldPrev => {
-            if let Some(ref mut list) = state.actions_list {
-                if let Some(ref mut d) = list.dispatch {
-                    d.focused_field = d.focused_field.saturating_sub(1);
-                }
+            if let Some(ref mut list) = state.actions_list
+                && let Some(ref mut d) = list.dispatch
+            {
+                d.focused_field = d.focused_field.saturating_sub(1);
             }
             vec![]
         }
         Message::ActionsDispatchEditStart => {
-            if let Some(ref mut list) = state.actions_list {
-                if let Some(ref mut d) = list.dispatch {
-                    d.editing = true;
-                    d.edit_buffer = if d.focused_field == 0 {
-                        d.git_ref.clone()
-                    } else {
-                        d.inputs
-                            .get(d.focused_field - 1)
-                            .map(|f| f.value.clone())
-                            .unwrap_or_default()
-                    };
-                }
+            if let Some(ref mut list) = state.actions_list
+                && let Some(ref mut d) = list.dispatch
+            {
+                d.editing = true;
+                d.edit_buffer = if d.focused_field == 0 {
+                    d.git_ref.clone()
+                } else {
+                    d.inputs
+                        .get(d.focused_field - 1)
+                        .map(|f| f.value.clone())
+                        .unwrap_or_default()
+                };
             }
             vec![]
         }
         Message::ActionsDispatchEditChar(c) => {
-            if let Some(ref mut list) = state.actions_list {
-                if let Some(ref mut d) = list.dispatch {
-                    if d.editing {
-                        d.edit_buffer.push(c);
-                    }
-                }
+            if let Some(ref mut list) = state.actions_list
+                && let Some(ref mut d) = list.dispatch
+                && d.editing
+            {
+                d.edit_buffer.push(c);
             }
             vec![]
         }
         Message::ActionsDispatchEditBackspace => {
-            if let Some(ref mut list) = state.actions_list {
-                if let Some(ref mut d) = list.dispatch {
-                    if d.editing {
-                        d.edit_buffer.pop();
-                    }
-                }
+            if let Some(ref mut list) = state.actions_list
+                && let Some(ref mut d) = list.dispatch
+                && d.editing
+            {
+                d.edit_buffer.pop();
             }
             vec![]
         }
         Message::ActionsDispatchEditDone => {
-            if let Some(ref mut list) = state.actions_list {
-                if let Some(ref mut d) = list.dispatch {
-                    if d.editing {
-                        if d.focused_field == 0 {
-                            d.git_ref = d.edit_buffer.clone();
-                        } else if let Some(field) = d.inputs.get_mut(d.focused_field - 1) {
-                            field.value = d.edit_buffer.clone();
-                        }
-                        d.editing = false;
-                    }
+            if let Some(ref mut list) = state.actions_list
+                && let Some(ref mut d) = list.dispatch
+                && d.editing
+            {
+                if d.focused_field == 0 {
+                    d.git_ref = d.edit_buffer.clone();
+                } else if let Some(field) = d.inputs.get_mut(d.focused_field - 1) {
+                    field.value = d.edit_buffer.clone();
                 }
+                d.editing = false;
             }
             vec![]
         }
         Message::ActionsDispatchRefPickerToggle => {
-            if let Some(ref mut list) = state.actions_list {
-                if let Some(ref mut d) = list.dispatch {
-                    d.ref_picker_open = !d.ref_picker_open;
-                    d.ref_selected = 0;
-                    d.ref_filter.clear();
-                    d.rebuild_ref_filter_cache();
-                    d.editing = false;
-                }
+            if let Some(ref mut list) = state.actions_list
+                && let Some(ref mut d) = list.dispatch
+            {
+                d.ref_picker_open = !d.ref_picker_open;
+                d.ref_selected = 0;
+                d.ref_filter.clear();
+                d.rebuild_ref_filter_cache();
+                d.editing = false;
             }
             vec![]
         }
         Message::ActionsDispatchRefPickerNext => {
-            if let Some(ref mut list) = state.actions_list {
-                if let Some(ref mut d) = list.dispatch {
-                    let filtered_count = d.filtered_ref_items().len();
-                    if d.ref_selected < filtered_count.saturating_sub(1) {
-                        d.ref_selected += 1;
-                    }
+            if let Some(ref mut list) = state.actions_list
+                && let Some(ref mut d) = list.dispatch
+            {
+                let filtered_count = d.filtered_ref_items().len();
+                if d.ref_selected < filtered_count.saturating_sub(1) {
+                    d.ref_selected += 1;
                 }
             }
             vec![]
         }
         Message::ActionsDispatchRefPickerPrev => {
-            if let Some(ref mut list) = state.actions_list {
-                if let Some(ref mut d) = list.dispatch {
-                    d.ref_selected = d.ref_selected.saturating_sub(1);
-                }
+            if let Some(ref mut list) = state.actions_list
+                && let Some(ref mut d) = list.dispatch
+            {
+                d.ref_selected = d.ref_selected.saturating_sub(1);
             }
             vec![]
         }
         Message::ActionsDispatchRefPickerSelect => {
-            if let Some(ref mut list) = state.actions_list {
-                if let Some(ref mut d) = list.dispatch {
-                    let selected_name = d
-                        .filtered_ref_items()
-                        .get(d.ref_selected)
-                        .map(|(name, _)| name.clone());
-                    if let Some(name) = selected_name {
-                        d.git_ref = name;
-                    }
-                    d.ref_picker_open = false;
-                    d.ref_filter.clear();
-                    d.rebuild_ref_filter_cache();
+            if let Some(ref mut list) = state.actions_list
+                && let Some(ref mut d) = list.dispatch
+            {
+                let selected_name = d
+                    .filtered_ref_items()
+                    .get(d.ref_selected)
+                    .map(|(name, _)| name.clone());
+                if let Some(name) = selected_name {
+                    d.git_ref = name;
                 }
+                d.ref_picker_open = false;
+                d.ref_filter.clear();
+                d.rebuild_ref_filter_cache();
             }
             vec![]
         }
         Message::ActionsDispatchRefPickerFilter(c) => {
-            if let Some(ref mut list) = state.actions_list {
-                if let Some(ref mut d) = list.dispatch {
-                    d.ref_filter.push(c);
-                    d.ref_selected = 0;
-                    d.rebuild_ref_filter_cache();
-                }
+            if let Some(ref mut list) = state.actions_list
+                && let Some(ref mut d) = list.dispatch
+            {
+                d.ref_filter.push(c);
+                d.ref_selected = 0;
+                d.rebuild_ref_filter_cache();
             }
             vec![]
         }
         Message::ActionsDispatchRefPickerBackspace => {
-            if let Some(ref mut list) = state.actions_list {
-                if let Some(ref mut d) = list.dispatch {
-                    d.ref_filter.pop();
-                    d.ref_selected = 0;
-                    d.rebuild_ref_filter_cache();
-                }
+            if let Some(ref mut list) = state.actions_list
+                && let Some(ref mut d) = list.dispatch
+            {
+                d.ref_filter.pop();
+                d.ref_selected = 0;
+                d.rebuild_ref_filter_cache();
             }
             vec![]
         }
         Message::ActionsDispatchSubmit => {
-            if let (Some(list), Some(repo)) = (&mut state.actions_list, &state.current_repo) {
-                if let Some(dispatch) = list.dispatch.take() {
-                    let mut inputs = serde_json::Map::new();
-                    for field in &dispatch.inputs {
-                        if !field.value.is_empty() {
-                            inputs.insert(
-                                field.name.clone(),
-                                serde_json::Value::String(field.value.clone()),
-                            );
-                        }
+            if let (Some(list), Some(repo)) = (&mut state.actions_list, &state.current_repo)
+                && let Some(dispatch) = list.dispatch.take()
+            {
+                let mut inputs = serde_json::Map::new();
+                for field in &dispatch.inputs {
+                    if !field.value.is_empty() {
+                        inputs.insert(
+                            field.name.clone(),
+                            serde_json::Value::String(field.value.clone()),
+                        );
                     }
-                    return vec![Command::DispatchWorkflow(
-                        repo.clone(),
-                        dispatch.workflow_id,
-                        dispatch.git_ref,
-                        serde_json::Value::Object(inputs),
-                    )];
                 }
+                return vec![Command::DispatchWorkflow(
+                    repo.clone(),
+                    dispatch.workflow_id,
+                    dispatch.git_ref,
+                    serde_json::Value::Object(inputs),
+                )];
             }
             vec![]
         }
@@ -2628,39 +2596,39 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::NotificationNavigate => {
-            if let Some(ref notifs) = state.notifications {
-                if let Some(notif) = notifs.selected_notification() {
-                    let number = notif.extract_number();
-                    let repo_parts = notif.repo_parts();
-                    let subject_type = notif.subject.subject_type.clone();
-                    if let (Some(number), Some((owner, name))) = (number, repo_parts) {
-                        let repo = ghtui_core::types::common::RepoId::new(owner, name);
-                        return match subject_type.as_str() {
-                            "PullRequest" => {
-                                let route = Route::PrDetail {
-                                    repo,
-                                    number,
-                                    tab: ghtui_core::PrTab::Conversation,
-                                };
-                                handle_navigate(state, route)
-                            }
-                            "Issue" => {
-                                let route = Route::IssueDetail { repo, number };
-                                handle_navigate(state, route)
-                            }
-                            _ => vec![],
-                        };
-                    }
+            if let Some(ref notifs) = state.notifications
+                && let Some(notif) = notifs.selected_notification()
+            {
+                let number = notif.extract_number();
+                let repo_parts = notif.repo_parts();
+                let subject_type = notif.subject.subject_type.clone();
+                if let (Some(number), Some((owner, name))) = (number, repo_parts) {
+                    let repo = ghtui_core::types::common::RepoId::new(owner, name);
+                    return match subject_type.as_str() {
+                        "PullRequest" => {
+                            let route = Route::PrDetail {
+                                repo,
+                                number,
+                                tab: ghtui_core::PrTab::Conversation,
+                            };
+                            handle_navigate(state, route)
+                        }
+                        "Issue" => {
+                            let route = Route::IssueDetail { repo, number };
+                            handle_navigate(state, route)
+                        }
+                        _ => vec![],
+                    };
                 }
             }
             vec![]
         }
         Message::NotificationMarkRead => {
-            if let Some(ref notifs) = state.notifications {
-                if let Some(notif) = notifs.selected_notification() {
-                    let id = notif.id.clone();
-                    return vec![Command::MarkNotificationRead(id)];
-                }
+            if let Some(ref notifs) = state.notifications
+                && let Some(notif) = notifs.selected_notification()
+            {
+                let id = notif.id.clone();
+                return vec![Command::MarkNotificationRead(id)];
             }
             vec![]
         }
@@ -2677,11 +2645,11 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::NotificationUnsubscribe => {
-            if let Some(ref notifs) = state.notifications {
-                if let Some(notif) = notifs.selected_notification() {
-                    let id = notif.id.clone();
-                    return vec![Command::UnsubscribeThread(id)];
-                }
+            if let Some(ref notifs) = state.notifications
+                && let Some(notif) = notifs.selected_notification()
+            {
+                let id = notif.id.clone();
+                return vec![Command::UnsubscribeThread(id)];
             }
             vec![]
         }
@@ -2695,11 +2663,11 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::NotificationDone => {
-            if let Some(ref notifs) = state.notifications {
-                if let Some(notif) = notifs.selected_notification() {
-                    let id = notif.id.clone();
-                    return vec![Command::MarkThreadDone(id)];
-                }
+            if let Some(ref notifs) = state.notifications
+                && let Some(notif) = notifs.selected_notification()
+            {
+                let id = notif.id.clone();
+                return vec![Command::MarkThreadDone(id)];
             }
             vec![]
         }
@@ -2875,48 +2843,45 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::SearchNavigate => {
             // Navigate to the selected search result
-            if let Some(ref search) = state.search {
-                if let Some(ref results) = search.results {
-                    if let Some(item) = results.items.get(search.selected) {
-                        match item {
-                            ghtui_core::types::SearchResultItem::Issue {
-                                repo,
-                                number,
-                                is_pr,
-                                ..
-                            } => {
-                                if let Ok(repo_id) =
-                                    repo.parse::<ghtui_core::types::common::RepoId>()
-                                {
-                                    if *is_pr {
-                                        let route = Route::PrDetail {
-                                            repo: repo_id,
-                                            number: *number,
-                                            tab: ghtui_core::PrTab::Conversation,
-                                        };
-                                        return handle_navigate(state, route);
-                                    } else {
-                                        let route = Route::IssueDetail {
-                                            repo: repo_id,
-                                            number: *number,
-                                        };
-                                        return handle_navigate(state, route);
-                                    }
-                                }
-                            }
-                            ghtui_core::types::SearchResultItem::Repo { full_name, .. } => {
-                                return vec![Command::OpenInBrowser(format!(
-                                    "https://github.com/{}",
-                                    full_name
-                                ))];
-                            }
-                            ghtui_core::types::SearchResultItem::Code { repo, path, .. } => {
-                                return vec![Command::OpenInBrowser(format!(
-                                    "https://github.com/{}/blob/HEAD/{}",
-                                    repo, path
-                                ))];
+            if let Some(ref search) = state.search
+                && let Some(ref results) = search.results
+                && let Some(item) = results.items.get(search.selected)
+            {
+                match item {
+                    ghtui_core::types::SearchResultItem::Issue {
+                        repo,
+                        number,
+                        is_pr,
+                        ..
+                    } => {
+                        if let Ok(repo_id) = repo.parse::<ghtui_core::types::common::RepoId>() {
+                            if *is_pr {
+                                let route = Route::PrDetail {
+                                    repo: repo_id,
+                                    number: *number,
+                                    tab: ghtui_core::PrTab::Conversation,
+                                };
+                                return handle_navigate(state, route);
+                            } else {
+                                let route = Route::IssueDetail {
+                                    repo: repo_id,
+                                    number: *number,
+                                };
+                                return handle_navigate(state, route);
                             }
                         }
+                    }
+                    ghtui_core::types::SearchResultItem::Repo { full_name, .. } => {
+                        return vec![Command::OpenInBrowser(format!(
+                            "https://github.com/{}",
+                            full_name
+                        ))];
+                    }
+                    ghtui_core::types::SearchResultItem::Code { repo, path, .. } => {
+                        return vec![Command::OpenInBrowser(format!(
+                            "https://github.com/{}/blob/HEAD/{}",
+                            repo, path
+                        ))];
                     }
                 }
             }
@@ -3029,15 +2994,14 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::SecurityReopenAlert => {
-            if let (Some(sec), Some(repo)) = (&state.security, &state.current_repo) {
-                if sec.tab == 0 {
-                    if let Some(alert) = sec.dependabot_alerts.get(sec.selected) {
-                        let number = alert.number;
-                        let repo = repo.clone();
-                        state.push_toast("Reopening alert...".to_string(), ToastLevel::Info);
-                        return vec![Command::ReopenDependabotAlert(repo, number)];
-                    }
-                }
+            if let (Some(sec), Some(repo)) = (&state.security, &state.current_repo)
+                && sec.tab == 0
+                && let Some(alert) = sec.dependabot_alerts.get(sec.selected)
+            {
+                let number = alert.number;
+                let repo = repo.clone();
+                state.push_toast("Reopening alert...".to_string(), ToastLevel::Info);
+                return vec![Command::ReopenDependabotAlert(repo, number)];
             }
             vec![]
         }
@@ -3271,26 +3235,26 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::SettingsToggleBranchEnforceAdmins => {
-            if let Some(ref settings) = state.settings {
-                if let Some(bp) = settings.branch_protections.get(settings.selected) {
-                    let current = bp
-                        .enforce_admins
-                        .as_ref()
-                        .map(|e| e.enabled)
-                        .unwrap_or(false);
-                    let pattern = bp.pattern.clone();
-                    let label = if current { "Disabling" } else { "Enabling" };
-                    state.push_toast(
-                        format!("{} enforce admins for '{}'...", label, pattern),
-                        ToastLevel::Info,
-                    );
-                    if let Some(ref repo) = state.current_repo {
-                        return vec![Command::ToggleBranchEnforceAdmins(
-                            repo.clone(),
-                            pattern,
-                            !current,
-                        )];
-                    }
+            if let Some(ref settings) = state.settings
+                && let Some(bp) = settings.branch_protections.get(settings.selected)
+            {
+                let current = bp
+                    .enforce_admins
+                    .as_ref()
+                    .map(|e| e.enabled)
+                    .unwrap_or(false);
+                let pattern = bp.pattern.clone();
+                let label = if current { "Disabling" } else { "Enabling" };
+                state.push_toast(
+                    format!("{} enforce admins for '{}'...", label, pattern),
+                    ToastLevel::Info,
+                );
+                if let Some(ref repo) = state.current_repo {
+                    return vec![Command::ToggleBranchEnforceAdmins(
+                        repo.clone(),
+                        pattern,
+                        !current,
+                    )];
                 }
             }
             vec![]
@@ -3366,46 +3330,45 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::SettingsFormFieldNext => {
-            if let Some(ref mut settings) = state.settings {
-                if let Some(ref mut form) = settings.form {
-                    if form.focused_field + 1 < form.fields.len() {
-                        form.focused_field += 1;
-                    }
-                }
+            if let Some(ref mut settings) = state.settings
+                && let Some(ref mut form) = settings.form
+                && form.focused_field + 1 < form.fields.len()
+            {
+                form.focused_field += 1;
             }
             vec![]
         }
         Message::SettingsFormFieldPrev => {
-            if let Some(ref mut settings) = state.settings {
-                if let Some(ref mut form) = settings.form {
-                    form.focused_field = form.focused_field.saturating_sub(1);
-                }
+            if let Some(ref mut settings) = state.settings
+                && let Some(ref mut form) = settings.form
+            {
+                form.focused_field = form.focused_field.saturating_sub(1);
             }
             vec![]
         }
         Message::SettingsFormEditStart => {
             use ghtui_core::state::settings::SettingsFieldType;
-            if let Some(ref mut settings) = state.settings {
-                if let Some(ref mut form) = settings.form {
-                    let field = &mut form.fields[form.focused_field];
-                    match &field.field_type {
-                        SettingsFieldType::Text => {
-                            form.field_buffer = field.value.clone();
-                            form.field_editing = true;
-                        }
-                        SettingsFieldType::Bool => {
-                            field.value = if field.value == "true" {
-                                "false".into()
-                            } else {
-                                "true".into()
-                            };
-                        }
-                        SettingsFieldType::Select(options) => {
-                            if let Some(idx) = options.iter().position(|o| o == &field.value) {
-                                field.value = options[(idx + 1) % options.len()].clone();
-                            } else if let Some(first) = options.first() {
-                                field.value = first.clone();
-                            }
+            if let Some(ref mut settings) = state.settings
+                && let Some(ref mut form) = settings.form
+            {
+                let field = &mut form.fields[form.focused_field];
+                match &field.field_type {
+                    SettingsFieldType::Text => {
+                        form.field_buffer = field.value.clone();
+                        form.field_editing = true;
+                    }
+                    SettingsFieldType::Bool => {
+                        field.value = if field.value == "true" {
+                            "false".into()
+                        } else {
+                            "true".into()
+                        };
+                    }
+                    SettingsFieldType::Select(options) => {
+                        if let Some(idx) = options.iter().position(|o| o == &field.value) {
+                            field.value = options[(idx + 1) % options.len()].clone();
+                        } else if let Some(first) = options.first() {
+                            field.value = first.clone();
                         }
                     }
                 }
@@ -3413,34 +3376,31 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::SettingsFormEditChar(c) => {
-            if let Some(ref mut settings) = state.settings {
-                if let Some(ref mut form) = settings.form {
-                    if form.field_editing {
-                        form.field_buffer.push(c);
-                    }
-                }
+            if let Some(ref mut settings) = state.settings
+                && let Some(ref mut form) = settings.form
+                && form.field_editing
+            {
+                form.field_buffer.push(c);
             }
             vec![]
         }
         Message::SettingsFormEditBackspace => {
-            if let Some(ref mut settings) = state.settings {
-                if let Some(ref mut form) = settings.form {
-                    if form.field_editing {
-                        form.field_buffer.pop();
-                    }
-                }
+            if let Some(ref mut settings) = state.settings
+                && let Some(ref mut form) = settings.form
+                && form.field_editing
+            {
+                form.field_buffer.pop();
             }
             vec![]
         }
         Message::SettingsFormEditDone => {
-            if let Some(ref mut settings) = state.settings {
-                if let Some(ref mut form) = settings.form {
-                    if form.field_editing {
-                        form.fields[form.focused_field].value = form.field_buffer.clone();
-                        form.field_editing = false;
-                        form.field_buffer.clear();
-                    }
-                }
+            if let Some(ref mut settings) = state.settings
+                && let Some(ref mut form) = settings.form
+                && form.field_editing
+            {
+                form.fields[form.focused_field].value = form.field_buffer.clone();
+                form.field_editing = false;
+                form.field_buffer.clear();
             }
             vec![]
         }
@@ -3654,26 +3614,26 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                                 let idx = content_row.saturating_sub(1);
                                 match &state.route {
                                     Route::Security { .. } => {
-                                        if let Some(ref mut sec) = state.security {
-                                            if idx < sec.tab_count() {
-                                                sec.tab = idx;
-                                                sec.selected = 0;
-                                            }
+                                        if let Some(ref mut sec) = state.security
+                                            && idx < sec.tab_count()
+                                        {
+                                            sec.tab = idx;
+                                            sec.selected = 0;
                                         }
                                     }
                                     Route::Insights { .. } => {
-                                        if let Some(ref mut ins) = state.insights {
-                                            if idx < ins.tab_count() {
-                                                ins.tab = idx;
-                                            }
+                                        if let Some(ref mut ins) = state.insights
+                                            && idx < ins.tab_count()
+                                        {
+                                            ins.tab = idx;
                                         }
                                     }
                                     Route::Settings { .. } => {
-                                        if let Some(ref mut settings) = state.settings {
-                                            if idx < settings.tab_count() {
-                                                settings.tab = idx;
-                                                settings.selected = 0;
-                                            }
+                                        if let Some(ref mut settings) = state.settings
+                                            && idx < settings.tab_count()
+                                        {
+                                            settings.tab = idx;
+                                            settings.selected = 0;
                                         }
                                     }
                                     _ => {}
@@ -3820,96 +3780,92 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
 
         // Scroll — context-aware
         Message::ScrollUp => {
-            if matches!(state.route, Route::Code { .. }) {
-                if let Some(ref mut code) = state.code {
-                    if code.commit_detail.is_some() {
-                        code.commit_scroll = code.commit_scroll.saturating_sub(3);
-                    } else if !code.sidebar_focused {
-                        code.scroll = code.scroll.saturating_sub(3);
-                    } else {
-                        code.select_prev();
-                    }
-                    return vec![];
+            if matches!(state.route, Route::Code { .. })
+                && let Some(ref mut code) = state.code
+            {
+                if code.commit_detail.is_some() {
+                    code.commit_scroll = code.commit_scroll.saturating_sub(3);
+                } else if !code.sidebar_focused {
+                    code.scroll = code.scroll.saturating_sub(3);
+                } else {
+                    code.select_prev();
                 }
+                return vec![];
             }
-            if matches!(state.route, Route::Security { .. }) {
-                if let Some(ref mut sec) = state.security {
-                    if sec.detail_open {
-                        sec.detail_scroll = sec.detail_scroll.saturating_sub(3);
-                        return vec![];
-                    }
-                }
+            if matches!(state.route, Route::Security { .. })
+                && let Some(ref mut sec) = state.security
+                && sec.detail_open
+            {
+                sec.detail_scroll = sec.detail_scroll.saturating_sub(3);
+                return vec![];
             }
-            if matches!(state.route, Route::ActionDetail { .. }) {
-                if let Some(ref mut detail) = state.action_detail {
-                    if detail.log.is_some() {
-                        detail.log_scroll = detail.log_scroll.saturating_sub(3);
-                        return vec![];
-                    }
-                }
+            if matches!(state.route, Route::ActionDetail { .. })
+                && let Some(ref mut detail) = state.action_detail
+                && detail.log.is_some()
+            {
+                detail.log_scroll = detail.log_scroll.saturating_sub(3);
+                return vec![];
             }
-            if matches!(state.route, Route::IssueDetail { .. }) {
-                if let Some(ref mut detail) = state.issue_detail {
+            if matches!(state.route, Route::IssueDetail { .. })
+                && let Some(ref mut detail) = state.issue_detail
+            {
+                detail.scroll = detail.scroll.saturating_sub(3);
+                return vec![];
+            }
+            if matches!(state.route, Route::PrDetail { .. })
+                && let Some(ref mut detail) = state.pr_detail
+            {
+                if detail.tab == 3 {
+                    detail.diff_scroll = detail.diff_scroll.saturating_sub(3);
+                } else {
                     detail.scroll = detail.scroll.saturating_sub(3);
-                    return vec![];
                 }
-            }
-            if matches!(state.route, Route::PrDetail { .. }) {
-                if let Some(ref mut detail) = state.pr_detail {
-                    if detail.tab == 3 {
-                        detail.diff_scroll = detail.diff_scroll.saturating_sub(3);
-                    } else {
-                        detail.scroll = detail.scroll.saturating_sub(3);
-                    }
-                    return vec![];
-                }
+                return vec![];
             }
             update(state, Message::ListSelect(usize::MAX))
         }
         Message::ScrollDown => {
-            if matches!(state.route, Route::Code { .. }) {
-                if let Some(ref mut code) = state.code {
-                    if code.commit_detail.is_some() {
-                        code.commit_scroll += 3;
-                    } else if !code.sidebar_focused {
-                        code.scroll += 3;
-                    } else {
-                        code.select_next();
-                    }
-                    return vec![];
+            if matches!(state.route, Route::Code { .. })
+                && let Some(ref mut code) = state.code
+            {
+                if code.commit_detail.is_some() {
+                    code.commit_scroll += 3;
+                } else if !code.sidebar_focused {
+                    code.scroll += 3;
+                } else {
+                    code.select_next();
                 }
+                return vec![];
             }
-            if matches!(state.route, Route::Security { .. }) {
-                if let Some(ref mut sec) = state.security {
-                    if sec.detail_open {
-                        sec.detail_scroll += 3;
-                        return vec![];
-                    }
-                }
+            if matches!(state.route, Route::Security { .. })
+                && let Some(ref mut sec) = state.security
+                && sec.detail_open
+            {
+                sec.detail_scroll += 3;
+                return vec![];
             }
-            if matches!(state.route, Route::ActionDetail { .. }) {
-                if let Some(ref mut detail) = state.action_detail {
-                    if detail.log.is_some() {
-                        detail.log_scroll += 3;
-                        return vec![];
-                    }
-                }
+            if matches!(state.route, Route::ActionDetail { .. })
+                && let Some(ref mut detail) = state.action_detail
+                && detail.log.is_some()
+            {
+                detail.log_scroll += 3;
+                return vec![];
             }
-            if matches!(state.route, Route::IssueDetail { .. }) {
-                if let Some(ref mut detail) = state.issue_detail {
+            if matches!(state.route, Route::IssueDetail { .. })
+                && let Some(ref mut detail) = state.issue_detail
+            {
+                detail.scroll += 3;
+                return vec![];
+            }
+            if matches!(state.route, Route::PrDetail { .. })
+                && let Some(ref mut detail) = state.pr_detail
+            {
+                if detail.tab == 3 {
+                    detail.diff_scroll += 3;
+                } else {
                     detail.scroll += 3;
-                    return vec![];
                 }
-            }
-            if matches!(state.route, Route::PrDetail { .. }) {
-                if let Some(ref mut detail) = state.pr_detail {
-                    if detail.tab == 3 {
-                        detail.diff_scroll += 3;
-                    } else {
-                        detail.scroll += 3;
-                    }
-                    return vec![];
-                }
+                return vec![];
             }
             update(state, Message::ListSelect(1))
         }
@@ -4058,18 +4014,17 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     }
                 }
                 ghtui_core::ModalKind::AddComment => {
-                    if let Some(ref detail) = state.issue_detail {
-                        if let Some(idx) = detail.selected_comment() {
-                            if let Some(comment) = detail.detail.comments.get(idx) {
-                                let quoted: String = comment
-                                    .body
-                                    .lines()
-                                    .map(|l| format!("> {}", l))
-                                    .collect::<Vec<_>>()
-                                    .join("\n");
-                                prefill = format!("> @{}\n{}\n\n", comment.user.login, quoted);
-                            }
-                        }
+                    if let Some(ref detail) = state.issue_detail
+                        && let Some(idx) = detail.selected_comment()
+                        && let Some(comment) = detail.detail.comments.get(idx)
+                    {
+                        let quoted: String = comment
+                            .body
+                            .lines()
+                            .map(|l| format!("> {}", l))
+                            .collect::<Vec<_>>()
+                            .join("\n");
+                        prefill = format!("> @{}\n{}\n\n", comment.user.login, quoted);
                     }
                 }
                 _ => {}
@@ -4409,22 +4364,17 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::Tick => {
             state.tick_toasts();
             // Log streaming: re-fetch log every 5 ticks (~5 seconds) for in-progress jobs
-            if matches!(state.route, Route::ActionDetail { .. }) {
-                if let Some(ref mut detail) = state.action_detail {
-                    if detail.log_streaming {
-                        detail.log_poll_counter += 1;
-                        if detail.log_poll_counter >= 5 {
-                            detail.log_poll_counter = 0;
-                            if let Some(job) = detail.detail.jobs.get(detail.selected_job) {
-                                let job_id = job.id;
-                                if let Route::ActionDetail { ref repo, run_id } = state.route {
-                                    return vec![Command::FetchJobLog(
-                                        repo.clone(),
-                                        run_id,
-                                        job_id,
-                                    )];
-                                }
-                            }
+            if matches!(state.route, Route::ActionDetail { .. })
+                && let Some(ref mut detail) = state.action_detail
+                && detail.log_streaming
+            {
+                detail.log_poll_counter += 1;
+                if detail.log_poll_counter >= 5 {
+                    detail.log_poll_counter = 0;
+                    if let Some(job) = detail.detail.jobs.get(detail.selected_job) {
+                        let job_id = job.id;
+                        if let Route::ActionDetail { ref repo, run_id } = state.route {
+                            return vec![Command::FetchJobLog(repo.clone(), run_id, job_id)];
                         }
                     }
                 }
@@ -4450,10 +4400,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             // loading keys to Message::Error to enable targeted cleanup.
 
             // Reset code editing state on error to avoid stuck editor
-            if let Some(ref mut code) = state.code {
-                if code.editing {
-                    code.editing = false;
-                }
+            if let Some(ref mut code) = state.code
+                && code.editing
+            {
+                code.editing = false;
             }
             state.push_toast(e.to_string(), ToastLevel::Error);
             vec![]
@@ -4475,34 +4425,34 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::PaletteSelect => {
-            if let Some(palette) = state.command_palette.take() {
-                if let Some(&idx) = palette.filtered.get(palette.selected) {
-                    // We need to dispatch the selected message
-                    // Since messages are not Clone, we reconstruct from the item
-                    let items = CommandPaletteState::new().items;
-                    if idx < items.len() {
-                        // Re-create the message from a fresh palette
-                        let fresh = CommandPaletteState::new();
-                        // Use the index to pick the right item
-                        return update(state, fresh.items.into_iter().nth(idx).unwrap().message);
-                    }
+            if let Some(palette) = state.command_palette.take()
+                && let Some(&idx) = palette.filtered.get(palette.selected)
+            {
+                // We need to dispatch the selected message
+                // Since messages are not Clone, we reconstruct from the item
+                let items = CommandPaletteState::new().items;
+                if idx < items.len() {
+                    // Re-create the message from a fresh palette
+                    let fresh = CommandPaletteState::new();
+                    // Use the index to pick the right item
+                    return update(state, fresh.items.into_iter().nth(idx).unwrap().message);
                 }
             }
             vec![]
         }
         Message::PaletteUp => {
-            if let Some(ref mut palette) = state.command_palette {
-                if palette.selected > 0 {
-                    palette.selected -= 1;
-                }
+            if let Some(ref mut palette) = state.command_palette
+                && palette.selected > 0
+            {
+                palette.selected -= 1;
             }
             vec![]
         }
         Message::PaletteDown => {
-            if let Some(ref mut palette) = state.command_palette {
-                if palette.selected + 1 < palette.filtered.len() {
-                    palette.selected += 1;
-                }
+            if let Some(ref mut palette) = state.command_palette
+                && palette.selected + 1 < palette.filtered.len()
+            {
+                palette.selected += 1;
             }
             vec![]
         }
@@ -4526,18 +4476,18 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::KeymapSettingsUp => {
-            if let Some(ref mut ks) = state.keymap_settings {
-                if ks.selected > 0 {
-                    ks.selected -= 1;
-                }
+            if let Some(ref mut ks) = state.keymap_settings
+                && ks.selected > 0
+            {
+                ks.selected -= 1;
             }
             vec![]
         }
         Message::KeymapSettingsDown => {
-            if let Some(ref mut ks) = state.keymap_settings {
-                if ks.selected + 1 < ks.bindings.len() {
-                    ks.selected += 1;
-                }
+            if let Some(ref mut ks) = state.keymap_settings
+                && ks.selected + 1 < ks.bindings.len()
+            {
+                ks.selected += 1;
             }
             vec![]
         }
@@ -4548,11 +4498,12 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::KeymapSettingsCapture(key_str) => {
-            if let Some(ref mut ks) = state.keymap_settings {
-                if ks.capturing && ks.selected < ks.bindings.len() {
-                    ks.bindings[ks.selected].2 = key_str;
-                    ks.capturing = false;
-                }
+            if let Some(ref mut ks) = state.keymap_settings
+                && ks.capturing
+                && ks.selected < ks.bindings.len()
+            {
+                ks.bindings[ks.selected].2 = key_str;
+                ks.capturing = false;
             }
             vec![]
         }
@@ -4589,20 +4540,20 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             let mut cmds = vec![];
             if let (Some(code), Some(repo)) = (&mut state.code, &state.current_repo) {
                 // Detect README in root — use dedicated FetchReadme with known path
-                if code.readme_content.is_none() {
-                    if let Some(readme_node) = nodes.iter().find(|n| {
+                if code.readme_content.is_none()
+                    && let Some(readme_node) = nodes.iter().find(|n| {
                         n.depth == 0 && !n.is_dir && {
                             let lower = n.name.to_lowercase();
                             lower == "readme.md" || lower == "readme" || lower == "readme.txt"
                         }
-                    }) {
-                        state.loading.insert("code_readme".to_string());
-                        cmds.push(Command::FetchReadme(
-                            repo.clone(),
-                            code.git_ref.clone(),
-                            Some(readme_node.path.clone()),
-                        ));
-                    }
+                    })
+                {
+                    state.loading.insert("code_readme".to_string());
+                    cmds.push(Command::FetchReadme(
+                        repo.clone(),
+                        code.git_ref.clone(),
+                        Some(readme_node.path.clone()),
+                    ));
                 }
                 code.tree = nodes;
                 code.tree_loaded = true;
@@ -4629,18 +4580,19 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             let mut cmds = vec![];
             // Auto-detect README in root directory listing — use dedicated FetchReadme with known path
             if let (Some(code), Some(repo)) = (&mut state.code, &state.current_repo) {
-                if code.current_path.is_empty() && code.readme_content.is_none() {
-                    if let Some(readme) = entries.iter().find(|e| {
+                if code.current_path.is_empty()
+                    && code.readme_content.is_none()
+                    && let Some(readme) = entries.iter().find(|e| {
                         let lower = e.name.to_lowercase();
                         lower == "readme.md" || lower == "readme" || lower == "readme.txt"
-                    }) {
-                        state.loading.insert("code_readme".to_string());
-                        cmds.push(Command::FetchReadme(
-                            repo.clone(),
-                            code.git_ref.clone(),
-                            Some(readme.path.clone()),
-                        ));
-                    }
+                    })
+                {
+                    state.loading.insert("code_readme".to_string());
+                    cmds.push(Command::FetchReadme(
+                        repo.clone(),
+                        code.git_ref.clone(),
+                        Some(readme.path.clone()),
+                    ));
                 }
                 code.entries = entries;
                 code.selected = 0;
@@ -4674,10 +4626,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         }
         Message::CodeReadmeLoaded(content) => {
             state.loading.remove("code_readme");
-            if let Some(ref mut code) = state.code {
-                if !content.is_empty() {
-                    code.readme_content = Some(content);
-                }
+            if let Some(ref mut code) = state.code
+                && !content.is_empty()
+            {
+                code.readme_content = Some(content);
             }
             vec![]
         }
@@ -4714,38 +4666,38 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                     return vec![];
                 }
                 // Flat mode fallback
-                if let Some(entry) = code.entries.get(code.selected).cloned() {
-                    if let Some(ref repo) = state.current_repo {
-                        match entry.entry_type {
-                            ghtui_core::types::code::FileEntryType::Dir => {
-                                code.path_stack.push(code.current_path.clone());
-                                code.current_path = entry.path.clone();
-                                code.file_content = None;
-                                code.file_name = None;
-                                code.selected = 0;
-                                state.loading.insert("code_contents".to_string());
-                                return vec![Command::FetchContents(
+                if let Some(entry) = code.entries.get(code.selected).cloned()
+                    && let Some(ref repo) = state.current_repo
+                {
+                    match entry.entry_type {
+                        ghtui_core::types::code::FileEntryType::Dir => {
+                            code.path_stack.push(code.current_path.clone());
+                            code.current_path = entry.path.clone();
+                            code.file_content = None;
+                            code.file_name = None;
+                            code.selected = 0;
+                            state.loading.insert("code_contents".to_string());
+                            return vec![Command::FetchContents(
+                                repo.clone(),
+                                entry.path,
+                                code.git_ref.clone(),
+                            )];
+                        }
+                        ghtui_core::types::code::FileEntryType::File => {
+                            code.file_path = Some(entry.path.clone());
+                            state.loading.insert("code_file".to_string());
+                            if is_image_file(&entry.name) {
+                                return vec![Command::FetchFileBytes(
                                     repo.clone(),
                                     entry.path,
                                     code.git_ref.clone(),
                                 )];
                             }
-                            ghtui_core::types::code::FileEntryType::File => {
-                                code.file_path = Some(entry.path.clone());
-                                state.loading.insert("code_file".to_string());
-                                if is_image_file(&entry.name) {
-                                    return vec![Command::FetchFileBytes(
-                                        repo.clone(),
-                                        entry.path,
-                                        code.git_ref.clone(),
-                                    )];
-                                }
-                                return vec![Command::FetchFileContent(
-                                    repo.clone(),
-                                    entry.path,
-                                    code.git_ref.clone(),
-                                )];
-                            }
+                            return vec![Command::FetchFileContent(
+                                repo.clone(),
+                                entry.path,
+                                code.git_ref.clone(),
+                            )];
                         }
                     }
                 }
@@ -4780,11 +4732,11 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                                 code.rebuild_visible_tree();
                                 // Move selection to the parent dir
                                 for (vi, &ti) in code.tree_visible.iter().enumerate() {
-                                    if let Some(n) = code.tree.get(ti) {
-                                        if n.path == parent {
-                                            code.selected = vi;
-                                            break;
-                                        }
+                                    if let Some(n) = code.tree.get(ti)
+                                        && n.path == parent
+                                    {
+                                        code.selected = vi;
+                                        break;
                                     }
                                 }
                             }
@@ -4817,16 +4769,16 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::CodeBranchesLoaded(branches) => {
             state.loading.remove("code_branches");
             // Also populate dispatch ref picker if open
-            if let Some(ref mut list) = state.actions_list {
-                if let Some(ref mut d) = list.dispatch {
-                    // Add branches to ref_items (prepend, marking as branch)
-                    d.ref_items.retain(|(_name, is_branch)| !is_branch);
-                    let mut new_items: Vec<(String, bool)> =
-                        branches.iter().map(|b| (b.clone(), true)).collect();
-                    new_items.append(&mut d.ref_items);
-                    d.ref_items = new_items;
-                    d.rebuild_ref_filter_cache();
-                }
+            if let Some(ref mut list) = state.actions_list
+                && let Some(ref mut d) = list.dispatch
+            {
+                // Add branches to ref_items (prepend, marking as branch)
+                d.ref_items.retain(|(_name, is_branch)| !is_branch);
+                let mut new_items: Vec<(String, bool)> =
+                    branches.iter().map(|b| (b.clone(), true)).collect();
+                new_items.append(&mut d.ref_items);
+                d.ref_items = new_items;
+                d.rebuild_ref_filter_cache();
             }
             if let Some(ref mut code) = state.code {
                 code.branches = branches;
@@ -4836,13 +4788,13 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
         Message::CodeTagsLoaded(tags) => {
             state.loading.remove("code_tags");
             // Also populate dispatch ref picker if open
-            if let Some(ref mut list) = state.actions_list {
-                if let Some(ref mut d) = list.dispatch {
-                    // Add tags to ref_items (append, marking as tag)
-                    d.ref_items.retain(|(_name, is_branch)| *is_branch);
-                    d.ref_items.extend(tags.iter().map(|t| (t.clone(), false)));
-                    d.rebuild_ref_filter_cache();
-                }
+            if let Some(ref mut list) = state.actions_list
+                && let Some(ref mut d) = list.dispatch
+            {
+                // Add tags to ref_items (append, marking as tag)
+                d.ref_items.retain(|(_name, is_branch)| *is_branch);
+                d.ref_items.extend(tags.iter().map(|t| (t.clone(), false)));
+                d.rebuild_ref_filter_cache();
             }
             if let Some(ref mut code) = state.code {
                 code.tags = tags;
@@ -4863,21 +4815,20 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::CodeSelectRef => {
-            if let Some(ref mut code) = state.code {
-                if let Some((ref_name, _is_branch)) =
+            if let Some(ref mut code) = state.code
+                && let Some((ref_name, _is_branch)) =
                     code.ref_picker_items.get(code.ref_picker_selected).cloned()
-                {
-                    // Reset to fresh state, preserving only branches/tags
-                    let branches = std::mem::take(&mut code.branches);
-                    let tags = std::mem::take(&mut code.tags);
-                    *code = ghtui_core::state::CodeViewState::new(ref_name);
-                    code.branches = branches;
-                    code.tags = tags;
-                    if let Some(ref repo) = state.current_repo {
-                        state.loading.insert("code_tree".to_string());
-                        state.loading.insert("code_contents".to_string());
-                        return vec![Command::FetchTree(repo.clone(), code.git_ref.clone())];
-                    }
+            {
+                // Reset to fresh state, preserving only branches/tags
+                let branches = std::mem::take(&mut code.branches);
+                let tags = std::mem::take(&mut code.tags);
+                *code = ghtui_core::state::CodeViewState::new(ref_name);
+                code.branches = branches;
+                code.tags = tags;
+                if let Some(ref repo) = state.current_repo {
+                    state.loading.insert("code_tree".to_string());
+                    state.loading.insert("code_contents".to_string());
+                    return vec![Command::FetchTree(repo.clone(), code.git_ref.clone())];
                 }
             }
             vec![]
@@ -4903,28 +4854,29 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 code.show_commits = !code.show_commits;
                 code.commit_detail = None;
                 code.commit_scroll = 0;
-                if code.show_commits && code.commits.is_empty() {
-                    if let Some(ref repo) = state.current_repo {
-                        state.loading.insert("code_commits".to_string());
-                        return vec![Command::FetchCommits(
-                            repo.clone(),
-                            code.git_ref.clone(),
-                            code.current_path.clone(),
-                            30,
-                        )];
-                    }
+                if code.show_commits
+                    && code.commits.is_empty()
+                    && let Some(ref repo) = state.current_repo
+                {
+                    state.loading.insert("code_commits".to_string());
+                    return vec![Command::FetchCommits(
+                        repo.clone(),
+                        code.git_ref.clone(),
+                        code.current_path.clone(),
+                        30,
+                    )];
                 }
             }
             vec![]
         }
         Message::CodeOpenCommitDetail => {
-            if let Some(ref mut code) = state.code {
-                if let Some(entry) = code.commits.get(code.commit_selected) {
-                    let sha = entry.sha.clone();
-                    if let Some(ref repo) = state.current_repo {
-                        state.loading.insert("code_commit_detail".to_string());
-                        return vec![Command::FetchCommitDetail(repo.clone(), sha)];
-                    }
+            if let Some(ref mut code) = state.code
+                && let Some(entry) = code.commits.get(code.commit_selected)
+            {
+                let sha = entry.sha.clone();
+                if let Some(ref repo) = state.current_repo {
+                    state.loading.insert("code_commit_detail".to_string());
+                    return vec![Command::FetchCommitDetail(repo.clone(), sha)];
                 }
             }
             vec![]
@@ -4939,14 +4891,14 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
 
         // Code file editing
         Message::CodeStartEdit => {
-            if let Some(ref mut code) = state.code {
-                if let Some(ref content) = code.file_content {
-                    code.editor = ghtui_core::editor::TextEditor::from_string(content);
-                    // Set viewport height based on terminal size (minus borders/status)
-                    let vh = state.terminal_size.1.saturating_sub(4) as usize;
-                    code.editor.set_viewport_height(vh.max(5));
-                    code.editing = true;
-                }
+            if let Some(ref mut code) = state.code
+                && let Some(ref content) = code.file_content
+            {
+                code.editor = ghtui_core::editor::TextEditor::from_string(content);
+                // Set viewport height based on terminal size (minus borders/status)
+                let vh = state.terminal_size.1.saturating_sub(4) as usize;
+                code.editor.set_viewport_height(vh.max(5));
+                code.editing = true;
             }
             vec![]
         }
@@ -5053,32 +5005,32 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::CodeEditSubmit => {
-            if let Some(ref code) = state.code {
-                if let Some(ref repo) = state.current_repo {
-                    let content = code.editor.content();
-                    let filename = code.file_name.clone().unwrap_or_default();
-                    let file_path = code.file_path.clone().unwrap_or_default();
-                    let message = format!("Update {}", filename);
-                    let branch = code.git_ref.clone();
+            if let Some(ref code) = state.code
+                && let Some(ref repo) = state.current_repo
+            {
+                let content = code.editor.content();
+                let filename = code.file_name.clone().unwrap_or_default();
+                let file_path = code.file_path.clone().unwrap_or_default();
+                let message = format!("Update {}", filename);
+                let branch = code.git_ref.clone();
 
-                    // Find the file SHA from entries
-                    let sha = code
-                        .entries
-                        .iter()
-                        .find(|e| Some(&e.path) == code.file_path.as_ref())
-                        .map(|e| e.sha.clone())
-                        .unwrap_or_default();
+                // Find the file SHA from entries
+                let sha = code
+                    .entries
+                    .iter()
+                    .find(|e| Some(&e.path) == code.file_path.as_ref())
+                    .map(|e| e.sha.clone())
+                    .unwrap_or_default();
 
-                    state.loading.insert("code_file_update".to_string());
-                    return vec![Command::UpdateFileContent(
-                        repo.clone(),
-                        file_path,
-                        content,
-                        message,
-                        sha,
-                        branch,
-                    )];
-                }
+                state.loading.insert("code_file_update".to_string());
+                return vec![Command::UpdateFileContent(
+                    repo.clone(),
+                    file_path,
+                    content,
+                    message,
+                    sha,
+                    branch,
+                )];
             }
             vec![]
         }
@@ -5120,28 +5072,28 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::CodeEditCut => {
-            if let Some(ref mut code) = state.code {
-                if let Some(text) = code.editor.selected_text() {
-                    code.editor.delete_selection();
-                    return vec![Command::SetClipboard(text)];
-                }
+            if let Some(ref mut code) = state.code
+                && let Some(text) = code.editor.selected_text()
+            {
+                code.editor.delete_selection();
+                return vec![Command::SetClipboard(text)];
             }
             vec![]
         }
         Message::CodeEditCopy => {
-            if let Some(ref code) = state.code {
-                if let Some(text) = code.editor.selected_text() {
-                    return vec![Command::SetClipboard(text)];
-                }
+            if let Some(ref code) = state.code
+                && let Some(text) = code.editor.selected_text()
+            {
+                return vec![Command::SetClipboard(text)];
             }
             vec![]
         }
         Message::CodeEditPaste(text) => {
-            if let Some(ref mut code) = state.code {
-                if !text.is_empty() {
-                    code.editor.delete_selection();
-                    code.editor.insert_str(&text);
-                }
+            if let Some(ref mut code) = state.code
+                && !text.is_empty()
+            {
+                code.editor.delete_selection();
+                code.editor.insert_str(&text);
             }
             vec![]
         }
@@ -5214,10 +5166,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::DiscussionsOpenInBrowser => {
-            if let Some(ref disc) = state.discussions {
-                if let Some(item) = disc.items.get(disc.selected) {
-                    return vec![Command::OpenInBrowser(item.url.clone())];
-                }
+            if let Some(ref disc) = state.discussions
+                && let Some(item) = disc.items.get(disc.selected)
+            {
+                return vec![Command::OpenInBrowser(item.url.clone())];
             }
             vec![]
         }
@@ -5229,10 +5181,10 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         Message::GistsOpenInBrowser => {
-            if let Some(ref g) = state.gists {
-                if let Some(item) = g.items.get(g.selected) {
-                    return vec![Command::OpenInBrowser(item.html_url.clone())];
-                }
+            if let Some(ref g) = state.gists
+                && let Some(item) = g.items.get(g.selected)
+            {
+                return vec![Command::OpenInBrowser(item.html_url.clone())];
             }
             vec![]
         }
@@ -5242,11 +5194,11 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             state.loading.remove("orgs");
             state.org = Some(ghtui_core::state::OrgState::new(orgs));
             // Fetch members of first org
-            if let Some(ref org_state) = state.org {
-                if let Some(first_org) = org_state.orgs.first() {
-                    state.loading.insert("org_members".to_string());
-                    return vec![Command::FetchOrgMembers(first_org.login.clone())];
-                }
+            if let Some(ref org_state) = state.org
+                && let Some(first_org) = org_state.orgs.first()
+            {
+                state.loading.insert("org_members".to_string());
+                return vec![Command::FetchOrgMembers(first_org.login.clone())];
             }
             vec![]
         }

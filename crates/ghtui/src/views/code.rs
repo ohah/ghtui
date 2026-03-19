@@ -631,10 +631,10 @@ fn render_image_preview(
     // Get or decode image
     let decoded = DECODED_IMG.with(|c| {
         let borrow = c.borrow();
-        if let Some((len, ref img)) = *borrow {
-            if len == bytes_len {
-                return Some(img.clone());
-            }
+        if let Some((len, ref img)) = *borrow
+            && len == bytes_len
+        {
+            return Some(img.clone());
         }
         None
     });

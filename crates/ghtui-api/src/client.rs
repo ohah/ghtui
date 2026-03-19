@@ -109,14 +109,14 @@ impl GithubClient {
         let result: serde_json::Value = serde_json::from_str(&response_text)?;
 
         // Check for GraphQL errors
-        if let Some(errors) = result.get("errors") {
-            if let Some(first) = errors.as_array().and_then(|a| a.first()) {
-                let message = first
-                    .get("message")
-                    .and_then(|m| m.as_str())
-                    .unwrap_or("GraphQL error");
-                return Err(ApiError::Other(message.to_string()));
-            }
+        if let Some(errors) = result.get("errors")
+            && let Some(first) = errors.as_array().and_then(|a| a.first())
+        {
+            let message = first
+                .get("message")
+                .and_then(|m| m.as_str())
+                .unwrap_or("GraphQL error");
+            return Err(ApiError::Other(message.to_string()));
         }
 
         Ok(result)
@@ -133,10 +133,10 @@ impl GithubClient {
         // Check in-memory LRU cache
         {
             let cache = self.cache.lock().unwrap();
-            if let Some(cached) = cache.peek(&cache_key) {
-                if !cached.is_expired() {
-                    return Ok(cached.body.clone());
-                }
+            if let Some(cached) = cache.peek(&cache_key)
+                && !cached.is_expired()
+            {
+                return Ok(cached.body.clone());
             }
         }
 
@@ -160,13 +160,12 @@ impl GithubClient {
                     let error = self.parse_error(status.as_u16(), &body);
 
                     // On rate limit or server error, try disk cache fallback
-                    if matches!(error, ApiError::RateLimit { .. })
-                        || matches!(error, ApiError::GitHub { status, .. } if status >= 500)
+                    if (matches!(error, ApiError::RateLimit { .. })
+                        || matches!(error, ApiError::GitHub { status, .. } if status >= 500))
+                        && let Some(cached_body) = self.disk_cache_get(&cache_key)
                     {
-                        if let Some(cached_body) = self.disk_cache_get(&cache_key) {
-                            tracing::warn!("API error, serving disk-cached response for {}", path);
-                            return Ok(cached_body);
-                        }
+                        tracing::warn!("API error, serving disk-cached response for {}", path);
+                        return Ok(cached_body);
                     }
 
                     return Err(error);

@@ -218,19 +218,19 @@ impl PrDetailState {
 
     pub fn focus_next(&mut self) {
         let sections = self.sections();
-        if let Some(idx) = sections.iter().position(|s| s == &self.focus) {
-            if idx < sections.len() - 1 {
-                self.focus = sections[idx + 1].clone();
-            }
+        if let Some(idx) = sections.iter().position(|s| s == &self.focus)
+            && idx < sections.len() - 1
+        {
+            self.focus = sections[idx + 1].clone();
         }
     }
 
     pub fn focus_prev(&mut self) {
         let sections = self.sections();
-        if let Some(idx) = sections.iter().position(|s| s == &self.focus) {
-            if idx > 0 {
-                self.focus = sections[idx - 1].clone();
-            }
+        if let Some(idx) = sections.iter().position(|s| s == &self.focus)
+            && idx > 0
+        {
+            self.focus = sections[idx - 1].clone();
         }
     }
 

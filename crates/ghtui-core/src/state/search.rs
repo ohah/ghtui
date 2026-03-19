@@ -74,10 +74,10 @@ impl SearchViewState {
     }
 
     pub fn select_next(&mut self) {
-        if let Some(ref results) = self.results {
-            if self.selected < results.items.len().saturating_sub(1) {
-                self.selected += 1;
-            }
+        if let Some(ref results) = self.results
+            && self.selected < results.items.len().saturating_sub(1)
+        {
+            self.selected += 1;
         }
     }
 

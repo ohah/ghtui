@@ -43,12 +43,11 @@ impl DiskCache {
             let cutoff =
                 std::time::SystemTime::now() - std::time::Duration::from_secs(24 * 60 * 60);
             for entry in entries.flatten() {
-                if let Ok(meta) = entry.metadata() {
-                    if let Ok(modified) = meta.modified() {
-                        if modified < cutoff {
-                            let _ = std::fs::remove_file(entry.path());
-                        }
-                    }
+                if let Ok(meta) = entry.metadata()
+                    && let Ok(modified) = meta.modified()
+                    && modified < cutoff
+                {
+                    let _ = std::fs::remove_file(entry.path());
                 }
             }
         }
