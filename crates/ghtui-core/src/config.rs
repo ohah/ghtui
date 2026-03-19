@@ -451,31 +451,13 @@ pub fn list_gh_accounts() -> Vec<GhAccount> {
 }
 
 /// Resolve the gh CLI config directory.
-/// Priority: $GH_CONFIG_DIR > OS-specific default.
-///   - macOS/Linux: $XDG_CONFIG_HOME/gh or ~/.config/gh
-///   - Windows: %APPDATA%/gh
+/// Priority: $GH_CONFIG_DIR > dirs::config_dir()/gh
 fn gh_config_dir() -> Option<PathBuf> {
-    if let Ok(dir) = std::env::var("GH_CONFIG_DIR") {
-        return Some(PathBuf::from(dir));
-    }
-
-    #[cfg(windows)]
-    {
-        // On Windows, gh CLI uses %APPDATA%\gh
-        std::env::var("APPDATA")
-            .ok()
-            .map(|d| PathBuf::from(d).join("gh"))
-    }
-
-    #[cfg(not(windows))]
-    {
-        // On Unix, gh CLI follows XDG: $XDG_CONFIG_HOME/gh or ~/.config/gh
-        if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
-            Some(PathBuf::from(xdg).join("gh"))
-        } else {
-            dirs::home_dir().map(|d| d.join(".config").join("gh"))
-        }
-    }
+    std::env::var("GH_CONFIG_DIR")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| dirs::config_dir().map(|d| d.join("gh")))
 }
 
 /// Parse gh CLI hosts.yml which supports multiple accounts per host.
