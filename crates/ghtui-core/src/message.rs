@@ -461,6 +461,10 @@ pub enum Message {
     KeymapSettingsCapture(String),
     KeymapSettingsReset,
 
+    // Diff context expand
+    PrDiffExpandContext, // expand context around cursor hunk
+    PrDiffContextLoaded(usize, usize, Vec<DiffLine>, Vec<DiffLine>), // file_idx, hunk_idx, before, after
+
     // Update check
     UpdateAvailable(String), // latest version string
 

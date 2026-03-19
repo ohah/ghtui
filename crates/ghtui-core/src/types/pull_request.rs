@@ -249,6 +249,8 @@ pub struct DiffHunk {
     pub old_start: u32,
     pub new_start: u32,
     pub lines: Vec<DiffLine>,
+    /// Expanded context lines (before, after) loaded on demand
+    pub expanded_context: Option<(Vec<DiffLine>, Vec<DiffLine>)>,
 }
 
 #[derive(Debug, Clone)]
