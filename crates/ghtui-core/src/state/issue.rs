@@ -140,8 +140,8 @@ impl IssueSection {
             IssueSection::Labels => "l:Edit labels",
             IssueSection::Assignees => "a:Edit assignees",
             IssueSection::Milestone => "",
-            IssueSection::Body => "e:Edit body",
-            IssueSection::Comment(_) => "e:Edit  r:Reply  d:Delete",
+            IssueSection::Body => "e:Edit body  o:Open link",
+            IssueSection::Comment(_) => "e:Edit  r:Reply  d:Delete  o:Open link",
         }
     }
 }

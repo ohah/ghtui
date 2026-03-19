@@ -19,6 +19,22 @@ const RULE_COLOR: Color = Color::Rgb(48, 54, 61);
 const TABLE_BORDER: Color = Color::Rgb(48, 54, 61);
 const STRIKETHROUGH_COLOR: Color = Color::Rgb(125, 133, 144);
 
+/// Extract all URLs (links + images) from markdown text, in order.
+pub fn extract_urls(text: &str) -> Vec<String> {
+    let opts = Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TASKLISTS;
+    let parser = Parser::new_ext(text, opts);
+    let mut urls = Vec::new();
+    for event in parser {
+        if let Event::Start(Tag::Link { dest_url, .. } | Tag::Image { dest_url, .. }) = event {
+            let url = dest_url.to_string();
+            if !url.is_empty() {
+                urls.push(url);
+            }
+        }
+    }
+    urls
+}
+
 pub fn render_markdown(text: &str) -> Vec<Line<'static>> {
     let opts = Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TASKLISTS;
     let parser = Parser::new_ext(text, opts);
