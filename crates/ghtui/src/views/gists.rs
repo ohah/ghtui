@@ -48,12 +48,18 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
             };
 
             let line1 = Line::from(vec![
-                Span::styled(format!("  [{}] ", visibility), Style::default().fg(vis_color)),
+                Span::styled(
+                    format!("  [{}] ", visibility),
+                    Style::default().fg(vis_color),
+                ),
                 Span::styled(desc.to_string(), desc_style),
             ]);
 
             // Line 2: file count + created relative time
-            let time_str = format!("created {}", super::components::time_ago_rfc3339(&g.created_at));
+            let time_str = format!(
+                "created {}",
+                super::components::time_ago_rfc3339(&g.created_at)
+            );
 
             let line2 = Line::from(vec![
                 Span::styled(

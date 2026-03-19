@@ -120,7 +120,10 @@ fn render_recent_repos(frame: &mut Frame, state: &AppState, area: Rect) {
             let updated_str = if repo.updated_at.is_empty() {
                 String::new()
             } else {
-                format!("  updated {}", super::components::time_ago_rfc3339(&repo.updated_at))
+                format!(
+                    "  updated {}",
+                    super::components::time_ago_rfc3339(&repo.updated_at)
+                )
             };
 
             let suffix = format!("{}{}", stars_str, updated_str);
@@ -141,8 +144,10 @@ fn render_recent_repos(frame: &mut Frame, state: &AppState, area: Rect) {
 
             let mut line2_spans = vec![Span::styled(indent, Style::default())];
             if !truncated_desc.is_empty() {
-                line2_spans
-                    .push(Span::styled(truncated_desc, Style::default().fg(theme.fg_dim)));
+                line2_spans.push(Span::styled(
+                    truncated_desc,
+                    Style::default().fg(theme.fg_dim),
+                ));
             }
             if stars > 0 {
                 line2_spans.push(Span::styled(

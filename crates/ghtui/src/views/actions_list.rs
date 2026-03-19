@@ -370,7 +370,10 @@ fn render_dispatch_modal(
         ),
         Span::styled(ref_value, theme.text()),
         if ref_focused && !dispatch.editing {
-            Span::styled("  (Enter:select  e:edit)", Style::default().fg(theme.fg_dim))
+            Span::styled(
+                "  (Enter:select  e:edit)",
+                Style::default().fg(theme.fg_dim),
+            )
         } else {
             Span::raw("")
         },
@@ -457,12 +460,7 @@ fn render_ref_picker(
     // Position below the ref field (line 2 of the modal, offset by 3 for header+blank+ref)
     let picker_x = parent_area.x + 2;
     let picker_y = parent_area.y + 3;
-    let picker_area = Rect::new(
-        picker_x,
-        picker_y,
-        picker_width,
-        picker_height,
-    );
+    let picker_area = Rect::new(picker_x, picker_y, picker_width, picker_height);
 
     frame.render_widget(Clear, picker_area);
 
@@ -470,16 +468,15 @@ fn render_ref_picker(
 
     // Filter input
     let filter_line = if dispatch.ref_filter.is_empty() {
-        Line::styled(
-            "  Type to filter...",
-            Style::default().fg(theme.fg_dim),
-        )
+        Line::styled("  Type to filter...", Style::default().fg(theme.fg_dim))
     } else {
         Line::from(vec![
             Span::styled("  🔍 ", Style::default().fg(theme.accent)),
             Span::styled(
                 dispatch.ref_filter.clone(),
-                Style::default().fg(ratatui::style::Color::White).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(ratatui::style::Color::White)
+                    .add_modifier(Modifier::BOLD),
             ),
         ])
     };

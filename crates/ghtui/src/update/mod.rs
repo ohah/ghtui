@@ -4067,8 +4067,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                                     .map(|l| format!("> {}", l))
                                     .collect::<Vec<_>>()
                                     .join("\n");
-                                prefill =
-                                    format!("> @{}\n{}\n\n", comment.user.login, quoted);
+                                prefill = format!("> @{}\n{}\n\n", comment.user.login, quoted);
                             }
                         }
                     }
@@ -4339,23 +4338,74 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
         // Modal editor operations
-        Message::ModalEditorChar(c) => { state.modal_editor.insert_char(c); vec![] }
-        Message::ModalEditorNewline => { state.modal_editor.insert_char('\n'); vec![] }
-        Message::ModalEditorBackspace => { state.modal_editor.backspace(); vec![] }
-        Message::ModalEditorDelete => { state.modal_editor.delete(); vec![] }
-        Message::ModalEditorTab => { state.modal_editor.insert_tab(); vec![] }
-        Message::ModalEditorLeft => { state.modal_editor.move_left(); vec![] }
-        Message::ModalEditorRight => { state.modal_editor.move_right(); vec![] }
-        Message::ModalEditorUp => { state.modal_editor.move_up(); vec![] }
-        Message::ModalEditorDown => { state.modal_editor.move_down(); vec![] }
-        Message::ModalEditorWordLeft => { state.modal_editor.move_word_left(); vec![] }
-        Message::ModalEditorWordRight => { state.modal_editor.move_word_right(); vec![] }
-        Message::ModalEditorHome => { state.modal_editor.move_home(); vec![] }
-        Message::ModalEditorEnd => { state.modal_editor.move_end(); vec![] }
-        Message::ModalEditorPageUp => { state.modal_editor.page_up(); vec![] }
-        Message::ModalEditorPageDown => { state.modal_editor.page_down(); vec![] }
-        Message::ModalEditorUndo => { state.modal_editor.undo(); vec![] }
-        Message::ModalEditorRedo => { state.modal_editor.redo(); vec![] }
+        Message::ModalEditorChar(c) => {
+            state.modal_editor.insert_char(c);
+            vec![]
+        }
+        Message::ModalEditorNewline => {
+            state.modal_editor.insert_char('\n');
+            vec![]
+        }
+        Message::ModalEditorBackspace => {
+            state.modal_editor.backspace();
+            vec![]
+        }
+        Message::ModalEditorDelete => {
+            state.modal_editor.delete();
+            vec![]
+        }
+        Message::ModalEditorTab => {
+            state.modal_editor.insert_tab();
+            vec![]
+        }
+        Message::ModalEditorLeft => {
+            state.modal_editor.move_left();
+            vec![]
+        }
+        Message::ModalEditorRight => {
+            state.modal_editor.move_right();
+            vec![]
+        }
+        Message::ModalEditorUp => {
+            state.modal_editor.move_up();
+            vec![]
+        }
+        Message::ModalEditorDown => {
+            state.modal_editor.move_down();
+            vec![]
+        }
+        Message::ModalEditorWordLeft => {
+            state.modal_editor.move_word_left();
+            vec![]
+        }
+        Message::ModalEditorWordRight => {
+            state.modal_editor.move_word_right();
+            vec![]
+        }
+        Message::ModalEditorHome => {
+            state.modal_editor.move_home();
+            vec![]
+        }
+        Message::ModalEditorEnd => {
+            state.modal_editor.move_end();
+            vec![]
+        }
+        Message::ModalEditorPageUp => {
+            state.modal_editor.page_up();
+            vec![]
+        }
+        Message::ModalEditorPageDown => {
+            state.modal_editor.page_down();
+            vec![]
+        }
+        Message::ModalEditorUndo => {
+            state.modal_editor.undo();
+            vec![]
+        }
+        Message::ModalEditorRedo => {
+            state.modal_editor.redo();
+            vec![]
+        }
         Message::Tick => {
             state.tick_toasts();
             // Log streaming: re-fetch log every 5 ticks (~5 seconds) for in-progress jobs
@@ -4790,8 +4840,7 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 if let Some(ref mut d) = list.dispatch {
                     // Add tags to ref_items (append, marking as tag)
                     d.ref_items.retain(|(_name, is_branch)| *is_branch);
-                    d.ref_items
-                        .extend(tags.iter().map(|t| (t.clone(), false)));
+                    d.ref_items.extend(tags.iter().map(|t| (t.clone(), false)));
                     d.rebuild_ref_filter_cache();
                 }
             }

@@ -238,7 +238,10 @@ fn render_result_item<'a>(
 
             // Line 2/3: #number + repo + time ago + author
             let mut line2_spans = vec![
-                Span::styled(format!("    #{}", number), Style::default().fg(theme.fg_muted)),
+                Span::styled(
+                    format!("    #{}", number),
+                    Style::default().fg(theme.fg_muted),
+                ),
                 Span::styled(format!("  {}", repo), Style::default().fg(theme.fg_dim)),
             ];
             if let Some(dt) = created_at {
