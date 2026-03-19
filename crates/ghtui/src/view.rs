@@ -122,6 +122,9 @@ pub fn render(frame: &mut Frame, state: &AppState, _tick: usize) {
             ModalKind::Confirm { title, message } => {
                 views::input_modal::render(frame, state, size, title, message)
             }
+            ModalKind::UrlPicker(urls) => {
+                render_url_picker(frame, state, urls, size);
+            }
             _ => {}
         }
     }
@@ -341,4 +344,49 @@ fn render_toasts(frame: &mut Frame, state: &AppState, _theme: &Theme, area: Rect
 
     let widget = ghtui_widgets::ToastWidget::new(toast);
     frame.render_widget(widget, toast_area);
+}
+
+fn render_url_picker(frame: &mut Frame, state: &AppState, urls: &[String], area: Rect) {
+    let theme = &state.theme;
+    let max_url_len = urls.iter().map(|u| u.len()).max().unwrap_or(20);
+    let width = (max_url_len as u16 + 6).min(area.width.saturating_sub(4));
+    let height = (urls.len() as u16 + 2).min(area.height.saturating_sub(4));
+    let x = area.width.saturating_sub(width) / 2;
+    let y = area.height.saturating_sub(height) / 2;
+    let picker_area = Rect::new(x, y, width, height);
+
+    frame.render_widget(Clear, picker_area);
+
+    let block = Block::bordered()
+        .title(" Open URL ")
+        .title_bottom(" j/k:select  Enter:open  Esc:cancel ")
+        .border_style(Style::default().fg(theme.accent))
+        .style(Style::default().bg(theme.bg));
+    let inner = block.inner(picker_area);
+    frame.render_widget(block, picker_area);
+
+    let lines: Vec<Line> = urls
+        .iter()
+        .enumerate()
+        .map(|(i, url)| {
+            let is_selected = i == state.url_picker_selected;
+            let prefix = if is_selected { " > " } else { "   " };
+            let style = if is_selected {
+                Style::default()
+                    .fg(theme.accent)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme.fg)
+            };
+            let truncated = if url.len() > inner.width as usize - 4 {
+                format!("{}...", &url[..inner.width as usize - 7])
+            } else {
+                url.clone()
+            };
+            Line::styled(format!("{}{}", prefix, truncated), style)
+        })
+        .collect();
+
+    let paragraph = Paragraph::new(lines);
+    frame.render_widget(paragraph, inner);
 }

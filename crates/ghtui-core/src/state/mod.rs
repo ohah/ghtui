@@ -273,6 +273,9 @@ pub struct AppState {
     pub accounts: Vec<GhAccount>,
     pub account_selected: usize,
 
+    // URL picker
+    pub url_picker_selected: usize,
+
     // Command palette
     pub command_palette: Option<CommandPaletteState>,
 
@@ -324,6 +327,7 @@ impl AppState {
             current_account,
             accounts,
             account_selected: 0,
+            url_picker_selected: 0,
             command_palette: None,
             keymap_settings: None,
         }
