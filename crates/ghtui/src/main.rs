@@ -22,6 +22,38 @@ use crate::cli::Cli;
 async fn main() -> Result<()> {
     let args = Cli::parse();
 
+    // Handle --check-update
+    if args.check_update {
+        let current = env!("CARGO_PKG_VERSION");
+        println!("ghtui v{}", current);
+
+        let client = reqwest::Client::builder()
+            .user_agent("ghtui")
+            .build()
+            .expect("Failed to create HTTP client");
+
+        let url = "https://api.github.com/repos/ohah/ghtui/releases/latest";
+        match client.get(url).send().await {
+            Ok(resp) if resp.status().is_success() => {
+                if let Ok(body) = resp.json::<serde_json::Value>().await
+                    && let Some(tag) = body["tag_name"].as_str()
+                {
+                    let latest = tag.strip_prefix('v').unwrap_or(tag);
+                    if latest != current {
+                        println!("Update available: v{} → v{}", current, latest);
+                        println!("Run `brew upgrade ghtui` or `cargo install ghtui` to update");
+                    } else {
+                        println!("Already up to date!");
+                    }
+                }
+            }
+            _ => {
+                println!("Could not check for updates");
+            }
+        }
+        return Ok(());
+    }
+
     // Load config
     let mut config = AppConfig::load();
 

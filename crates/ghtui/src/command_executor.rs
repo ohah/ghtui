@@ -705,6 +705,22 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Err(e) => Message::Error(e.into()),
         },
 
+        // Update check
+        Command::CheckUpdate => {
+            let current = env!("CARGO_PKG_VERSION");
+            match client.get_latest_release_tag("ohah", "ghtui").await {
+                Ok(Some(tag)) => {
+                    let latest = tag.strip_prefix('v').unwrap_or(&tag);
+                    if latest != current {
+                        Message::UpdateAvailable(latest.to_string())
+                    } else {
+                        Message::Tick
+                    }
+                }
+                _ => Message::Tick,
+            }
+        }
+
         // Utility
         Command::OpenInBrowser(url) => {
             let _ = open::that(&url);

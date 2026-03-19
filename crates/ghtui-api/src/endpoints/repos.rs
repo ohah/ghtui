@@ -43,4 +43,33 @@ impl GithubClient {
                 .unwrap_or(0) as u32,
         })
     }
+
+    /// Fetch the latest release tag name for a repository.
+    pub async fn get_latest_release_tag(
+        &self,
+        owner: &str,
+        repo: &str,
+    ) -> Result<Option<String>, ApiError> {
+        let url = format!("{}/repos/{}/{}/releases/latest", self.base_url, owner, repo);
+        let resp = self
+            .http
+            .get(&url)
+            .header("Accept", "application/vnd.github+json")
+            .send()
+            .await
+            .map_err(|e| ApiError::Other(e.to_string()))?;
+
+        if resp.status() == 404 {
+            return Ok(None);
+        }
+        if !resp.status().is_success() {
+            return Ok(None);
+        }
+
+        let body: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| ApiError::Other(e.to_string()))?;
+        Ok(body["tag_name"].as_str().map(|s| s.to_string()))
+    }
 }

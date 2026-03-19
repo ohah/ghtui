@@ -43,7 +43,7 @@ impl App {
 
         // Fetch recent repos on startup for dashboard (and repo counts if repo is set)
         {
-            let mut initial_cmds = vec![Command::FetchRecentRepos];
+            let mut initial_cmds = vec![Command::FetchRecentRepos, Command::CheckUpdate];
             if let Some(ref repo) = self.state.current_repo {
                 initial_cmds.push(Command::FetchRepoCounts(repo.clone()));
             }

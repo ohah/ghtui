@@ -152,6 +152,9 @@ pub enum Command {
     // Multi-repo dashboard
     FetchRecentRepos,
 
+    // Update check
+    CheckUpdate,
+
     // Utility
     OpenInBrowser(String),
     SetClipboard(String),
