@@ -1319,6 +1319,7 @@ fn handle_pr_detail_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
             KeyCode::PageUp => Some(Message::ScrollUp),
             KeyCode::Char('s') => Some(Message::PrDiffToggleSideBySide),
             KeyCode::Char('z') => Some(Message::PrReviewThreadToggleResolve),
+            KeyCode::Char('e') => Some(Message::PrDiffExpandContext),
             _ => None,
         };
     }

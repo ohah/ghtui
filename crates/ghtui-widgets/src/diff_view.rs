@@ -395,6 +395,31 @@ impl<'a> DiffView<'a> {
             ));
             line_ids.push(DiffLineId::HunkHeader(file_idx, hi));
 
+            // Render expanded context lines before the hunk
+            if let Some((ref before, _)) = hunk.expanded_context {
+                for ctx_line in before {
+                    let old_ln = ctx_line
+                        .old_line
+                        .map(|n| format!("{:>4}", n))
+                        .unwrap_or_else(|| "    ".to_string());
+                    let new_ln = ctx_line
+                        .new_line
+                        .map(|n| format!("{:>4}", n))
+                        .unwrap_or_else(|| "    ".to_string());
+                    lines.push(Line::from(vec![
+                        Span::styled(
+                            format!("{}  {} ", old_ln, new_ln),
+                            Style::default().fg(theme.fg_dim),
+                        ),
+                        Span::styled(
+                            format!(" {}", ctx_line.content),
+                            Style::default().fg(theme.fg_dim),
+                        ),
+                    ]));
+                    line_ids.push(DiffLineId::Summary);
+                }
+            }
+
             for (li, diff_line) in hunk.lines.iter().enumerate() {
                 let old_ln = diff_line
                     .old_line
@@ -649,6 +674,31 @@ impl<'a> DiffView<'a> {
                         lines.push(box_btm(accent_style, width));
                         line_ids.push(DiffLineId::Summary);
                     }
+                }
+            }
+
+            // Render expanded context lines after the hunk
+            if let Some((_, ref after)) = hunk.expanded_context {
+                for ctx_line in after {
+                    let old_ln = ctx_line
+                        .old_line
+                        .map(|n| format!("{:>4}", n))
+                        .unwrap_or_else(|| "    ".to_string());
+                    let new_ln = ctx_line
+                        .new_line
+                        .map(|n| format!("{:>4}", n))
+                        .unwrap_or_else(|| "    ".to_string());
+                    lines.push(Line::from(vec![
+                        Span::styled(
+                            format!("{}  {} ", old_ln, new_ln),
+                            Style::default().fg(theme.fg_dim),
+                        ),
+                        Span::styled(
+                            format!(" {}", ctx_line.content),
+                            Style::default().fg(theme.fg_dim),
+                        ),
+                    ]));
+                    line_ids.push(DiffLineId::Summary);
                 }
             }
         }

@@ -705,6 +705,34 @@ pub async fn execute(client: &GithubClient, cmd: Command) -> Message {
             Err(e) => Message::Error(e.into()),
         },
 
+        // Diff context expand
+        Command::FetchDiffContext(repo, filename, base_ref, fi, hi) => {
+            match client.get_file_content(&repo, &filename, &base_ref).await {
+                Ok(content) => {
+                    use ghtui_core::types::{DiffLine, DiffLineKind};
+                    let file_lines: Vec<&str> = content.lines().collect();
+                    // We need the hunk's line range to extract context.
+                    // The hunk info is identified by fi/hi — the caller already validated them.
+                    // We return up to 20 lines before old_start and 20 lines after the last line.
+                    // The update handler will use the hunk's old_start to compute offsets.
+                    // For simplicity, return the full file lines and let the handler extract.
+                    let context_lines: Vec<DiffLine> = file_lines
+                        .iter()
+                        .enumerate()
+                        .map(|(i, line)| DiffLine {
+                            kind: DiffLineKind::Context,
+                            content: line.to_string(),
+                            old_line: Some(i as u32 + 1),
+                            new_line: Some(i as u32 + 1),
+                        })
+                        .collect();
+                    // Pass all lines as "before", empty "after" — handler will split
+                    Message::PrDiffContextLoaded(fi, hi, context_lines, vec![])
+                }
+                Err(_) => Message::Tick,
+            }
+        }
+
         // Update check
         Command::CheckUpdate => {
             let current = env!("CARGO_PKG_VERSION");

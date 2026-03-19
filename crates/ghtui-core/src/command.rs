@@ -152,6 +152,9 @@ pub enum Command {
     // Multi-repo dashboard
     FetchRecentRepos,
 
+    // Diff context expand
+    FetchDiffContext(RepoId, String, String, usize, usize), // repo, filename, base_ref, file_idx, hunk_idx
+
     // Update check
     CheckUpdate,
 

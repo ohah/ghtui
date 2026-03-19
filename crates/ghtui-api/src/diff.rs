@@ -176,6 +176,7 @@ impl HunkBuilder {
             old_start: self.old_start,
             new_start: self.new_start,
             lines: self.lines,
+            expanded_context: None,
         }
     }
 }

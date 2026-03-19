@@ -1011,6 +1011,9 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             if let Some(ref mut detail) = state.pr_detail
                 && let Some((fi, is_header)) = find_cursor_file_info(detail)
             {
+                // Clear block selection before acting to prevent duplicate editors
+                detail.diff_select_anchor = None;
+
                 if is_header {
                     // File header → toggle fold
                     if detail.diff_collapsed.contains(&fi) {
@@ -1041,6 +1044,62 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 && let Some(fi) = find_cursor_file(detail)
             {
                 detail.diff_collapsed.insert(fi);
+            }
+            vec![]
+        }
+        Message::PrDiffExpandContext => {
+            if let Some(ref detail) = state.pr_detail
+                && let Some((fi, hi)) = find_cursor_hunk_info(detail)
+                && let Some(ref repo) = state.current_repo
+            {
+                let files = detail.diff.as_ref().unwrap();
+                let file = &files[fi];
+                let hunk = &file.hunks[hi];
+                // Skip if already expanded
+                if hunk.expanded_context.is_some() {
+                    return vec![];
+                }
+                let base_ref = detail.detail.pr.base_ref.clone();
+                return vec![Command::FetchDiffContext(
+                    repo.clone(),
+                    file.filename.clone(),
+                    base_ref,
+                    fi,
+                    hi,
+                )];
+            }
+            vec![]
+        }
+        Message::PrDiffContextLoaded(fi, hi, all_file_lines, _) => {
+            if let Some(ref mut detail) = state.pr_detail
+                && let Some(ref mut files) = detail.diff
+                && fi < files.len()
+                && hi < files[fi].hunks.len()
+            {
+                let hunk = &files[fi].hunks[hi];
+                let old_start = hunk.old_start as usize;
+                // Find the last old_line in this hunk
+                let old_end = hunk
+                    .lines
+                    .iter()
+                    .filter_map(|l| l.old_line)
+                    .max()
+                    .unwrap_or(hunk.old_start) as usize;
+
+                let expand_n = 20;
+                // Lines before: [old_start - expand_n .. old_start)
+                let before_start = old_start.saturating_sub(expand_n + 1);
+                let before_end = old_start.saturating_sub(1);
+                let before: Vec<ghtui_core::types::DiffLine> =
+                    all_file_lines[before_start..before_end.min(all_file_lines.len())].to_vec();
+
+                // Lines after: [old_end .. old_end + expand_n)
+                let after_start = old_end.min(all_file_lines.len());
+                let after_end = (old_end + expand_n).min(all_file_lines.len());
+                let after: Vec<ghtui_core::types::DiffLine> =
+                    all_file_lines[after_start..after_end].to_vec();
+
+                files[fi].hunks[hi].expanded_context = Some((before, after));
             }
             vec![]
         }

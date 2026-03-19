@@ -802,6 +802,39 @@ pub(crate) fn find_review_comment_at_cursor(
     None
 }
 
+/// Find which file and hunk index the diff cursor is on
+pub(crate) fn find_cursor_hunk_info(detail: &PrDetailState) -> Option<(usize, usize)> {
+    let files = detail.diff.as_ref()?;
+    let review_comments = &detail.detail.review_comments;
+    let summary_lines = files.len() + 3;
+    if detail.diff_cursor < summary_lines {
+        return None;
+    }
+    let mut line = summary_lines;
+    for (fi, file) in files.iter().enumerate() {
+        if detail.diff_collapsed.contains(&fi) {
+            line += 1;
+            continue;
+        }
+        line += 1; // file header
+        for (hi, hunk) in file.hunks.iter().enumerate() {
+            let hunk_header_line = line;
+            line += 1; // hunk header
+            for diff_line in &hunk.lines {
+                line += 1;
+                let target = diff_line.new_line.or(diff_line.old_line);
+                line += count_review_comment_lines(review_comments, &file.filename, target);
+            }
+            // Check if cursor is within this hunk (header to end of lines)
+            if detail.diff_cursor >= hunk_header_line && detail.diff_cursor < line {
+                return Some((fi, hi));
+            }
+        }
+        line += 1; // trailing empty
+    }
+    None
+}
+
 /// Trace back in_reply_to_id chain to find the root comment ID of a thread.
 pub(crate) fn find_thread_root_id(
     mut comment_id: u64,
