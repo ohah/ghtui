@@ -168,37 +168,64 @@ impl Widget for EditorView<'_> {
                         // Cursor is before or at selection start
                         let before_cursor = &line[..byte_col];
                         let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
-                        let between_start = after_cursor_byte.min(sel_start);
-                        let between = &line[between_start..sel_start];
                         spans.push(Span::styled(before_cursor.to_string(), normal_style));
                         spans.push(Span::styled(cursor_ch, cursor_style));
-                        spans.push(Span::styled(between.to_string(), normal_style));
-                        spans.push(Span::styled(selected.to_string(), sel_style));
+                        // After cursor: skip to max(after_cursor_byte, sel_start)
+                        let rest_start = after_cursor_byte.max(sel_start);
+                        if after_cursor_byte < sel_start {
+                            spans.push(Span::styled(
+                                line[after_cursor_byte..sel_start].to_string(),
+                                normal_style,
+                            ));
+                        }
+                        if rest_start < sel_end {
+                            spans.push(Span::styled(
+                                line[rest_start..sel_end].to_string(),
+                                sel_style,
+                            ));
+                        }
                         spans.push(Span::styled(after_sel.to_string(), normal_style));
                     } else if byte_col >= sel_end {
                         // Cursor is at or after selection end
                         spans.push(Span::styled(before_sel.to_string(), normal_style));
                         spans.push(Span::styled(selected.to_string(), sel_style));
-                        let between = &line[sel_end..byte_col];
+                        if sel_end < byte_col {
+                            spans.push(Span::styled(
+                                line[sel_end..byte_col].to_string(),
+                                normal_style,
+                            ));
+                        }
                         let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
-                        let after_cursor = &line[after_cursor_byte..];
-                        spans.push(Span::styled(between.to_string(), normal_style));
                         spans.push(Span::styled(cursor_ch, cursor_style));
-                        spans.push(Span::styled(after_cursor.to_string(), normal_style));
+                        if after_cursor_byte < line.len() {
+                            spans.push(Span::styled(
+                                line[after_cursor_byte..].to_string(),
+                                normal_style,
+                            ));
+                        }
                     } else {
                         // Cursor is inside selection
                         spans.push(Span::styled(before_sel.to_string(), normal_style));
-                        let sel_before_cursor = &line[sel_start..byte_col];
+                        spans.push(Span::styled(
+                            line[sel_start..byte_col].to_string(),
+                            sel_style,
+                        ));
                         let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
-                        let after_cursor_clamped = after_cursor_byte.min(sel_end);
-                        let sel_after_cursor = &line[after_cursor_clamped..sel_end];
-                        spans.push(Span::styled(sel_before_cursor.to_string(), sel_style));
                         spans.push(Span::styled(
                             cursor_ch,
                             cursor_style.bg(self.theme.selection_bg),
                         ));
-                        spans.push(Span::styled(sel_after_cursor.to_string(), sel_style));
-                        spans.push(Span::styled(after_sel.to_string(), normal_style));
+                        // After cursor: skip to max(after_cursor_byte, sel_end)
+                        if after_cursor_byte < sel_end {
+                            spans.push(Span::styled(
+                                line[after_cursor_byte..sel_end].to_string(),
+                                sel_style,
+                            ));
+                        }
+                        let rest_start = after_cursor_byte.max(sel_end);
+                        if rest_start < line.len() {
+                            spans.push(Span::styled(line[rest_start..].to_string(), normal_style));
+                        }
                     }
                 } else {
                     // Non-cursor line with selection
@@ -406,35 +433,60 @@ impl Widget for InlineEditorView<'_> {
                     if byte_col <= sel_start {
                         let before_cursor = &line[..byte_col];
                         let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
-                        let between_start = after_cursor_byte.min(sel_start);
-                        let between = &line[between_start..sel_start];
                         spans.push(Span::styled(before_cursor.to_string(), normal_style));
                         spans.push(Span::styled(cursor_ch, cursor_style));
-                        spans.push(Span::styled(between.to_string(), normal_style));
-                        spans.push(Span::styled(selected.to_string(), sel_style));
+                        let rest_start = after_cursor_byte.max(sel_start);
+                        if after_cursor_byte < sel_start {
+                            spans.push(Span::styled(
+                                line[after_cursor_byte..sel_start].to_string(),
+                                normal_style,
+                            ));
+                        }
+                        if rest_start < sel_end {
+                            spans.push(Span::styled(
+                                line[rest_start..sel_end].to_string(),
+                                sel_style,
+                            ));
+                        }
                         spans.push(Span::styled(after_sel.to_string(), normal_style));
                     } else if byte_col >= sel_end {
                         spans.push(Span::styled(before_sel.to_string(), normal_style));
                         spans.push(Span::styled(selected.to_string(), sel_style));
-                        let between = &line[sel_end..byte_col];
+                        if sel_end < byte_col {
+                            spans.push(Span::styled(
+                                line[sel_end..byte_col].to_string(),
+                                normal_style,
+                            ));
+                        }
                         let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
-                        let after_cursor = &line[after_cursor_byte..];
-                        spans.push(Span::styled(between.to_string(), normal_style));
                         spans.push(Span::styled(cursor_ch, cursor_style));
-                        spans.push(Span::styled(after_cursor.to_string(), normal_style));
+                        if after_cursor_byte < line.len() {
+                            spans.push(Span::styled(
+                                line[after_cursor_byte..].to_string(),
+                                normal_style,
+                            ));
+                        }
                     } else {
                         spans.push(Span::styled(before_sel.to_string(), normal_style));
-                        let sel_before_cursor = &line[sel_start..byte_col];
+                        spans.push(Span::styled(
+                            line[sel_start..byte_col].to_string(),
+                            sel_style,
+                        ));
                         let (cursor_ch, after_cursor_byte) = cursor_char_at(line, byte_col);
-                        let after_cursor_clamped = after_cursor_byte.min(sel_end);
-                        let sel_after_cursor = &line[after_cursor_clamped..sel_end];
-                        spans.push(Span::styled(sel_before_cursor.to_string(), sel_style));
                         spans.push(Span::styled(
                             cursor_ch,
                             cursor_style.bg(self.theme.selection_bg),
                         ));
-                        spans.push(Span::styled(sel_after_cursor.to_string(), sel_style));
-                        spans.push(Span::styled(after_sel.to_string(), normal_style));
+                        if after_cursor_byte < sel_end {
+                            spans.push(Span::styled(
+                                line[after_cursor_byte..sel_end].to_string(),
+                                sel_style,
+                            ));
+                        }
+                        let rest_start = after_cursor_byte.max(sel_end);
+                        if rest_start < line.len() {
+                            spans.push(Span::styled(line[rest_start..].to_string(), normal_style));
+                        }
                     }
                 } else {
                     let before_sel = &line[..sel_start];
