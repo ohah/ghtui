@@ -461,6 +461,11 @@ pub enum Message {
     KeymapSettingsCapture(String),
     KeymapSettingsReset,
 
+    // URL picker
+    UrlPickerUp,
+    UrlPickerDown,
+    UrlPickerOpen(String),
+
     // Diff context expand
     PrDiffExpandContext, // expand context around cursor hunk
     PrDiffContextLoaded(usize, usize, Vec<DiffLine>, Vec<DiffLine>), // file_idx, hunk_idx, before, after
@@ -485,4 +490,5 @@ pub enum ModalKind {
     Confirm { title: String, message: String },
     AccountSwitcher,
     Help,
+    UrlPicker(Vec<String>),
 }

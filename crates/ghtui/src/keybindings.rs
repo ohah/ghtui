@@ -272,6 +272,22 @@ fn handle_modal_keys(key: KeyEvent, state: &AppState) -> Option<Message> {
                 None
             };
         }
+        Some(ModalKind::UrlPicker(urls)) => {
+            let ks = key_event_to_string(&key);
+            let kb = &state.config.keybindings;
+            return if key.code == KeyCode::Esc {
+                Some(Message::ModalClose)
+            } else if nav_down(&key, &ks, kb) {
+                Some(Message::UrlPickerDown)
+            } else if nav_up(&key, &ks, kb) {
+                Some(Message::UrlPickerUp)
+            } else if key.code == KeyCode::Enter {
+                urls.get(state.url_picker_selected)
+                    .map(|url| Message::UrlPickerOpen(url.clone()))
+            } else {
+                None
+            };
+        }
         _ => {}
     }
 

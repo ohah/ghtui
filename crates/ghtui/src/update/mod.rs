@@ -1,6 +1,7 @@
 mod helpers;
 use helpers::*;
 
+use ghtui_core::ModalKind;
 use ghtui_core::router::Route;
 use ghtui_core::state::actions::ActionBarItem;
 use ghtui_core::state::issue::InlineEditTarget;
@@ -295,8 +296,12 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 };
                 if let Some(text) = md_text {
                     let urls = ghtui_widgets::markdown::extract_urls(text);
-                    if !urls.is_empty() {
+                    if urls.len() == 1 {
                         return vec![Command::OpenInBrowser(urls[0].clone())];
+                    } else if urls.len() > 1 {
+                        state.url_picker_selected = 0;
+                        state.modal = Some(ModalKind::UrlPicker(urls));
+                        return vec![];
                     }
                 }
 
@@ -1717,8 +1722,12 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
                 };
                 if let Some(text) = md_text {
                     let urls = ghtui_widgets::markdown::extract_urls(text);
-                    if !urls.is_empty() {
+                    if urls.len() == 1 {
                         return vec![Command::OpenInBrowser(urls[0].clone())];
+                    } else if urls.len() > 1 {
+                        state.url_picker_selected = 0;
+                        state.modal = Some(ModalKind::UrlPicker(urls));
+                        return vec![];
                     }
                 }
 
@@ -4612,6 +4621,21 @@ pub fn update(state: &mut AppState, msg: Message) -> Vec<Command> {
             vec![]
         }
 
+        Message::UrlPickerDown => {
+            if let Some(ModalKind::UrlPicker(ref urls)) = state.modal {
+                let max = urls.len().saturating_sub(1);
+                state.url_picker_selected = (state.url_picker_selected + 1).min(max);
+            }
+            vec![]
+        }
+        Message::UrlPickerUp => {
+            state.url_picker_selected = state.url_picker_selected.saturating_sub(1);
+            vec![]
+        }
+        Message::UrlPickerOpen(url) => {
+            state.modal = None;
+            vec![Command::OpenInBrowser(url)]
+        }
         Message::UpdateAvailable(version) => {
             state.push_toast(
                 format!(
